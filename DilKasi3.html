@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Açık Kaynaklı İngilizce Geliştirme Programı v2 (Web)</title>
+    <!-- Tailwind CSS CDN - Sadece temel stil için -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Genel stil ayarları */
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #333;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Üste hizala */
+            min-height: 100vh;
+            padding: 15px;
+            /*margin: 0;*/
+        }
+        .container {
+            background-color: #fff;
+            border-radius: 13px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 1000px; /* PyQt5 uygulamasının genişliğine yakın */
+            overflow: hidden;
+        }
+        .tab-button {
+            padding: 12px 24px;
+            border: 1px solid #ccc;
+            border-bottom: none;
+            border-radius: 6px 6px 0 0;
+            margin-right: 4px;
+            background-color: #f7f7f7;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .tab-button.active {
+            background-color: #ffffff;
+            border-bottom: 2px solid #28a745;
+            color: #28a745;
+        }
+        .tab-content {
+            padding: 20px;
+            border-top: 2px solid #C2C2C2;
+        }
+        .scroll-area {
+            max-height: 550px; /* PyQt5 scroll area yüksekliği simülasyonu */
+            overflow-y: auto;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            padding: 10px;
+            background-color: #fdfdfd;
+        }
+        input[type="text"], textarea, select {
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            padding: 8px;
+            background-color: #fdfdfd;
+            width: 100%;
+            box-sizing: border-box; /* Padding'i genişliğe dahil et */
+        }
+        input[type="text"]:focus, textarea:focus, select:focus {
+            border-color: #28a745;
+            outline: none;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 18px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .grid-layout {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(107px, 1fr)); /* Dinamik sütunlar */
+            gap: 7px;
+        }
+        .word-item {
+            display: flex;
+            align-items: center;
+            gap: 12px; /* Öğeler arasındaki boşluk */
+            font-size: 1.25rem; /* Yazı boyutu (bir tık daha büyük) */
+            margin-bottom: 8px;/* Liste görünümünde satırlar arası boşluk */
+        }
+        .word-item label { /* Listedeki yazıların kalın olması için eklendi */
+            font-weight: bold;
+        }
+        .word-item input[type="checkbox"] {
+            transform: scale(2); /* Kutucuk boyutu (bir tık daha büyük) */
+        }
+
+        /* Modal Stilleri */
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            position: relative;
+        }
+        .modal-content h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .modal-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .modal-buttons button {
+            width: 100%;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 6px;
+        }
+        .close-button {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #aaa;
+        }
+        .close-button:hover {
+            color: #333;
+        }
+        .action-button {
+            border: 1px solid #2e2e2e;
+            background-color: #52bb22; /* İstenen yeni renk */
+            color: rgb(15, 15, 15)
+        }
+        .action-button:hover {
+            background-color: #277e0f; /* Hover için biraz daha koyu ton */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="flex border-b border-gray-200">
+            <button class="tab-button active" onclick="showTab('selector-tab')">Kelime Seçici Oxford3000</button>
+            <button class="tab-button" onclick="showTab('editor-tab')">Liste Düzenleyici ve Çevirmen</button>
+        </div>
+
+        <!-- Oxford Kelime Seçici Sekmesi -->
+        <div id="selector-tab" class="tab-content">
+            <div class="flex flex-wrap items-center gap-4 mb-4">
+                <select id="selector-level-combo" class="p-2 border rounded-md">
+                    <option value="A1">A1</option>
+                    <option value="A2">A2</option>
+                    <option value="B1">B1</option>
+                    <option value="B2">B2</option>
+                </select>
+                <button id="selector-view-button" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md">Izgara</button>
+                <button id="selector-toggle-button"class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md">Hepsini Seç</button>
+                <select id="selector-filter-combo" class="p-2 border rounded-md">
+                    <option value="Hepsini Göster">Hepsini Göster</option>
+                    <option value="Seçilenleri Göster">Seçilenleri Göster</option>
+                    <option value="Seçilmeyenleri Göster">Seçilmeyenleri Göster</option>
+                </select>
+                <input type="text" id="selector-search-box" placeholder="Kelime, anlam, tür veya seviye arayın..." class="flex-grow max-w-xs">
+            </div>
+            <div id="selector-status-label" class="mb-4 text-gray-600">Seçilenler: Henüz yok</div>
+            <div id="selector-scroll-area" class="scroll-area mb-4">
+                <div id="selector-words-container">
+                    <!-- Kelimeler buraya yüklenecek -->
+                </div>
+            </div>
+            <div class="flex justify-between items-center">
+                <button id="selector-export-btn"class="action-button">Seçilen Kelimeleri Dışa Aktar</button>
+                <button id="send-to-editor-btn"class="action-button">Seçilenleri Çeviri Listesine Gönder</button>
+            </div>
+        </div>
+
+        <!-- Liste Düzenleyici ve Çevirmen Sekmesi -->
+        <div id="editor-tab" class="tab-content hidden">
+            <div class="border p-4 rounded-md mb-4 bg-gray-50">
+                <h3 class="text-lg font-bold mb-2 text-green-800">📥 Kelime Listesini Yapıştırın veya Dosya Yükleyin</h3>
+                <textarea id="editor-input-area" rows="6" placeholder="Her satıra bir kelime gelecek şekilde yazın veya yapıştırın..." class="mb-2"></textarea>
+                <div class="flex gap-2">
+                    <!-- Dosya yükleme için gizli input -->
+                    <input type="file" id="file-upload-input" accept=".txt,.csv" class="hidden">
+                    <button id="editor-load-file-btn" class="bg-blue-500 hover:bg-blue-600">📁 Dosya Yükle (.txt)</button>
+                    <button id="editor-load-text-btn">📤 Listeye Yükle</button>
+                </div>
+            </div>
+
+            <div id="editor-scroll-area" class="scroll-area mb-4">
+                <div id="editor-words-container">
+                    <!-- Düzenlenebilir kelimeler buraya yüklenecek -->
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center gap-2">
+                <button id="editor-add-btn" class="bg-gray-500 hover:bg-gray-600 px-4 py-2 text-xl leading-none">➕</button>
+                <button id="editor-remove-btn" class="bg-gray-500 hover:bg-gray-600 px-4 py-2 text-xl leading-none">➖</button>
+                <span class="flex-grow"></span>
+                <button id="editor-refresh-btn">⟳ Çevir (Simüle)</button>
+                <button id="editor-export-btn-main">0 OLUŞTUR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modallar -->
+    <div id="selectorExportModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal('selectorExportModal')">&times;</span>
+            <h3>Çıktı Formatı Seçin</h3>
+            <div class="modal-buttons">
+                <button onclick="selectorExportPlain(); closeModal('selectorExportModal')">Metin (Sade Liste)</button>
+                <button onclick="selectorExportGrouped(); closeModal('selectorExportModal')">Liste (Gruplandırılmış)</button>
+                <button onclick="showMessage('Bilgi', 'Bu özellik şu anda geliştirme aşamasındadır.'); closeModal('selectorExportModal')">Excel (Hazırlanıyor)</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editorExportModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal('editorExportModal')">&times;</span>
+            <h3>Dosya Oluştur</h3>
+            <div class="modal-buttons">
+                <button onclick="editorExportTxt(editorGetCurrentWords()); closeModal('editorExportModal')">Metin (Sade Liste)</button>
+                <button onclick="editorExportPdf(editorGetCurrentWords()); closeModal('editorExportModal')">PDF (Simüle)</button>
+                <button onclick="showMessage('Bilgi', '\'Excel\' formatı şu anda hazırlık aşamasındadır.'); closeModal('editorExportModal')">Excel (Hazırlanıyor)</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Uzun kelime listesinin bulunduğu internet sitesinin linki buraya gelecek
+        // CORS hatasını aşmak için corsproxy.io kullanıldı. Kendi GitHub HTML URL'nizi encodeURIComponent() içine yapıştırın.
+        // Örneğin: 'https://corsproxy.io/?' + encodeURIComponent('https://github.com/kullaniciadi/repoadi/blob/main/kelimeler.html')
+        // DEĞİŞTİRİLDİ: Artık doğrudan JSON dosyası okunacak, corsproxy ihtiyacı kalmayacak.
+        const EXTERNAL_WORD_LIST_URL = 'https://raw.githubusercontent.com/dudukdev1ren/hesaplayicipuani/refs/heads/main/liste-v2.2.json'; // Bu URL'yi kendi JSON dosyanızın URL'siyle değiştirin.
+
+        // Deneme için kullanılan yedek mini liste
+        const FALLBACK_OXFORD_WORDS = [
+            {"w": "abandon", "p": "v.", "l": "B1", "m": "terk etmek"},
+            {"w": "able", "p": "adj.", "l": "A2", "m": "yapabilen, yetenekli"},
+            {"w": "above", "p": "prep., n.", "l": "A1", "m": "yukarıda"},
+            {"w": "abroad", "p": "adv.", "l": "B2", "m": "yurt dışında"},
+            {"w": "accept", "p": "v.", "l": "A2", "m": "kabul etmek"},
+            {"w": "access", "p": "n., v.", "l": "B1", "m": "erişim, erişmek"},
+            {"w": "accident", "p": "n.", "l": "A2", "m": "kaza"},
+            {"w": "account", "p": "n., v.", "l": "B1", "m": "hesap, açıklamak"},
+            {"w": "achieve", "p": "v.", "l": "B1", "m": "başarmak"},
+            {"w": "across", "p": "prep., adv.", "l": "A2", "m": "karşıdan karşıya"}
+        ];
+
+        let OXFORD_WORDS = []; // Bu, URL'den veya yedek listeden doldurulacak ana kelime listesi
+
+        // Uygulama durumu değişkenleri
+        let selectedWordsByLevel = { "A1": new Set(), "A2": new Set(), "B1": new Set(), "B2": new Set() };
+        let currentWordLevel = "A1";
+        let gridMode = false;
+        let editorWordFields = []; // Editördeki kelime giriş alanlarını tutar
+
+        // Hızlı arama için kelime anlamları sözlüğü (initializeWordList içinde doldurulacak)
+        let wordMeanings = {};
+
+        // =================================================================
+        // Genel Yardımcı Fonksiyonlar
+        // =================================================================
+
+        // Mesaj kutusu göstermek için basit bir simülasyon (alert kullanıldı)
+        function showMessage(title, message) {
+            alert(`${title}\n\n${message}`);
+        }
+
+        // Modal'ı aç
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        // Modal'ı kapat
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        // =================================================================
+        // Kelime Listesini Yükleme (URL'den veya Yedekten)
+        // =================================================================
+
+        async function initializeWordList() {
+            console.log('Kelime listesi URL\'den yüklenmeye çalışılıyor...');
+            try {
+                const response = await fetch(EXTERNAL_WORD_LIST_URL);
+                if (!response.ok) {
+                    throw new Error(`HTTP hatası! Durum: ${response.status}`);
+                }
+
+                const data = await response.json(); // Doğrudan JSON olarak ayrıştır
+
+                // Basit doğrulama: Verinin bir dizi olup olmadığını ve beklenen özellikleri içerip içermediğini kontrol et
+                if (Array.isArray(data) && data.length > 0 && data[0].w && data[0].l) {
+                    OXFORD_WORDS = data;
+                    console.log(`URL'den ${OXFORD_WORDS.length} kelime başarıyla yüklendi.`);
+                } else {
+                    throw new Error('Çekilen veri beklenen JSON dizi formatında değil veya boş.');
+                }
+
+            } catch (error) {
+                console.error('URL\'den kelime listesi yüklenemedi, yedek liste kullanılıyor:', error);
+                OXFORD_WORDS = FALLBACK_OXFORD_WORDS;
+                console.log(`Yedek liste kullanılıyor: ${OXFORD_WORDS.length} kelime.`);
+            }
+
+            // OXFORD_WORDS kesinleştiğinde wordMeanings'i doldur
+            wordMeanings = {};
+            OXFORD_WORDS.forEach(wordData => {
+                if (wordData.m) {
+                    wordMeanings[wordData.w.toLowerCase()] = wordData.m;
+                }
+            });
+
+            // Kelime listesi hazır olduğunda UI'ya yüklemeyi başlat
+            selectorLoadLevelWords();
+        }
+
+        // =================================================================
+        // Sekme Yönetimi
+        // =================================================================
+
+        function showTab(tabId) {
+            // Tüm sekme içeriklerini gizle
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            // Tüm sekme butonlarının aktif sınıfını kaldır
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+                button.classList.add('bg-gray-200', 'text-gray-800'); // Pasif stil
+                button.classList.remove('bg-white', 'text-green-700'); // Aktif stil
+            });
+
+            // Seçilen sekme içeriğini göster
+            document.getElementById(tabId).classList.remove('hidden');
+            // Seçilen sekme butonunu aktif yap
+            const activeButton = document.querySelector(`.tab-button[onclick="showTab('${tabId}')"]`);
+            if (activeButton) {
+                activeButton.classList.add('active');
+                activeButton.classList.remove('bg-gray-200', 'text-gray-800'); // Pasif stil
+                activeButton.classList.add('bg-white', 'text-green-700'); // Aktif stil
+            }
+
+            // Sekme değiştiğinde ilgili verileri yükle/güncelle
+            if (tabId === 'selector-tab') {
+                selectorLoadLevelWords();
+            } else if (tabId === 'editor-tab') {
+                editorUpdateWordCount();
+            }
+        }
+
+        // =================================================================
+        // Kelime Seçici Sekmesi Fonksiyonları
+        // =================================================================
+
+        function selectorSetLevel() {
+            currentWordLevel = document.getElementById('selector-level-combo').value;
+            selectorLoadLevelWords();
+        }
+
+        function selectorToggleViewMode() {
+            gridMode = !gridMode;
+            const viewButton = document.getElementById('selector-view-button');
+            viewButton.textContent = gridMode ? "Liste" : "Izgara";
+            selectorLoadLevelWords();
+        }
+
+        function selectorLoadLevelWords() {
+            const filterMode = document.getElementById('selector-filter-combo').value;
+            const searchText = document.getElementById('selector-search-box').value.toLowerCase().trim();
+            const wordsContainer = document.getElementById('selector-words-container');
+            wordsContainer.innerHTML = ''; // Önceki kelimeleri temizle
+
+            let filteredWords = [];
+            let wordsForCurrentLevel = [];
+
+            // Arama metni varsa tüm kelimelerden ara, yoksa sadece seçili seviyeden
+            if (searchText) {
+                OXFORD_WORDS.forEach(w => {
+                    if (w.w.toLowerCase().includes(searchText) ||
+                        (w.m && w.m.toLowerCase().includes(searchText)) ||
+                        (w.p && w.p.toLowerCase().includes(searchText)) ||
+                        (w.l && w.l.toLowerCase().includes(searchText))) {
+                        wordsForCurrentLevel.push(w);
+                    }
+                });
+            } else {
+                wordsForCurrentLevel = OXFORD_WORDS.filter(w => w.l === currentWordLevel);
+            }
+
+            // Filtreleme uygula
+            wordsForCurrentLevel.forEach(wordData => {
+                const isSelected = selectedWordsByLevel[wordData.l] && selectedWordsByLevel[wordData.l].has(wordData.w);
+                if (filterMode === "Hepsini Göster") {
+                    filteredWords.push(wordData);
+                } else if (filterMode === "Seçilenleri Göster" && isSelected) {
+                    filteredWords.push(wordData);
+                } else if (filterMode === "Seçilmeyenleri Göster" && !isSelected) {
+                    filteredWords.push(wordData);
+                }
+            });
+
+            // Konteynerin layoutunu ayarla
+            wordsContainer.className = gridMode ? 'grid-layout' : 'flex flex-col';
+
+            filteredWords.forEach(wordData => {
+                const div = document.createElement('div');
+                div.className = 'word-item';
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `cb-${wordData.l}-${wordData.w}`;
+                checkbox.checked = selectedWordsByLevel[wordData.l] && selectedWordsByLevel[wordData.l].has(wordData.w);
+                checkbox.onchange = (event) => selectorUpdateStatusForWord(wordData, event.target.checked);
+
+                const label = document.createElement('label');
+                label.htmlFor = checkbox.id;
+                label.textContent = wordData.w;
+
+                div.appendChild(checkbox);
+                div.appendChild(label);
+                wordsContainer.appendChild(div);
+            });
+
+            selectorUpdateStatusDisplay();
+        }
+
+        function selectorUpdateStatusForWord(wordData, isChecked) {
+            const level = wordData.l;
+            const word = wordData.w;
+
+            if (!selectedWordsByLevel[level]) {
+                selectedWordsByLevel[level] = new Set();
+            }
+
+            if (isChecked) {
+                selectedWordsByLevel[level].add(word);
+            } else {
+                selectedWordsByLevel[level].delete(word);
+            }
+            selectorUpdateStatusDisplay();
+        }
+
+        function selectorToggleSelection() {
+            const checkboxes = document.querySelectorAll('#selector-words-container input[type="checkbox"]');
+            if (checkboxes.length === 0) return;
+
+            const allSelected = Array.from(checkboxes).every(cb => cb.checked);
+            const newState = !allSelected;
+
+            checkboxes.forEach(cb => {
+                cb.checked = newState;
+                // Durumu manuel olarak güncelle
+                const [_, level, word] = cb.id.split('-'); // id'den kelime ve seviyeyi çıkar
+                const wordData = OXFORD_WORDS.find(w => w.w === word && w.l === level);
+                if (wordData) {
+                    selectorUpdateStatusForWord(wordData, newState);
+                }
+            });
+            selectorUpdateStatusDisplay();
+        }
+
+        function selectorUpdateStatusDisplay() {
+            const statusLabel = document.getElementById('selector-status-label');
+            let statusParts = [];
+            let totalCount = 0;
+            ["A1", "A2", "B1", "B2"].forEach(level => {
+                const count = selectedWordsByLevel[level] ? selectedWordsByLevel[level].size : 0;
+                if (count > 0) {
+                    statusParts.push(`${level}:${count}`);
+                    totalCount += count;
+                }
+            });
+            if (statusParts.length === 0) {
+                statusLabel.textContent = "Seçilenler: Henüz yok";
+            } else {
+                statusLabel.textContent = `Toplam Seçilen: ${totalCount} (${statusParts.join(' / ')})`;
+            }
+        }
+
+        function selectorShowExportDialog() {
+            let totalSelected = 0;
+            for (const level in selectedWordsByLevel) {
+                totalSelected += selectedWordsByLevel[level].size;
+            }
+
+            if (totalSelected === 0) {
+                showMessage("Uyarı", "Dışa aktarmak için önce en az bir kelime seçmelisiniz.");
+                return;
+            }
+            openModal('selectorExportModal');
+        }
+
+        function downloadTextFile(filename, content) {
+            const element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(content));
+            element.setAttribute('download', filename);
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+        }
+
+        function selectorExportPlain() {
+            let allWords = [];
+            ["A1", "A2", "B1", "B2"].forEach(level => {
+                if (selectedWordsByLevel[level]) {
+                    allWords.push(...Array.from(selectedWordsByLevel[level]).sort());
+                }
+            });
+            const content = allWords.join("\n");
+            downloadTextFile("secilmis_kelimeler.txt", content);
+            showMessage("Başarılı", "Sade metin dosyası başarıyla oluşturuldu ve indirildi.");
+        }
+
+        function selectorExportGrouped() {
+            let content = "";
+            ["A1", "A2", "B1", "B2"].forEach(level => {
+                const selectedInLevel = selectedWordsByLevel[level];
+                if (selectedInLevel && selectedInLevel.size > 0) {
+                    content += `=== ${level} ===\n`;
+                    const wordsWithPos = OXFORD_WORDS.filter(w => selectedInLevel.has(w.w));
+                    const groupedByPos = {};
+                    wordsWithPos.forEach(w => {
+                        if (!groupedByPos[w.p]) groupedByPos[w.p] = [];
+                        groupedByPos[w.p].push(w.w);
+                    });
+                    Object.keys(groupedByPos).sort().forEach(pos => {
+                        content += `--- ${pos} ---\n`;
+                        groupedByPos[pos].sort().forEach(word => {
+                            content += word + "\n";
+                        });
+                        content += "\n";
+                    });
+                }
+            });
+            downloadTextFile("gruplanmis_kelimeler.txt", content);
+            showMessage("Başarılı", "Gruplanmış metin dosyası başarıyla oluşturuldu ve indirildi.");
+        }
+
+        // =================================================================
+        // Liste Düzenleyici ve Çevirmen Sekmesi Fonksiyonları
+        // =================================================================
+
+        function editorLoadFromTextarea() {
+            const rawText = document.getElementById('editor-input-area').value;
+            const words = rawText.split('\n').map(word => word.trim()).filter(word => word);
+            if (words.length === 0) return;
+
+            editorClearWordFields();
+            words.forEach(word => {
+                editorAddWordField(word);
+            });
+            document.getElementById('editor-input-area').value = ''; // Temizle
+        }
+
+        function editorLoadFromFile() {
+            const fileInput = document.getElementById('file-upload-input');
+            fileInput.click(); // Gizli dosya inputunu tetikle
+
+            fileInput.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) {
+                    showMessage("Uyarı", "Dosya seçilmedi.");
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const content = event.target.result;
+                    document.getElementById('editor-input-area').value = content;
+                    editorLoadFromTextarea(); // Metin alanına yüklenen içeriği işle
+                    showMessage("Başarılı", "Dosya içeriği başarıyla yüklendi.");
+                };
+                reader.onerror = () => {
+                    showMessage("Hata", "Dosya okunamadı.");
+                };
+                reader.readAsText(file);
+            };
+        }
+
+        function editorUpdateWordCount() {
+            const count = editorWordFields.length;
+            document.getElementById('editor-export-btn-main').textContent = `${count} OLUŞTUR`;
+        }
+
+        function editorClearWordFields() {
+            const container = document.getElementById('editor-words-container');
+            container.innerHTML = '';
+            editorWordFields = [];
+            editorUpdateWordCount();
+        }
+
+        function editorAddWordField(word = '', meaning = '') {
+            const container = document.getElementById('editor-words-container');
+            const index = editorWordFields.length + 1;
+
+            const div = document.createElement('div');
+            div.className = 'flex items-center gap-2 mb-2';
+
+            const label = document.createElement('span');
+            label.textContent = `${index}.`;
+            label.className = 'w-8 text-right';
+
+            const wordInput = document.createElement('input');
+            wordInput.type = 'text';
+            wordInput.value = word;
+            wordInput.placeholder = 'Kelime';
+            wordInput.className = 'flex-grow';
+
+            const meaningInput = document.createElement('input');
+            meaningInput.type = 'text';
+            meaningInput.value = meaning;
+            meaningInput.placeholder = 'Anlam';
+            meaningInput.className = 'flex-grow';
+
+            div.appendChild(label);
+            div.appendChild(wordInput);
+            div.appendChild(meaningInput);
+            container.appendChild(div);
+
+            editorWordFields.push({ element: div, wordInput: wordInput, meaningInput: meaningInput });
+            editorUpdateWordCount();
+        }
+
+        function editorRemoveLastField() {
+            if (editorWordFields.length > 0) {
+                const field = editorWordFields.pop();
+                field.element.remove(); // HTML elementini DOM'dan kaldır
+                editorUpdateWordCount();
+            }
+        }
+
+        function editorRefreshTranslations() {
+            if (editorWordFields.length === 0) return;
+
+            for (const field of editorWordFields) {
+                const wordToTranslate = field.wordInput.value.trim();
+                if (wordToTranslate && !field.meaningInput.value.trim()) {
+                    const foundMeaning = wordMeanings[wordToTranslate.toLowerCase()];
+                    if (foundMeaning) {
+                        field.meaningInput.value = foundMeaning;
+                    } else {
+                        // Basit bir gecikme simülasyonu
+                        // Gerçek bir çeviri API'si burada kullanılmalı
+                        field.meaningInput.value = `(Çeviri: ${wordToTranslate})`; // Simüle edilmiş çeviri
+                    }
+                }
+            }
+            showMessage("Başarılı", "Çeviriler güncellendi (simüle edildi).");
+        }
+
+        function editorGetCurrentWords() {
+            const words = [];
+            editorWordFields.forEach(field => {
+                const word = field.wordInput.value.trim();
+                const meaning = field.meaningInput.value.trim();
+                if (word) {
+                    words.push({ word: word, meaning: meaning });
+                }
+            });
+            return words;
+        }
+
+        function editorShowExportPopup() {
+            const wordsToExport = editorGetCurrentWords();
+            if (wordsToExport.length === 0) {
+                showMessage("Uyarı", "Dışa aktarılacak kelime bulunamadı.");
+                return;
+            }
+            openModal('editorExportModal');
+        }
+
+        function downloadTextFile(filename, content) {
+            const element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(content));
+            element.setAttribute('download', filename);
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+        }
+
+        function editorExportTxt(words) {
+            let content = "";
+            words.forEach(item => {
+                content += `${item.word}:${item.meaning}\n`;
+            });
+            downloadTextFile("ozel_liste.txt", content);
+            showMessage("Başarılı", `${words.length} kelimelik metin dosyası oluşturuldu ve indirildi.`);
+        }
+
+        function editorExportPdf(words) {
+            // PDF oluşturma web'de karmaşık bir konudur.
+            // jsPDF gibi kütüphaneler kullanılabilir ancak Python'daki FPDF kadar kolay olmayabilir.
+            // Bu bir simülasyondur.
+            showMessage("Bilgi", "PDF oluşturma web tarayıcısında doğrudan desteklenmez. Bu bir simülasyondur. Gerçek uygulamada bir sunucu tarafı çözümü veya istemci tarafı PDF kütüphanesi (örn. jsPDF) kullanılmalıdır.");
+            const content = words.map(item => `${item.word}: ${item.meaning}`).join('\n');
+            downloadTextFile("kelime_listesi.txt", `(PDF İçeriği Simülasyonu)\n\n${content}`); // PDF yerine TXT indir
+        }
+
+        // =================================================================
+        // Sekmeler Arası İletişim
+        // =================================================================
+
+        function sendSelectedToEditor() {
+            let allSelectedWords = [];
+            ["A1", "A2", "B1", "B2"].forEach(level => {
+                if (selectedWordsByLevel[level]) {
+                    allSelectedWords.push(...Array.from(selectedWordsByLevel[level]).sort());
+                }
+            });
+
+            if (allSelectedWords.length === 0) {
+                showMessage("Uyarı", "Listeye göndermek için önce kelime seçmelisiniz.");
+                return;
+            }
+
+            editorClearWordFields();
+            allSelectedWords.forEach(word => {
+                editorAddWordField(word);
+            });
+            showTab('editor-tab'); // Editör sekmesine geç
+            showMessage("Başarılı", `${allSelectedWords.length} kelime listeye aktarıldı.`);
+        }
+
+        // =================================================================
+        // Uygulama Başlangıcı
+        // =================================================================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // İlk sekmeyi göster
+            showTab('selector-tab');
+
+            // Kelime listesini yükle (URL'den veya yedekten)
+            initializeWordList(); // Bu fonksiyon, kelimeler yüklendikten sonra selectorLoadLevelWords'u çağıracak
+
+            // Olay dinleyicilerini ata
+            document.getElementById('selector-level-combo').addEventListener('change', selectorSetLevel);
+            document.getElementById('selector-filter-combo').addEventListener('change', selectorLoadLevelWords);
+            document.getElementById('selector-search-box').addEventListener('input', selectorLoadLevelWords);
+
+            // Butonlara olay dinleyicileri ekle
+            document.getElementById('selector-view-button').addEventListener('click', selectorToggleViewMode);
+            document.getElementById('selector-toggle-button').addEventListener('click', selectorToggleSelection);
+            document.getElementById('selector-export-btn').addEventListener('click', selectorShowExportDialog);
+            document.getElementById('send-to-editor-btn').addEventListener('click', sendSelectedToEditor);
+
+            // Dosya yükleme için yeni input ve buton bağlantısı
+            document.getElementById('editor-load-file-btn').addEventListener('click', editorLoadFromFile);
+            document.getElementById('editor-load-text-btn').addEventListener('click', editorLoadFromTextarea);
+            document.getElementById('editor-add-btn').addEventListener('click', editorAddWordField);
+            document.getElementById('editor-remove-btn').addEventListener('click', editorRemoveLastField);
+            document.getElementById('editor-refresh-btn').addEventListener('click', editorRefreshTranslations);
+            document.getElementById('editor-export-btn-main').addEventListener('click', editorShowExportPopup);
+        });
+    </script>
+</body>
+</html>
