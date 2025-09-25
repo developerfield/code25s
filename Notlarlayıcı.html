@@ -1,0 +1,1674 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finansal Analiz v5.4</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <style>
+        * {margin: 0; padding: 0; box-sizing: border-box;} body {font-family: 'Courier New', monospace; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #333; padding: 10px; min-height: 100vh;} .header {background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); color: #333; padding: 20px; text-align: center; border: 2px solid #fff; margin-bottom: 15px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);} .header h1 {font-size: 20px; margin-bottom: 8px; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent;} .header p {font-size: 13px; opacity: 0.8; cursor: pointer; transition: all 0.3s; padding: 8px; border-radius: 8px;} .header p:hover {background: rgba(102, 126, 234, 0.1); transform: scale(1.05);} .main-nav {display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px;} .sub-nav {display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;} .nav-btn {padding: 15px; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border: 2px solid rgba(255, 255, 255, 0.3); cursor: pointer; font-weight: bold; text-align: center; font-size: 14px; border-radius: 12px; transition: all 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.1);} .nav-btn:hover {transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.2);} .nav-btn:active {transform: scale(0.95);} .nav-btn.active {background: linear-gradient(135deg, #667eea, #764ba2); color: white; box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);} .content-area {background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 2px solid rgba(255, 255, 255, 0.3); padding: 20px; border-radius: 15px; margin-bottom: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);} .stats-grid {display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; margin-bottom: 20px;} .stat-card {background: linear-gradient(135deg, #f8f9ff, #e8f0fe); border: 2px solid rgba(102, 126, 234, 0.2); padding: 15px; text-align: center; border-radius: 12px; transition: all 0.3s; position: relative; overflow: hidden;} .stat-card:hover {transform: translateY(-3px); box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);} .stat-card::before {content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #667eea, #764ba2);} .stat-value {font-size: 20px; font-weight: bold; color: #667eea; margin-bottom: 5px;} .stat-label {font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;} .popup {display: none; position: fixed; top: 15px; left: 15px; right: 15px; bottom: 15px; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(20px); border: 3px solid rgba(102, 126, 234, 0.3); z-index: 1000; overflow-y: auto; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);} .popup-header {background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px; position: sticky; top: 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(255, 255, 255, 0.2); backdrop-filter: blur(10px);} .popup-content {padding: 20px;} .close-btn {background: linear-gradient(135deg, #ff4757, #ff3838); color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 8px; font-weight: bold; transition: all 0.3s;} .close-btn:hover {transform: scale(1.05); box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4);} .date-selector {margin-bottom: 25px; padding: 20px; border: 2px solid rgba(102, 126, 234, 0.2); border-radius: 12px; background: linear-gradient(135deg, #f8f9ff, #e8f0fe);} .date-input {width: 100%; padding: 12px; border: 2px solid rgba(102, 126, 234, 0.3); margin: 8px 0; border-radius: 8px; font-family: inherit; transition: all 0.3s; background: white;} .date-input:focus {outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);} .btn {width: 100%; padding: 15px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; cursor: pointer; margin: 8px 0; border-radius: 10px; font-weight: bold; transition: all 0.3s; font-size: 14px;} .btn:hover {transform: translateY(-2px); box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);} .btn:active {transform: scale(0.98);} .btn.secondary {background: linear-gradient(135deg, #f1f2f6, #ddd); color: #333; box-shadow: 0 4px 15px rgba(0,0,0,0.1);} .btn.danger {background: linear-gradient(135deg, #ff4757, #ff3838);} .calendar-container {margin: 20px 0;} .calendar-grid {display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin: 15px 0;} .calendar-day {padding: 10px; text-align: center; border: 2px solid rgba(102, 126, 234, 0.2); cursor: pointer; min-height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 12px; transition: all 0.3s; background: white;} .calendar-day:hover {transform: scale(1.05); box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);} .calendar-day.selected {background: linear-gradient(135deg, #667eea, #764ba2); color: white; transform: scale(1.1); box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);} .calendar-day.has-data {background: linear-gradient(135deg, #2ed573, #1e90ff); color: white;} .week-container {display: flex; gap: 5px; padding: 15px; margin: 10px 0; border-radius: 15px; cursor: pointer; align-items: center; transition: all 0.3s; background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 249, 255, 0.9)); border: 2px solid rgba(102, 126, 234, 0.1);} .week-container:hover {transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,0,0,0.1);} .week-container:nth-child(odd) {background: linear-gradient(135deg, #ffe4b5, #ffd700);} .week-container:nth-child(even) {background: linear-gradient(135deg, #e0f6ff, #87ceeb);} .week-container:nth-child(3n) {background: linear-gradient(135deg, #f0e6ff, #dda0dd);} .week-label {font-weight: bold; margin-right: 15px; min-width: 80px; color: #333;} .week-day {flex: 1; text-align: center; padding: 8px; border-radius: 6px; font-size: 11px; border: 1px solid rgba(0,0,0,0.1); background: rgba(255, 255, 255, 0.7); transition: all 0.3s;} .week-day:hover {background: rgba(255, 255, 255, 0.9);} .chart-item {margin: 25px 0; padding: 20px; border: 2px solid rgba(102, 126, 234, 0.2); border-radius: 15px; background: linear-gradient(135deg, #f8f9ff, #e8f0fe);} .chart-canvas {height: 300px; margin: 15px 0;} .month-grid {display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;} .month-card {padding: 20px; text-align: center; border: 2px solid rgba(102, 126, 234, 0.3); cursor: pointer; border-radius: 12px; background: linear-gradient(135deg, #f8f9ff, #e8f0fe); transition: all 0.3s;} .month-card:hover {transform: translateY(-3px); box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);} .month-card:active {transform: scale(0.95);} .switch-container {display: flex; justify-content: space-between; align-items: center; margin: 15px 0; padding: 12px; border-bottom: 2px solid rgba(102, 126, 234, 0.1); border-radius: 8px; transition: all 0.3s;} .switch-container:hover {background: rgba(102, 126, 234, 0.05);} .switch {position: relative; width: 60px; height: 30px;} .switch input {opacity: 0; width: 0; height: 0;} .slider {position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #ccc; transition: .4s; border-radius: 30px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);} .slider:before {position: absolute; content: ""; height: 24px; width: 24px; left: 3px; bottom: 3px; background: white; transition: .4s; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.3);} input:checked + .slider {background: linear-gradient(135deg, #667eea, #764ba2);} input:checked + .slider:before {transform: translateX(30px);} .view-mode {margin-bottom: 20px; padding: 15px; background: rgba(102, 126, 234, 0.1); border-radius: 10px;} .loading {text-align: center; padding: 30px; color: #666; background: linear-gradient(135deg, #f8f9ff, #e8f0fe); border-radius: 10px;} .report-section {margin: 20px 0; padding: 15px; border: 2px solid rgba(102, 126, 234, 0.2); border-radius: 12px; background: linear-gradient(135deg, #f8f9ff, #e8f0fe);} .report-section h4 {color: #667eea; margin-bottom: 10px; border-bottom: 2px solid rgba(102, 126, 234, 0.2); padding-bottom: 5px;} .no-data {text-align: center; padding: 50px; color: #999; font-style: italic; background: linear-gradient(135deg, #f8f9ff, #e8f0fe); border-radius: 15px;} .config-section {margin: 25px 0; padding: 20px; border: 3px solid rgba(102, 126, 234, 0.3); border-radius: 15px; background: linear-gradient(135deg, #f0f4ff, #e8f0fe);} .config-section h4 {color: #667eea; margin-bottom: 15px; font-size: 16px;} .config-input {width: 100%; padding: 12px; margin: 8px 0; border: 2px solid rgba(102, 126, 234, 0.3); border-radius: 8px; font-family: monospace; font-size: 12px; transition: all 0.3s; background: white;} .config-input:focus {outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);} .status-indicator {display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.3);} .status-connected {background: linear-gradient(135deg, #2ed573, #1e90ff); animation: pulse-success 2s infinite;} .status-disconnected {background: linear-gradient(135deg, #ff4757, #ff3838);} .status-loading {background: linear-gradient(135deg, #ffa726, #ff9800); animation: pulse 1s infinite;} @keyframes pulse {0%, 100% {opacity: 1; transform: scale(1);} 50% {opacity: 0.7; transform: scale(1.1);}} @keyframes pulse-success {0%, 100% {opacity: 1; box-shadow: 0 0 10px rgba(46, 213, 115, 0.5);} 50% {opacity: 0.8; box-shadow: 0 0 20px rgba(46, 213, 115, 0.8);}} .firebase-status {background: rgba(255, 255, 255, 0.9); border-radius: 10px; padding: 15px; margin: 15px 0; border-left: 4px solid #667eea;} .real-time-indicator {position: absolute; top: 10px; right: 10px; width: 8px; height: 8px; background: #2ed573; border-radius: 50%; animation: pulse-success 1.5s infinite;} .data-source-toggle {display: flex; justify-content: center; gap: 10px; margin: 20px 0;} .source-btn {padding: 10px 20px; border: 2px solid #667eea; border-radius: 8px; cursor: pointer; transition: all 0.3s; background: white;} .source-btn.active {background: #667eea; color: white;} .enhanced-stats {display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;} .trend-indicator {font-size: 12px; margin-top: 5px;} .trend-up {color: #2ed573;} .trend-down {color: #ff4757;} .trend-neutral {color: #ffa726;} @media (max-width: 768px) {.stats-grid {grid-template-columns: repeat(2, 1fr);} .enhanced-stats {grid-template-columns: 1fr;} .stat-card {padding: 12px;} .stat-value {font-size: 18px;} .calendar-day {min-height: 35px; padding: 6px;} .popup {top: 5px; left: 5px; right: 5px; bottom: 5px;}}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Finansal Analiz Takip v5.4</h1>
+        <p id="connectionStatus" onclick="toggleConnection()">
+            <span class="status-indicator status-disconnected"></span>
+            🔌 Firebase Bağlantısı
+        </p>
+        <div class="real-time-indicator" id="realTimeIndicator" style="display: none;"></div>
+    </div>
+
+    <div class="data-source-toggle">
+        <button class="source-btn active" id="firebaseBtn" onclick="switchDataSource('firebase')">🔥 Firebase</button>
+        <button class="source-btn" id="mockBtn" onclick="switchDataSource('mock')">🎭 Demo Veri</button>
+        <button class="source-btn" id="hybridBtn" onclick="switchDataSource('hybrid')">🔄 Hibrit</button>
+    </div>
+
+    <div class="main-nav">
+        <button class="nav-btn" onclick="openDatePopup()">📅 Tarih Seç</button>
+        <button class="nav-btn" onclick="openChartsPopup()">📈 Grafikler</button>
+    </div>
+
+    <div class="sub-nav">
+        <button class="nav-btn active" onclick="switchView('daily')" id="dailyBtn">Günlük</button>
+        <button class="nav-btn" onclick="switchView('weekly')" id="weeklyBtn">Haftalık</button>
+        <button class="nav-btn" onclick="switchView('monthly')" id="monthlyBtn">Aylık</button>
+    </div>
+
+    <div class="main-nav">
+        <button class="nav-btn" onclick="openSettingsPopup()">⚙️ Ayarlar</button>
+        <button class="nav-btn" onclick="generateReport()">📋 Rapor</button>
+    </div>
+
+    <div class="content-area">
+        <div id="statsContainer">
+            <div class="no-data">📅 Tarih aralığı seçerek başlayın</div>
+        </div>
+    </div>
+
+    <!-- Firebase Connection Status -->
+    <div class="popup" id="connectionPopup">
+        <div class="popup-header">
+            <h3>🔥 Firebase Bağlantı Yöneticisi</h3>
+            <button class="close-btn" onclick="closeConnectionPopup()">✕</button>
+        </div>
+        <div class="popup-content">
+            <div class="firebase-status" id="firebaseStatus">
+                <h4>📡 Bağlantı Durumu</h4>
+                <div id="connectionDetails">Bağlantı kurulmadı</div>
+            </div>
+            
+            <div class="config-section">
+                <h4>🔧 Firebase Yapılandırması</h4>
+                <input type="text" id="apiKey" class="config-input" placeholder="API Key">
+                <input type="text" id="authDomain" class="config-input" placeholder="Auth Domain">
+                <input type="text" id="projectId" class="config-input" placeholder="Project ID">
+                <input type="text" id="storageBucket" class="config-input" placeholder="Storage Bucket">
+                <input type="text" id="messagingSenderId" class="config-input" placeholder="Messaging Sender ID">
+                <input type="text" id="appId" class="config-input" placeholder="App ID">
+                
+                <button class="btn" onclick="saveAndConnect()">💾 Kaydet ve Bağlan</button>
+                <button class="btn secondary" onclick="loadSampleConfig()">📋 Örnek Konfigürasyon</button>
+                <button class="btn danger" onclick="clearConfig()">🗑️ Yapılandırmayı Sil</button>
+            </div>
+            
+            <div class="config-section" id="authSection" style="display: none;">
+                <h4>🔐 Kullanıcı Kimlik Doğrulama</h4>
+                <input type="email" id="userEmail" class="config-input" placeholder="E-posta">
+                <input type="password" id="userPassword" class="config-input" placeholder="Şifre">
+                <button class="btn" onclick="authenticateUser()">🔑 Giriş Yap</button>
+                <button class="btn secondary" onclick="signOutUser()">🚪 Çıkış Yap</button>
+            </div>
+            
+            <div class="config-section">
+                <h4>📊 Veri Koleksiyonu Ayarları</h4>
+                <input type="text" id="collectionName" class="config-input" placeholder="Koleksiyon Adı (örn: financial_data)" value="financial_data">
+                <input type="text" id="userIdField" class="config-input" placeholder="User ID Alanı (örn: userId)" value="userId">
+                <button class="btn secondary" onclick="testDataAccess()">🔍 Veri Erişimini Test Et</button>
+            </div>
+            
+            <div id="configStatusDiv" style="margin-top: 15px; padding: 15px; border-radius: 8px; display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Date Selection Popup -->
+    <div class="popup" id="datePopup">
+        <div class="popup-header">
+            <h3>📅 Tarih Seçimi</h3>
+            <button class="close-btn" onclick="closeDatePopup()">✕</button>
+        </div>
+        <div class="popup-content">
+            <div class="view-mode">
+                <h4>Görünüm Modu: <span id="currentViewMode">Günlük</span></h4>
+            </div>
+            
+            <div class="date-selector">
+                <h4>⚡ Hızlı Seçim</h4>
+                <button class="btn secondary" onclick="selectToday()">Bugün</button>
+                <button class="btn secondary" onclick="selectThisWeek()">Bu Hafta</button>
+                <button class="btn secondary" onclick="selectLastWeek()">Son Hafta</button>
+                <button class="btn secondary" onclick="selectThisMonth()">Bu Ay</button>
+                <button class="btn secondary" onclick="selectLastMonth()">Son Ay</button>
+            </div>
+
+            <div class="date-selector">
+                <h4>📅 Manuel Aralık</h4>
+                <input type="date" id="startDate" class="date-input" placeholder="Başlangıç">
+                <input type="date" id="endDate" class="date-input" placeholder="Bitiş">
+                <button class="btn" onclick="applyManualRange()">Aralık Uygula</button>
+            </div>
+
+            <div class="date-selector">
+                <h4>🗓️ Takvim Navigasyon</h4>
+                <select id="monthSelect" class="date-input"></select>
+                <select id="yearSelect" class="date-input"></select>
+                <button class="btn secondary" onclick="updateCalendarView()">Takvimi Güncelle</button>
+            </div>
+
+            <div id="calendarContainer"></div>
+        </div>
+    </div>
+
+    <!-- Charts Popup -->
+    <div class="popup" id="chartsPopup">
+        <div class="popup-header">
+            <h3>📈 Grafik Analizi</h3>
+            <button class="close-btn" onclick="closeChartsPopup()">✕</button>
+        </div>
+        <div class="popup-content">
+            <div id="chartsContainer">
+                <div class="no-data">📊 Tarih seçimi yaparak grafikleri görüntüleyin</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Popup -->
+    <div class="popup" id="settingsPopup">
+        <div class="popup-header">
+            <h3>⚙️ Grafik Ayarları</h3>
+            <button class="close-btn" onclick="closeSettingsPopup()">✕</button>
+        </div>
+        <div class="popup-content">
+            <h4>📊 A Tipi Grafikler (Aylık Perspektif)</h4>
+            <div class="switch-container">
+                <span>A1: Günlük Harcama %</span>
+                <label class="switch"><input type="checkbox" id="a1_chart" checked><span class="slider"></span></label>
+            </div>
+            <div class="switch-container">
+                <span>A2: Aylık Kazanç Analizi</span>
+                <label class="switch"><input type="checkbox" id="a2_chart" checked><span class="slider"></span></label>
+            </div>
+            <div class="switch-container">
+                <span>A3: Kategori Dağılımı</span>
+                <label class="switch"><input type="checkbox" id="a3_chart" checked><span class="slider"></span></label>
+            </div>
+
+            <h4>📊 B Tipi Grafikler (Günlük Perspektif)</h4>
+            <div class="switch-container">
+                <span>B1: Günlük Verimlilik</span>
+                <label class="switch"><input type="checkbox" id="b1_chart" checked><span class="slider"></span></label>
+            </div>
+            <div class="switch-container">
+                <span>B2: Saat Bazlı Kazanç</span>
+                <label class="switch"><input type="checkbox" id="b2_chart" checked><span class="slider"></span></label>
+            </div>
+            <div class="switch-container">
+                <span>B3: Harcama-Kazanç Analizi</span>
+                <label class="switch"><input type="checkbox" id="b3_chart" checked><span class="slider"></span></label>
+            </div>
+
+            <h4>📊 Gelişmiş Grafikler</h4>
+            <div class="switch-container">
+                <span>C1: Haftalık Trend</span>
+                <label class="switch"><input type="checkbox" id="c1_chart" checked><span class="slider"></span></label>
+            </div>
+            <div class="switch-container">
+                <span>D1: Detaylı Analiz</span>
+                <label class="switch"><input type="checkbox" id="d1_chart" checked><span class="slider"></span></label>
+            </div>
+            <div class="switch-container">
+                <span>E1: Verimlilik Haritası</span>
+                <label class="switch"><input type="checkbox" id="e1_chart" checked><span class="slider"></span></label>
+            </div>
+
+            <button class="btn" onclick="updateChartSettings()">💾 Ayarları Kaydet</button>
+        </div>
+    </div>
+
+    <!-- Report Popup -->
+    <div class="popup" id="reportPopup">
+        <div class="popup-header">
+            <h3>📋 Detaylı Rapor</h3>
+            <button class="close-btn" onclick="closeReportPopup()">✕</button>
+        </div>
+        <div class="popup-content">
+            <div id="reportContent"></div>
+            <button class="btn" onclick="exportToPDF()" style="margin-top: 20px;">🖨️ PDF İndir</button>
+        </div>
+    </div>
+
+    <script>
+        let currentView = 'daily';
+        let selectedDates = [];
+        let userData = {};
+        let currentDataSource = 'firebase';
+        let chartSettings = {a1_chart: true, a2_chart: true, a3_chart: true, b1_chart: true, b2_chart: true, b3_chart: true, c1_chart: true, d1_chart: true, e1_chart: true};
+        let activeCharts = {};
+
+        // Enhanced Firebase Manager
+        class EnhancedFirebaseManager {
+            constructor() {
+                this.app = null;
+                this.db = null;
+                this.auth = null;
+                this.user = null;
+                this.isConnected = false;
+                this.config = this.loadSavedConfig();
+                this.listeners = [];
+                this.cache = new Map();
+                this.lastSync = null;
+            }
+
+            loadSavedConfig() {
+                try {
+                    const saved = sessionStorage.getItem('firebaseConfig');
+                    return saved ? JSON.parse(saved) : null;
+                } catch (error) {
+                    console.log('Kaydedilmiş yapılandırma yüklenemedi:', error);
+                    return null;
+                }
+            }
+
+            saveConfig(config) {
+                try {
+                    this.config = config;
+                    sessionStorage.setItem('firebaseConfig', JSON.stringify(config));
+                    return true;
+                } catch (error) {
+                    console.error('Yapılandırma kaydedilemedi:', error);
+                    return false;
+                }
+            }
+
+            async initializeFirebase() {
+                if (!this.config) throw new Error('Firebase yapılandırması bulunamadı');
+                
+                try {
+                    if (!this.app) {
+                        this.app = firebase.initializeApp(this.config);
+                        this.db = firebase.firestore();
+                        this.auth = firebase.auth();
+                        
+                        // Enable offline persistence
+                        this.db.enablePersistence().catch((err) => {
+                            console.warn('Offline persistence failed:', err.code);
+                        });
+                    }
+                    
+                    // Set up auth state listener
+                    this.auth.onAuthStateChanged((user) => {
+                        this.user = user;
+                        this.updateConnectionStatus();
+                        if (user) {
+                            this.startRealTimeSync();
+                        } else {
+                            this.stopRealTimeSync();
+                        }
+                    });
+                    
+                    this.isConnected = true;
+                    return true;
+                } catch (error) {
+                    console.error('Firebase initialization error:', error);
+                    throw error;
+                }
+            }
+
+            async authenticate(email, password) {
+                try {
+                    if (!this.auth) await this.initializeFirebase();
+                    const userCredential = await this.auth.signInWithEmailAndPassword(email, password);
+                    this.user = userCredential.user;
+                    showConfigStatus('success', 'Başarıyla giriş yapıldı!');
+                    return true;
+                } catch (error) {
+                    console.error('Authentication failed:', error);
+                    showConfigStatus('error', 'Giriş hatası: ' + error.message);
+                    return false;
+                }
+            }
+
+            async signOut() {
+                if (this.auth && this.user) {
+                    await this.auth.signOut();
+                    this.user = null;
+                    this.stopRealTimeSync();
+                    showConfigStatus('info', 'Çıkış yapıldı');
+                }
+            }
+
+            startRealTimeSync() {
+                if (!this.user || !this.db) return;
+                
+                this.stopRealTimeSync(); // Clear existing listeners
+                
+                const collectionName = document.getElementById('collectionName').value || 'financial_data';
+                const userIdField = document.getElementById('userIdField').value || 'userId';
+                
+                const unsubscribe = this.db.collection(collectionName)
+                    .where(userIdField, '==', this.user.uid)
+                    .onSnapshot((snapshot) => {
+                        snapshot.docChanges().forEach((change) => {
+                            const data = change.doc.data();
+                            const docId = change.doc.id;
+                            
+                            if (change.type === 'added' || change.type === 'modified') {
+                                this.cache.set(docId, data);
+                                if (data.date) {
+                                    userData[data.date] = data;
+                                }
+                            } else if (change.type === 'removed') {
+                                this.cache.delete(docId);
+                                if (data.date && userData[data.date]) {
+                                    delete userData[data.date];
+                                }
+                            }
+                        });
+                        
+                        this.lastSync = new Date();
+                        document.getElementById('realTimeIndicator').style.display = 'block';
+                        updateStats();
+                    });
+                
+                this.listeners.push(unsubscribe);
+            }
+
+            stopRealTimeSync() {
+                this.listeners.forEach(unsubscribe => unsubscribe());
+                this.listeners = [];
+                document.getElementById('realTimeIndicator').style.display = 'none';
+            }
+
+            async loadUserData() {
+                if (!this.user || !this.db) return;
+                
+                try {
+                    const collectionName = document.getElementById('collectionName').value || 'financial_data';
+                    const userIdField = document.getElementById('userIdField').value || 'userId';
+                    
+                    const snapshot = await this.db.collection(collectionName)
+                        .where(userIdField, '==', this.user.uid)
+                        .get();
+                    
+                    userData = {};
+                    snapshot.forEach((doc) => {
+                        const data = doc.data();
+                        if (data.date) {
+                            userData[data.date] = data;
+                            this.cache.set(doc.id, data);
+                        }
+                    });
+                    
+                    console.log('Firebase data loaded:', Object.keys(userData).length + ' records');
+                    return userData;
+                } catch (error) {
+                    console.error('Data loading failed:', error);
+                    throw error;
+                }
+            }
+
+            async testConnection() {
+                try {
+                    if (!this.db) await this.initializeFirebase();
+                    
+                    const testDoc = await this.db.collection('test').doc('connection').get();
+                    showConfigStatus('success', 'Firebase bağlantısı başarılı!');
+                    return true;
+                } catch (error) {
+                    showConfigStatus('error', 'Bağlantı testi başarısız: ' + error.message);
+                    return false;
+                }
+            }
+
+            updateConnectionStatus() {
+                const statusEl = document.getElementById('connectionDetails');
+                const indicator = document.querySelector('#connectionStatus .status-indicator');
+                
+                indicator.classList.remove('status-connected', 'status-disconnected', 'status-loading');
+                
+                if (this.isConnected && this.user) {
+                    indicator.classList.add('status-connected');
+                    statusEl.innerHTML = `
+                        <strong>✅ Bağlı</strong><br>
+                        👤 ${this.user.email}<br>
+                        🕐 Son senkron: ${this.lastSync ? this.lastSync.toLocaleTimeString('tr-TR') : 'Henüz yapılmadı'}<br>
+                        📊 Kayıt sayısı: ${Object.keys(userData).length}
+                    `;
+                    updateConnectionStatusHeader('connected', `Bağlı: ${this.user.email}`);
+                } else if (this.isConnected) {
+                    indicator.classList.add('status-loading');
+                    statusEl.innerHTML = '<strong>🔄 Yapılandırılmış</strong><br>Giriş yapılmadı';
+                    updateConnectionStatusHeader('disconnected', 'Giriş Gerekli');
+                } else {
+                    indicator.classList.add('status-disconnected');
+                    statusEl.innerHTML = '<strong>❌ Bağlantı Yok</strong><br>Yapılandırma gerekli';
+                    updateConnectionStatusHeader('disconnected', 'Firebase Bağlantısı');
+                }
+            }
+
+            clearConfig() {
+                sessionStorage.removeItem('firebaseConfig');
+                this.config = null;
+                this.isConnected = false;
+                if (this.auth) this.signOut();
+                this.updateConnectionStatus();
+            }
+
+            isReady() {
+                return this.isConnected && this.user;
+            }
+        }
+
+        const firebaseManager = new EnhancedFirebaseManager();
+
+        // Mock data generator with enhanced features
+        function generateEnhancedMockData() {
+            const data = {};
+            const startDate = new Date('2024-01-01');
+            const endDate = new Date('2024-12-31');
+            const categories = ['essential', 'need', 'want', 'loss'];
+            const workPatterns = ['early', 'regular', 'late', 'flexible'];
+            
+            let streak = 0;
+            let lastProductivity = 75;
+
+            for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                const dateStr = d.toISOString().split('T')[0];
+                const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                const isHoliday = Math.random() < 0.05;
+                const dayOfMonth = d.getDate();
+                
+                if (!isHoliday && !isWeekend) {
+                    const pattern = workPatterns[Math.floor(Math.random() * workPatterns.length)];
+                    const baseHours = 6 + Math.random() * 3;
+                    const variability = Math.sin((dayOfMonth / 30) * Math.PI) * 2;
+                    const workHours = Math.max(4, baseHours + variability);
+                    
+                    const breakTime = 30 + Math.random() * 60;
+                    const startHour = pattern === 'early' ? 7 : pattern === 'late' ? 10 : 8 + Math.random() * 2;
+                    const startTime = `${Math.floor(startHour).toString().padStart(2, '0')}:${Math.floor((startHour % 1) * 60).toString().padStart(2, '0')}`;
+                    const endHour = startHour + workHours + (breakTime / 60);
+                    const endTime = `${Math.floor(endHour).toString().padStart(2, '0')}:${Math.floor((endHour % 1) * 60).toString().padStart(2, '0')}`;
+                    
+                    // Enhanced expense generation
+                    const expenses = [];
+                    const numExpenses = Math.floor(Math.random() * 6) + 1;
+                    const isPayday = dayOfMonth <= 5;
+                    const expenseMultiplier = isPayday ? 1.5 : 0.8;
+                    
+                    for (let i = 0; i < numExpenses; i++) {
+                        const baseAmount = Math.floor(Math.random() * 200) + 10;
+                        expenses.push({
+                            category: categories[Math.floor(Math.random() * categories.length)],
+                            amount: baseAmount * expenseMultiplier,
+                            description: `Mock expense ${i + 1}`,
+                            time: `${Math.floor(Math.random() * 24)}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}`
+                        });
+                    }
+
+                    // Productivity calculation
+                    const productivityVariation = (Math.random() - 0.5) * 20;
+                    const productivity = Math.max(20, Math.min(100, lastProductivity + productivityVariation));
+                    lastProductivity = productivity;
+                    
+                    if (productivity > 80) streak++;
+                    else streak = 0;
+
+                    data[dateStr] = {
+                        workData: {
+                            startTime, 
+                            endTime, 
+                            breakTime: Math.floor(breakTime),
+                            pattern,
+                            productivity: Math.round(productivity),
+                            streak
+                        },
+                        expenses,
+                        isHoliday: false,
+                        mood: Math.floor(Math.random() * 5) + 1,
+                        notes: streak > 5 ? 'Great productivity streak!' : ''
+                    };
+                } else {
+                    data[dateStr] = {
+                        workData: {}, 
+                        expenses: [], 
+                        isHoliday: true,
+                        mood: Math.floor(Math.random() * 5) + 1
+                    };
+                    streak = 0;
+                }
+            }
+            return data;
+        }
+
+        // Enhanced UI Functions
+        function updateConnectionStatusHeader(status, message) {
+            const statusEl = document.getElementById('connectionStatus');
+            const indicator = statusEl.querySelector('.status-indicator');
+            
+            indicator.classList.remove('status-connected', 'status-disconnected', 'status-loading');
+            
+            switch (status) {
+                case 'connected':
+                    indicator.classList.add('status-connected');
+                    statusEl.innerHTML = `<span class="status-indicator status-connected"></span>✅ ${message}`;
+                    break;
+                case 'loading':
+                    indicator.classList.add('status-loading');
+                    statusEl.innerHTML = `<span class="status-indicator status-loading"></span>🔄 ${message}`;
+                    break;
+                default:
+                    indicator.classList.add('status-disconnected');
+                    statusEl.innerHTML = `<span class="status-indicator status-disconnected"></span>🔌 ${message}`;
+            }
+        }
+
+        function toggleConnection() {
+            document.getElementById('connectionPopup').style.display = 'block';
+            firebaseManager.updateConnectionStatus();
+            
+            if (firebaseManager.config) {
+                loadConfigToUI();
+                document.getElementById('authSection').style.display = 'block';
+            }
+        }
+
+        function closeConnectionPopup() {
+            document.getElementById('connectionPopup').style.display = 'none';
+        }
+
+        function loadConfigToUI() {
+            if (!firebaseManager.config) return;
+            
+            document.getElementById('apiKey').value = firebaseManager.config.apiKey || '';
+            document.getElementById('authDomain').value = firebaseManager.config.authDomain || '';
+            document.getElementById('projectId').value = firebaseManager.config.projectId || '';
+            document.getElementById('storageBucket').value = firebaseManager.config.storageBucket || '';
+            document.getElementById('messagingSenderId').value = firebaseManager.config.messagingSenderId || '';
+            document.getElementById('appId').value = firebaseManager.config.appId || '';
+        }
+
+        function loadSampleConfig() {
+            document.getElementById('apiKey').value = 'AIzaSyDummy123456789';
+            document.getElementById('authDomain').value = 'sample-project.firebaseapp.com';
+            document.getElementById('projectId').value = 'sample-project';
+            document.getElementById('storageBucket').value = 'sample-project.appspot.com';
+            document.getElementById('messagingSenderId').value = '123456789012';
+            document.getElementById('appId').value = '1:123456789012:web:abc123def456';
+            showConfigStatus('info', 'Örnek yapılandırma yüklendi. Gerçek değerlerle değiştirin.');
+        }
+
+        async function saveAndConnect() {
+            const config = {
+                apiKey: document.getElementById('apiKey').value.trim(),
+                authDomain: document.getElementById('authDomain').value.trim(),
+                projectId: document.getElementById('projectId').value.trim(),
+                storageBucket: document.getElementById('storageBucket').value.trim(),
+                messagingSenderId: document.getElementById('messagingSenderId').value.trim(),
+                appId: document.getElementById('appId').value.trim()
+            };
+            
+            if (!config.apiKey || !config.projectId) {
+                showConfigStatus('error', 'API Key ve Project ID gereklidir!');
+                return;
+            }
+            
+            if (firebaseManager.saveConfig(config)) {
+                try {
+                    await firebaseManager.initializeFirebase();
+                    document.getElementById('authSection').style.display = 'block';
+                    showConfigStatus('success', 'Firebase yapılandırması kaydedildi ve bağlantı kuruldu!');
+                } catch (error) {
+                    showConfigStatus('error', 'Bağlantı hatası: ' + error.message);
+                }
+            }
+        }
+
+        async function authenticateUser() {
+            const email = document.getElementById('userEmail').value.trim();
+            const password = document.getElementById('userPassword').value.trim();
+            
+            if (!email || !password) {
+                showConfigStatus('error', 'E-posta ve şifre gereklidir!');
+                return;
+            }
+            
+            showConfigStatus('loading', 'Giriş yapılıyor...');
+            const success = await firebaseManager.authenticate(email, password);
+            
+            if (success) {
+                await firebaseManager.loadUserData();
+                updateStats();
+            }
+        }
+
+        async function signOutUser() {
+            await firebaseManager.signOut();
+        }
+
+        async function testDataAccess() {
+            if (!firebaseManager.user) {
+                showConfigStatus('error', 'Önce giriş yapmalısınız!');
+                return;
+            }
+            
+            try {
+                showConfigStatus('loading', 'Veri erişimi test ediliyor...');
+                await firebaseManager.loadUserData();
+                showConfigStatus('success', `Veri erişimi başarılı! ${Object.keys(userData).length} kayıt bulundu.`);
+            } catch (error) {
+                showConfigStatus('error', 'Veri erişim hatası: ' + error.message);
+            }
+        }
+
+        function clearConfig() {
+            firebaseManager.clearConfig();
+            ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId', 'userEmail', 'userPassword'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            document.getElementById('authSection').style.display = 'none';
+            showConfigStatus('info', 'Yapılandırma temizlendi');
+        }
+
+        function showConfigStatus(type, message) {
+            const statusDiv = document.getElementById('configStatusDiv');
+            statusDiv.style.display = 'block';
+            statusDiv.className = '';
+            
+            const colors = {
+                success: '#2ed573',
+                error: '#ff4757',
+                info: '#3742fa',
+                loading: '#ffa726'
+            };
+            
+            statusDiv.style.backgroundColor = `${colors[type]}20`;
+            statusDiv.style.borderLeft = `4px solid ${colors[type]}`;
+            statusDiv.style.color = colors[type];
+            statusDiv.textContent = message;
+            
+            if (type !== 'loading') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        function switchDataSource(source) {
+            currentDataSource = source;
+            
+            document.querySelectorAll('.source-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(source + 'Btn').classList.add('active');
+            
+            switch(source) {
+                case 'firebase':
+                    if (firebaseManager.isReady()) {
+                        firebaseManager.loadUserData();
+                    } else {
+                        updateConnectionStatusHeader('disconnected', 'Firebase Yapılandırması Gerekli');
+                    }
+                    break;
+                case 'mock':
+                    userData = generateEnhancedMockData();
+                    updateConnectionStatusHeader('connected', 'Demo Veri Aktif');
+                    break;
+                case 'hybrid':
+                    if (firebaseManager.isReady() && Object.keys(userData).length > 0) {
+                        const mockData = generateEnhancedMockData();
+                        userData = {...mockData, ...userData}; // Firebase data overrides mock
+                        updateConnectionStatusHeader('connected', 'Hibrit Mod: Firebase + Demo');
+                    } else {
+                        userData = generateEnhancedMockData();
+                        updateConnectionStatusHeader('connected', 'Hibrit Mod: Sadece Demo');
+                    }
+                    break;
+            }
+            updateStats();
+        }
+
+        function switchView(view) {
+            currentView = view;
+            document.querySelectorAll('.sub-nav .nav-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(view + 'Btn').classList.add('active');
+            document.getElementById('currentViewMode').textContent = 
+                view === 'daily' ? 'Günlük' : view === 'weekly' ? 'Haftalık' : 'Aylık';
+        }
+
+        function openDatePopup() {
+            document.getElementById('datePopup').style.display = 'block';
+            initializeSelectors();
+            updateCalendarView();
+        }
+
+        function closeDatePopup() {
+            document.getElementById('datePopup').style.display = 'none';
+        }
+
+        function openChartsPopup() {
+            if (selectedDates.length === 0) {
+                alert('⚠️ Önce tarih aralığı seçiniz!');
+                return;
+            }
+            document.getElementById('chartsPopup').style.display = 'block';
+            updateChartsInPopup();
+        }
+
+        function closeChartsPopup() {
+            document.getElementById('chartsPopup').style.display = 'none';
+        }
+
+        function openSettingsPopup() {
+            document.getElementById('settingsPopup').style.display = 'block';
+        }
+
+        function closeSettingsPopup() {
+            document.getElementById('settingsPopup').style.display = 'none';
+        }
+
+        function closeReportPopup() {
+            document.getElementById('reportPopup').style.display = 'none';
+        }
+
+        function initializeSelectors() {
+            const monthSelect = document.getElementById('monthSelect');
+            const yearSelect = document.getElementById('yearSelect');
+            const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+            
+            if (monthSelect.children.length === 0) {
+                monthNames.forEach((month, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = month;
+                    monthSelect.appendChild(option);
+                });
+                
+                for (let year = 2020; year <= 2030; year++) {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = year;
+                    yearSelect.appendChild(option);
+                }
+                
+                const today = new Date();
+                monthSelect.value = today.getMonth();
+                yearSelect.value = today.getFullYear();
+            }
+        }
+
+        function updateCalendarView() {
+            const container = document.getElementById('calendarContainer');
+            const month = parseInt(document.getElementById('monthSelect').value);
+            const year = parseInt(document.getElementById('yearSelect').value);
+            
+            if (currentView === 'daily') {
+                container.innerHTML = createDailyCalendar(month, year);
+            } else if (currentView === 'weekly') {
+                container.innerHTML = createWeeklyCalendar(month, year);
+            } else if (currentView === 'monthly') {
+                container.innerHTML = createMonthlySelector();
+            }
+        }
+
+        function createDailyCalendar(month, year) {
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+            const dayNames = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+            
+            let html = `<div class="calendar-container"><h4>${monthNames[month]} ${year}</h4><div class="calendar-grid">`;
+            dayNames.forEach(day => html += `<div style="font-weight: bold; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 6px; padding: 8px;">${day}</div>`);
+            
+            for (let i = 0; i < firstDay; i++) {html += '<div class="calendar-day"></div>';}
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${year}-${(month+1).toString().padStart(2,'0')}-${day.toString().padStart(2,'0')}`;
+                const hasData = userData[dateStr] && !userData[dateStr].isHoliday;
+                const isSelected = selectedDates.includes(dateStr);
+                const productivity = userData[dateStr]?.workData?.productivity || 0;
+                const productivityClass = productivity > 80 ? 'high-productivity' : productivity > 60 ? 'medium-productivity' : 'low-productivity';
+                
+                html += `<div class="calendar-day ${hasData ? 'has-data' : ''} ${isSelected ? 'selected' : ''} ${productivityClass}" onclick="toggleDate('${dateStr}')" title="Productivity: ${productivity}%">${day}</div>`;
+            }
+            
+            return html + '</div></div>';
+        }
+
+        function createWeeklyCalendar(month, year) {
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+            
+            let html = `<div class="calendar-container"><h4>${monthNames[month]} ${year} - Haftalık</h4>`;
+            let currentWeek = [];
+            let weekIndex = 1;
+            
+            for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
+                currentWeek.push(new Date(d));
+                if (d.getDay() === 6 || d.getTime() === lastDay.getTime()) {
+                    html += createWeekContainer(currentWeek, weekIndex++);
+                    currentWeek = [];
+                }
+            }
+            
+            return html + '</div>';
+        }
+
+        function createWeekContainer(week, index) {
+            const weekDates = week.map(date => date.toISOString().split('T')[0]);
+            const weekStats = calculateWeekStats(weekDates);
+            let html = `<div class="week-container" onclick="selectWeek(['${weekDates.join("','")}'])" title="${weekStats.summary}">`;
+            html += `<div class="week-label">Hafta ${index}<br><small>${weekStats.hours}h</small></div>`;
+            
+            week.forEach(date => {
+                const dateStr = date.toISOString().split('T')[0];
+                const hasData = userData[dateStr] && !userData[dateStr].isHoliday;
+                const productivity = userData[dateStr]?.workData?.productivity || 0;
+                const productivityClass = productivity > 80 ? '🟢' : productivity > 60 ? '🟡' : '🔴';
+                html += `<div class="week-day ${hasData ? 'has-data' : ''}">${date.getDate()} ${hasData ? productivityClass : ''}</div>`;
+            });
+            
+            return html + '</div>';
+        }
+
+        function calculateWeekStats(weekDates) {
+            let totalHours = 0;
+            let workDays = 0;
+            let totalExpenses = 0;
+            
+            weekDates.forEach(dateStr => {
+                const data = userData[dateStr];
+                if (data && !data.isHoliday) {
+                    totalHours += calculateWorkHours(data.workData);
+                    workDays++;
+                    totalExpenses += data.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+                }
+            });
+            
+            return {
+                hours: totalHours.toFixed(1),
+                workDays,
+                expenses: totalExpenses.toFixed(0),
+                summary: `${workDays} çalışma günü, ${totalHours.toFixed(1)} saat, ${totalExpenses.toFixed(0)}₺`
+            };
+        }
+
+        function createMonthlySelector() {
+            const year = parseInt(document.getElementById('yearSelect').value);
+            const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+            
+            let html = `<div class="calendar-container"><h4>${year} - Aylık Seçim</h4><div class="month-grid">`;
+            
+            for (let m = 0; m < 12; m++) {
+                const stats = getMonthStats(m, year);
+                html += `<div class="month-card" onclick="selectMonth(${m}, ${year})">
+                    <h5>${monthNames[m]}</h5>
+                    <div style="color: #667eea; font-weight: bold; font-size: 18px;">${stats.workDays}</div>
+                    <small>Çalışma Günü</small>
+                    <div style="font-size: 12px; margin-top: 5px; color: #666;">
+                        ${stats.totalHours.toFixed(0)}h • ${stats.totalExpenses.toFixed(0)}₺
+                    </div>
+                </div>`;
+            }
+            
+            return html + '</div></div>';
+        }
+
+        function getMonthStats(month, year) {
+            let workDays = 0;
+            let totalHours = 0;
+            let totalExpenses = 0;
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            
+            for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
+                const dateStr = d.toISOString().split('T')[0];
+                const data = userData[dateStr];
+                if (data && !data.isHoliday) {
+                    workDays++;
+                    totalHours += calculateWorkHours(data.workData);
+                    totalExpenses += data.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+                }
+            }
+            
+            return {workDays, totalHours, totalExpenses};
+        }
+
+        // Date Selection Functions
+        function toggleDate(dateStr) {
+            const index = selectedDates.indexOf(dateStr);
+            if (index > -1) {
+                selectedDates.splice(index, 1);
+            } else {
+                selectedDates.push(dateStr);
+            }
+            updateCalendarView();
+            updateStats();
+        }
+
+        function selectWeek(dates) {
+            selectedDates = dates;
+            updateCalendarView();
+            updateStats();
+            closeDatePopup();
+        }
+
+        function selectMonth(month, year) {
+            selectedDates = [];
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            
+            for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
+                selectedDates.push(d.toISOString().split('T')[0]);
+            }
+            updateCalendarView();
+            updateStats();
+            closeDatePopup();
+        }
+
+        function selectToday() {
+            const today = new Date().toISOString().split('T')[0];
+            selectedDates = [today];
+            updateStats();
+            closeDatePopup();
+        }
+
+        function selectThisWeek() {
+            const today = new Date();
+            const dayOfWeek = today.getDay();
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - dayOfWeek);
+            
+            selectedDates = [];
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(startOfWeek);
+                date.setDate(startOfWeek.getDate() + i);
+                selectedDates.push(date.toISOString().split('T')[0]);
+            }
+            updateStats();
+            closeDatePopup();
+        }
+
+        function selectLastWeek() {
+            const today = new Date();
+            selectedDates = [];
+            for (let i = 13; i >= 7; i--) {
+                const date = new Date(today);
+                date.setDate(today.getDate() - i);
+                selectedDates.push(date.toISOString().split('T')[0]);
+            }
+            updateStats();
+            closeDatePopup();
+        }
+
+        function selectThisMonth() {
+            const today = new Date();
+            selectMonth(today.getMonth(), today.getFullYear());
+        }
+
+        function selectLastMonth() {
+            const today = new Date();
+            const lastMonth = today.getMonth() === 0 ? 11 : today.getMonth() - 1;
+            const year = today.getMonth() === 0 ? today.getFullYear() - 1 : today.getFullYear();
+            selectMonth(lastMonth, year);
+        }
+
+        function applyManualRange() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            if (!startDate || !endDate) {
+                alert('Başlangıç ve bitiş tarihlerini seçiniz!');
+                return;
+            }
+            
+            selectedDates = [];
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                selectedDates.push(d.toISOString().split('T')[0]);
+            }
+            
+            updateStats();
+            closeDatePopup();
+        }
+
+        // Enhanced Statistics Functions
+        function updateStats() {
+            if (selectedDates.length === 0) {
+                document.getElementById('statsContainer').innerHTML = '<div class="no-data">Tarih aralığı seçerek başlayın</div>';
+                return;
+            }
+            
+            const stats = calculateEnhancedStats(selectedDates);
+            const container = document.getElementById('statsContainer');
+            
+            container.innerHTML = `
+                <div class="enhanced-stats">
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.totalWorkHours.toFixed(1)}</div>
+                        <div class="stat-label">Çalışma Saati</div>
+                        <div class="trend-indicator ${stats.hoursTrend}">${stats.hoursTrendText}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.totalExpenses.toFixed(0)}₺</div>
+                        <div class="stat-label">Toplam Harcama</div>
+                        <div class="trend-indicator ${stats.expensesTrend}">${stats.expensesTrendText}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.avgDailyHours.toFixed(1)}</div>
+                        <div class="stat-label">Günlük Ort. Saat</div>
+                        <div class="trend-indicator ${stats.avgTrend}">${stats.avgTrendText}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.workDays}</div>
+                        <div class="stat-label">Çalışma Günü</div>
+                        <div class="trend-indicator trend-neutral">${stats.workDays}/${selectedDates.length}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.avgProductivity.toFixed(0)}%</div>
+                        <div class="stat-label">Ortalama Verimlilik</div>
+                        <div class="trend-indicator ${stats.productivityTrend}">${stats.productivityTrendText}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.maxStreak}</div>
+                        <div class="stat-label">En Uzun Seri</div>
+                        <div class="trend-indicator trend-up">Günlük rekor</div>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 15px; font-size: 12px; color: #666; background: rgba(102, 126, 234, 0.1); padding: 10px; border-radius: 8px;">
+                    📊 ${selectedDates.length} gün seçili • ${selectedDates[0]} - ${selectedDates[selectedDates.length-1]}<br>
+                    💡 Verimlilik Skoru: ${stats.efficiencyScore.toFixed(1)}/100 • ${stats.moodAverage.toFixed(1)}/5 Ruh Hali
+                </div>
+            `;
+        }
+
+        function calculateEnhancedStats(dates) {
+            let totalWorkHours = 0, totalExpenses = 0, workDays = 0;
+            let productivitySum = 0, moodSum = 0, maxStreak = 0;
+            const categoryTotals = {essential: 0, need: 0, want: 0, loss: 0};
+            const dailyData = [];
+            const weeklyTrends = [];
+            
+            dates.forEach((dateStr, index) => {
+                const data = userData[dateStr];
+                if (data && !data.isHoliday) {
+                    const workHours = calculateWorkHours(data.workData);
+                    totalWorkHours += workHours;
+                    if (workHours > 0) workDays++;
+                    
+                    let dayExpenses = 0;
+                    data.expenses.forEach(exp => {
+                        totalExpenses += exp.amount;
+                        dayExpenses += exp.amount;
+                        categoryTotals[exp.category] += exp.amount;
+                    });
+                    
+                    const productivity = data.workData.productivity || 70;
+                    const mood = data.mood || 3;
+                    const streak = data.workData.streak || 0;
+                    
+                    productivitySum += productivity;
+                    moodSum += mood;
+                    maxStreak = Math.max(maxStreak, streak);
+                    
+                    dailyData.push({
+                        date: dateStr, 
+                        workHours, 
+                        expenses: dayExpenses, 
+                        productivity, 
+                        mood, 
+                        streak,
+                        data: data
+                    });
+                }
+            });
+
+            const avgDailyHours = totalWorkHours / workDays || 0;
+            const avgProductivity = productivitySum / workDays || 0;
+            const moodAverage = moodSum / workDays || 0;
+            const efficiencyScore = calculateEfficiencyScore(dailyData);
+            
+            // Calculate trends (simplified for demo)
+            const hoursTrend = avgDailyHours > 7.5 ? 'trend-up' : avgDailyHours < 6 ? 'trend-down' : 'trend-neutral';
+            const hoursTrendText = avgDailyHours > 7.5 ? '↗ Yüksek' : avgDailyHours < 6 ? '↘ Düşük' : '→ Normal';
+            
+            const expensesTrend = totalExpenses / workDays > 150 ? 'trend-down' : 'trend-up';
+            const expensesTrendText = totalExpenses / workDays > 150 ? '↗ Yüksek' : '↘ Kontrollü';
+            
+            const productivityTrend = avgProductivity > 80 ? 'trend-up' : avgProductivity < 60 ? 'trend-down' : 'trend-neutral';
+            const productivityTrendText = avgProductivity > 80 ? '↗ Mükemmel' : avgProductivity < 60 ? '↘ Geliştirilmeli' : '→ İyi';
+
+            return {
+                totalWorkHours, totalExpenses, workDays, avgDailyHours, avgProductivity, moodAverage,
+                maxStreak, efficiencyScore, categoryTotals, dailyData,
+                hoursTrend, hoursTrendText, expensesTrend, expensesTrendText,
+                productivityTrend, productivityTrendText,
+                avgTrend: 'trend-neutral', avgTrendText: '→ Stabil'
+            };
+        }
+
+        function calculateEfficiencyScore(dailyData) {
+            if (dailyData.length === 0) return 0;
+            
+            let score = 0;
+            dailyData.forEach(day => {
+                const hourScore = Math.min(day.workHours / 8 * 30, 30);
+                const productivityScore = day.productivity / 100 * 40;
+                const expenseScore = Math.max(0, 30 - (day.expenses / 200 * 30));
+                score += hourScore + productivityScore + expenseScore;
+            });
+            
+            return score / dailyData.length;
+        }
+
+        function calculateWorkHours(workData) {
+            if (!workData.startTime || !workData.endTime) return 0;
+            try {
+                const start = new Date(`2000-01-01T${workData.startTime}:00`);
+                const end = new Date(`2000-01-01T${workData.endTime}:00`);
+                const workMinutes = (end - start) / (1000 * 60) - (workData.breakTime || 0);
+                return Math.max(0, workMinutes / 60);
+            } catch {
+                return 0;
+            }
+        }
+
+        // Enhanced Chart Functions
+        function updateChartsInPopup() {
+            if (selectedDates.length === 0) {
+                document.getElementById('chartsContainer').innerHTML = '<div class="no-data">Tarih seçimi yaparak grafikleri görüntüleyin</div>';
+                return;
+            }
+
+            const stats = calculateEnhancedStats(selectedDates);
+            Object.keys(activeCharts).forEach(key => activeCharts[key].destroy());
+            activeCharts = {};
+            
+            let html = '';
+            if (chartSettings.a1_chart) html += '<div class="chart-item"><h4>📊 A1: Günlük Harcama Yüzdesi</h4><canvas class="chart-canvas" id="chart_a1"></canvas></div>';
+            if (chartSettings.b3_chart) html += '<div class="chart-item"><h4>📊 B3: Harcama-Kazanç Analizi</h4><canvas class="chart-canvas" id="chart_b3"></canvas></div>';
+            if (chartSettings.a3_chart) html += '<div class="chart-item"><h4>📊 A3: Kategori Dağılımı</h4><canvas class="chart-canvas" id="chart_a3"></canvas></div>';
+            if (chartSettings.c1_chart) html += '<div class="chart-item"><h4>📊 C1: Haftalık Trend</h4><canvas class="chart-canvas" id="chart_c1"></canvas></div>';
+            if (chartSettings.e1_chart) html += '<div class="chart-item"><h4>📊 E1: Verimlilik Haritası</h4><canvas class="chart-canvas" id="chart_e1"></canvas></div>';
+            
+            document.getElementById('chartsContainer').innerHTML = html;
+            
+            setTimeout(() => {
+                if (chartSettings.a1_chart) createA1Chart(stats);
+                if (chartSettings.b3_chart) createB3Chart(stats);
+                if (chartSettings.a3_chart) createA3Chart(stats);
+                if (chartSettings.c1_chart) createC1Chart(stats);
+                if (chartSettings.e1_chart) createE1Chart(stats);
+            }, 100);
+        }
+
+        function createA1Chart(stats) {
+            const ctx = document.getElementById('chart_a1');
+            if (!ctx) return;
+            
+            const maxExpense = Math.max(...stats.dailyData.map(d => d.expenses));
+            const percentages = stats.dailyData.map(d => maxExpense > 0 ? (d.expenses / maxExpense) * 100 : 0);
+            
+            activeCharts.a1 = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: stats.dailyData.map(d => d.date.split('-').slice(1).join('/')),
+                    datasets: [{
+                        label: 'Günlük Harcama %',
+                        data: percentages,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#667eea',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#333'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {beginAtZero: true, max: 100},
+                        x: {ticks: {color: '#666'}}
+                    }
+                }
+            });
+        }
+
+        function createB3Chart(stats) {
+            const ctx = document.getElementById('chart_b3');
+            if (!ctx) return;
+            
+            const assumedHourlyRate = 125;
+            const workHoursData = stats.dailyData.map(d => d.workHours);
+            const expenseHoursData = stats.dailyData.map(d => d.expenses / assumedHourlyRate);
+            const netHoursData = workHoursData.map((w, i) => Math.max(0, w - expenseHoursData[i]));
+            
+            activeCharts.b3 = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: stats.dailyData.map(d => d.date.split('-').slice(1).join('/')),
+                    datasets: [
+                        {
+                            label: 'Harcama Saati', 
+                            data: expenseHoursData, 
+                            backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Net Kazanç Saati', 
+                            data: netHoursData, 
+                            backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#333'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {stacked: true, ticks: {color: '#666'}}, 
+                        y: {stacked: true, ticks: {color: '#666'}}
+                    }
+                }
+            });
+        }
+
+        function createA3Chart(stats) {
+            const ctx = document.getElementById('chart_a3');
+            if (!ctx) return;
+            
+            const categoryNames = {essential: 'Zaruri', need: 'İhtiyaç', want: 'İstek', loss: 'Kayıp'};
+            
+            activeCharts.a3 = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(stats.categoryTotals).map(k => categoryNames[k]),
+                    datasets: [{
+                        data: Object.values(stats.categoryTotals),
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.8)',
+                            'rgba(54, 162, 235, 0.8)',
+                            'rgba(255, 206, 86, 0.8)',
+                            'rgba(75, 192, 192, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(75, 192, 192, 1)'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#333',
+                                padding: 20
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createC1Chart(stats) {
+            const ctx = document.getElementById('chart_c1');
+            if (!ctx) return;
+            
+            const weeklyData = [];
+            for (let i = 0; i < stats.dailyData.length; i += 7) {
+                const weekData = stats.dailyData.slice(i, i + 7);
+                const totalHours = weekData.reduce((sum, d) => sum + d.workHours, 0);
+                const totalExpenses = weekData.reduce((sum, d) => sum + d.expenses, 0);
+                const avgProductivity = weekData.reduce((sum, d) => sum + d.productivity, 0) / weekData.length;
+                weeklyData.push({
+                    week: Math.floor(i/7) + 1, 
+                    hours: totalHours, 
+                    expenses: totalExpenses, 
+                    productivity: avgProductivity || 0
+                });
+            }
+            
+            activeCharts.c1 = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: weeklyData.map(w => `Hafta ${w.week}`),
+                    datasets: [
+                        {
+                            label: 'Çalışma Saati', 
+                            data: weeklyData.map(w => w.hours), 
+                            borderColor: '#36a2eb',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            yAxisID: 'y',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Harcama (₺)', 
+                            data: weeklyData.map(w => w.expenses), 
+                            borderColor: '#ff6384',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            yAxisID: 'y1',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Ortalama Verimlilik (%)', 
+                            data: weeklyData.map(w => w.productivity), 
+                            borderColor: '#4bc0c0',
+                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                            yAxisID: 'y2',
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#333'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {type: 'linear', display: true, position: 'left', ticks: {color: '#666'}},
+                        y1: {type: 'linear', display: true, position: 'right', grid: {drawOnChartArea: false}, ticks: {color: '#666'}},
+                        y2: {type: 'linear', display: false, min: 0, max: 100},
+                        x: {ticks: {color: '#666'}}
+                    }
+                }
+            });
+        }
+
+        function createE1Chart(stats) {
+            const ctx = document.getElementById('chart_e1');
+            if (!ctx) return;
+            
+            const efficiencyData = stats.dailyData.map(d => ({
+                x: d.workHours,
+                y: d.productivity,
+                r: Math.sqrt(d.expenses) / 5 + 3
+            }));
+            
+            activeCharts.e1 = new Chart(ctx, {
+                type: 'bubble',
+                data: {
+                    datasets: [{
+                        label: 'Verimlilik Haritası',
+                        data: efficiencyData,
+                        backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                        borderColor: 'rgba(102, 126, 234, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#333'
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const dataIndex = context.dataIndex;
+                                    const dayData = stats.dailyData[dataIndex];
+                                    return [
+                                        `Tarih: ${dayData.date}`,
+                                        `Çalışma: ${dayData.workHours.toFixed(1)} saat`,
+                                        `Verimlilik: ${dayData.productivity}%`,
+                                        `Harcama: ${dayData.expenses.toFixed(0)}₺`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Çalışma Saati',
+                                color: '#666'
+                            },
+                            ticks: {color: '#666'}
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Verimlilik (%)',
+                                color: '#666'
+                            },
+                            min: 0,
+                            max: 100,
+                            ticks: {color: '#666'}
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChartSettings() {
+            Object.keys(chartSettings).forEach(key => {
+                const checkbox = document.getElementById(key);
+                if (checkbox) chartSettings[key] = checkbox.checked;
+            });
+            updateChartsInPopup();
+            closeSettingsPopup();
+        }
+
+        // Enhanced Report Generation
+        function generateReport() {
+            if (selectedDates.length === 0) {
+                alert('Önce tarih aralığı seçiniz!');
+                return;
+            }
+            
+            const stats = calculateEnhancedStats(selectedDates);
+            const assumedHourlyRate = 125;
+            const monthlyTotal = 25000;
+            
+            let reportHtml = `
+                <h3>📊 Gelişmiş Finansal Analiz Raporu</h3>
+                <p><strong>Analiz Dönemi:</strong> ${selectedDates[0]} - ${selectedDates[selectedDates.length-1]} (${selectedDates.length} gün)</p>
+                <p><strong>Veri Kaynağı:</strong> ${currentDataSource === 'firebase' ? 'Firebase Veritabanı' : currentDataSource === 'mock' ? 'Demo Veri' : 'Hibrit Mod'}</p>
+                
+                <div class="report-section">
+                    <h4>🎯 Genel Özet</h4>
+                    <p>• Toplam Çalışma: <strong>${stats.totalWorkHours.toFixed(1)} saat</strong></p>
+                    <p>• Toplam Harcama: <strong>${stats.totalExpenses.toFixed(2)} ₺</strong></p>
+                    <p>• Çalışma Günü: <strong>${stats.workDays} gün</strong> (${((stats.workDays/selectedDates.length)*100).toFixed(1)}% aktif)</p>
+                    <p>• Günlük Ortalama: <strong>${stats.avgDailyHours.toFixed(1)} saat</strong></p>
+                    <p>• Ortalama Verimlilik: <strong>${stats.avgProductivity.toFixed(1)}%</strong></p>
+                    <p>• Verimlilik Skoru: <strong>${stats.efficiencyScore.toFixed(1)}/100</strong></p>
+                </div>
+
+                <div class="report-section">
+                    <h4>💰 Gelişmiş Kazanç Analizi</h4>
+                    <p><strong>A Tipi (Aylık):</strong> ${(monthlyTotal / stats.totalWorkHours).toFixed(2)} ₺/saat</p>
+                    <p><strong>B Tipi (Günlük):</strong> ${((monthlyTotal / stats.workDays) / stats.avgDailyHours).toFixed(2)} ₺/saat</p>
+                    <p><strong>Net Kazanç:</strong> ${((assumedHourlyRate * stats.totalWorkHours) - stats.totalExpenses).toFixed(2)} ₺</p>
+                    <p><strong>Kazanç Oranı:</strong> ${(((assumedHourlyRate * stats.totalWorkHours) - stats.totalExpenses) / (assumedHourlyRate * stats.totalWorkHours) * 100).toFixed(1)}%</p>
+                </div>
+
+                <div class="report-section">
+                    <h4>📈 Kategori Analizi</h4>`;
+            
+            const categoryNames = {essential: 'Zaruri', need: 'İhtiyaç', want: 'İstek', loss: 'Kayıp'};
+            Object.entries(stats.categoryTotals).forEach(([cat, amount]) => {
+                const percentage = stats.totalExpenses > 0 ? ((amount / stats.totalExpenses) * 100).toFixed(1) : '0.0';
+                reportHtml += `<p>• ${categoryNames[cat]}: <strong>${amount.toFixed(2)} ₺</strong> (${percentage}%)</p>`;
+            });
+            
+            reportHtml += `
+                </div>
+
+                <div class="report-section">
+                    <h4>⚡ Performans Metrikleri</h4>
+                    <p>• En Uzun Verimlilik Serisi: <strong>${stats.maxStreak} gün</strong></p>
+                    <p>• Ortalama Ruh Hali: <strong>${stats.moodAverage.toFixed(1)}/5</strong></p>
+                    <p>• Harcama Kontrolü: <strong>${(stats.totalExpenses / (assumedHourlyRate * stats.totalWorkHours) * 100).toFixed(1)}%</strong> (düşük daha iyi)</p>
+                    <p>• Günlük Harcama Ortalaması: <strong>${(stats.totalExpenses / stats.workDays).toFixed(2)} ₺</strong></p>
+                </div>
+
+                <div class="report-section">
+                    <h4>💡 Öneriler</h4>`;
+
+            if (stats.avgProductivity < 70) {
+                reportHtml += '<p>• 🔴 Verimlilik düşük - çalışma ortamını gözden geçirin</p>';
+            }
+            if (stats.avgDailyHours < 6) {
+                reportHtml += '<p>• 🟡 Günlük çalışma süresi hedefin altında</p>';
+            }
+            if (stats.totalExpenses / (assumedHourlyRate * stats.totalWorkHours) > 0.3) {
+                reportHtml += '<p>• 🔴 Harcamalar kazancın %30\'undan fazla - bütçe kontrolü gerekli</p>';
+            }
+            if (stats.maxStreak > 7) {
+                reportHtml += '<p>• 🟢 Mükemmel konsantrasyon serisi - bu tempo sürdürülmeli</p>';
+            }
+            if (stats.efficiencyScore > 80) {
+                reportHtml += '<p>• 🟢 Yüksek verimlilik skoru - harika performans</p>';
+            }
+
+            reportHtml += `
+                </div>
+                
+                <div class="report-section">
+                    <h4>📊 Trend Analizi</h4>
+                    <p>• Çalışma Saatleri: ${stats.hoursTrendText}</p>
+                    <p>• Harcama Kontrolü: ${stats.expensesTrendText}</p>
+                    <p>• Verimlilik Durumu: ${stats.productivityTrendText}</p>
+                </div>
+            `;
+            
+            document.getElementById('reportContent').innerHTML = reportHtml;
+            document.getElementById('reportPopup').style.display = 'block';
+        }
+
+        function exportToPDF() {
+            const content = document.getElementById('reportContent').innerHTML;
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Finansal Analiz Raporu v5.4</title>
+                    <style>
+                        body {font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 30px; line-height: 1.8; color: #333;}
+                        .report-section {margin: 25px 0; padding: 20px; border: 2px solid #667eea; border-radius: 12px; background: linear-gradient(135deg, #f8f9ff, #e8f0fe);}
+                        h3, h4 {color: #667eea; margin-bottom: 15px;}
+                        strong {color: #764ba2; font-weight: bold;}
+                        p {margin: 12px 0;}
+                        @media print {body {margin: 15px;} .report-section {break-inside: avoid;}}
+                    </style>
+                </head>
+                <body>${content}</body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        // Initialize Application
+        window.addEventListener('load', function() {
+            updateConnectionStatusHeader('disconnected', 'Firebase Bağlantısı');
+            
+            // Initialize with demo data by default
+            switchDataSource('mock');
+            
+            // Auto-load Firebase config if available
+            if (firebaseManager.config) {
+                firebaseManager.initializeFirebase().catch(console.error);
+            }
+            
+            // Set default date range to current week
+            selectThisWeek();
+        });
+
+        // Auto-sync every 30 seconds if Firebase is connected
+        setInterval(() => {
+            if (firebaseManager.isReady() && currentDataSource !== 'mock') {
+                firebaseManager.lastSync = new Date();
+                document.getElementById('realTimeIndicator').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('realTimeIndicator').style.display = 'none';
+                }, 2000);
+            }
+        }, 30000);
+
+        // Enhanced keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'd':
+                        e.preventDefault();
+                        openDatePopup();
+                        break;
+                    case 'g':
+                        e.preventDefault();
+                        openChartsPopup();
+                        break;
+                    case 'r':
+                        e.preventDefault();
+                        generateReport();
+                        break;
+                    case ',':
+                        e.preventDefault();
+                        openSettingsPopup();
+                        break;
+                }
+            }
+            
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.popup').forEach(popup => {
+                    popup.style.display = 'none';
+                });
+            }
+        });
+
+        // Handle window resize for responsive charts
+        window.addEventListener('resize', function() {
+            Object.keys(activeCharts).forEach(key => {
+                if (activeCharts[key]) {
+                    activeCharts[key].resize();
+                }
+            });
+        });
+
+        // Enhanced error handling
+        window.addEventListener('error', function(e) {
+            console.error('Application error:', e.error);
+            showConfigStatus('error', 'Uygulama hatası: ' + e.error.message);
+        });
+
+        // Service worker for offline functionality (if needed)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(function(error) {
+                console.log('ServiceWorker registration failed:', error);
+            });
+        }
+
+        // Performance monitoring
+        if (window.performance && window.performance.mark) {
+            window.performance.mark('app-initialized');
+        }
+
+        // Export functions for debugging
+        window.debugApp = {
+            firebaseManager,
+            userData,
+            selectedDates,
+            chartSettings,
+            currentDataSource,
+            switchDataSource,
+            generateEnhancedMockData,
+            calculateEnhancedStats
+        };
+
+        console.log('Finansal Analiz v5.4 başlatıldı');
+        console.log('Debug: window.debugApp içinde yardımcı fonksiyonlar mevcut');
+    </script>
+</body>
+</html>
