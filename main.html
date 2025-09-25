@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Projelerim - Portfolio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.2em;
+        }
+
+        .year-section {
+            margin-bottom: 40px;
+        }
+
+        .year-title {
+            font-size: 1.8em;
+            color: #333;
+            margin-bottom: 20px;
+            padding: 10px 0;
+            border-left: 5px solid #667eea;
+            padding-left: 15px;
+            background: linear-gradient(90deg, rgba(102, 126, 234, 0.1), transparent);
+        }
+
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .project-card {
+            background: #fff;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border-left: 5px solid #667eea;
+        }
+
+        .project-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
+
+        .project-title {
+            font-size: 1.4em;
+            color: #333;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .versions-container {
+            margin-bottom: 15px;
+        }
+
+        .version-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            margin: 5px 5px 5px 0;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .version-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .version-btn.latest {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .description {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            border-left: 3px solid #667eea;
+        }
+
+        .description-text {
+            color: #555;
+            line-height: 1.6;
+            font-size: 0.95em;
+        }
+
+        .show-more {
+            color: #667eea;
+            cursor: pointer;
+            font-weight: 500;
+            text-decoration: underline;
+            margin-top: 10px;
+            display: inline-block;
+        }
+
+        .show-more:hover {
+            color: #764ba2;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2em;
+            color: #666;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #dc3545;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .projects-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Mini Projelerim</h1>
+            <p>GitHub repository'mde geliştirdiğim HTML projeleri</p>
+        </div>
+        
+        <div id="loading" class="loading">
+            Projeler yükleniyor...
+        </div>
+        
+        <div id="content"></div>
+    </div>
+
+    <script>
+        // Repository bilgileri - Buraya kendi repo linkinizi yazın
+        const GITHUB_REPO_URL = 'https://api.github.com/repos/KULLANICI_ADI/REPO_ADI/contents';
+        const GITHUB_PAGES_BASE = 'https://KULLANICI_ADI.github.io/REPO_ADI/';
+        
+        // Dosya filtreleme ayarları
+        const EXCLUDED_FILES = ['index.html', 'README.md', '.gitignore', 'base.json'];
+        const EXCLUDED_EXTENSIONS = ['.json', '.md', '.txt', '.js', '.css', '.png', '.jpg', '.jpeg', '.gif'];
+        
+        let projectsData = {};
+
+        // Açıklama metni kısaltma fonksiyonu
+        function truncateDescription(text, maxLength = 120) {
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        }
+
+        // Proje adını temizleme fonksiyonu
+        function cleanProjectName(filename) {
+            return filename.replace(/\.(html|htm)$/i, '');
+        }
+
+        // Versiyon numarası çıkarma fonksiyonu
+        function extractVersion(filename) {
+            const match = filename.match(/(\d+(?:\.\d+)*(?:\.\d+)*)/);
+            return match ? match[1] : '1.0';
+        }
+
+        // Proje grubu belirleme fonksiyonu
+        function getProjectGroup(filename) {
+            const cleanName = cleanProjectName(filename);
+            // Versiyon numaralarını temizle
+            const baseName = cleanName.replace(/\d+(?:\.\d+)*(?:\.\d+)*$/, '').replace(/[._-]+$/, '');
+            return baseName || cleanName;
+        }
+
+        // Versiyonları sıralama fonksiyonu
+        function sortVersions(versions) {
+            return versions.sort((a, b) => {
+                const versionA = a.version.split('.').map(num => parseInt(num) || 0);
+                const versionB = b.version.split('.').map(num => parseInt(num) || 0);
+                
+                for (let i = 0; i < Math.max(versionA.length, versionB.length); i++) {
+                    const numA = versionA[i] || 0;
+                    const numB = versionB[i] || 0;
+                    if (numA !== numB) return numB - numA; // Büyükten küçüğe
+                }
+                return 0;
+            });
+        }
+
+        // GitHub API'den dosyaları getir
+        async function fetchProjects() {
+            try {
+                const response = await fetch(GITHUB_REPO_URL);
+                if (!response.ok) throw new Error('Repository bilgileri alınamadı');
+                
+                const files = await response.json();
+                const htmlFiles = files.filter(file => 
+                    file.name.endsWith('.html') && 
+                    !EXCLUDED_FILES.includes(file.name)
+                );
+
+                // Projeleri grupla
+                htmlFiles.forEach(file => {
+                    const projectGroup = getProjectGroup(file.name);
+                    const version = extractVersion(file.name);
+                    
+                    if (!projectsData[projectGroup]) {
+                        projectsData[projectGroup] = {
+                            name: projectGroup,
+                            versions: [],
+                            year: new Date().getFullYear() // Varsayılan yıl
+                        };
+                    }
+                    
+                    projectsData[projectGroup].versions.push({
+                        filename: file.name,
+                        version: version,
+                        url: GITHUB_PAGES_BASE + file.name
+                    });
+                });
+
+                // Versiyonları sırala
+                Object.keys(projectsData).forEach(projectKey => {
+                    projectsData[projectKey].versions = sortVersions(projectsData[projectKey].versions);
+                });
+
+                await loadDescriptions();
+                renderProjects();
+                
+            } catch (error) {
+                document.getElementById('content').innerHTML = `
+                    <div class="error">
+                        <strong>Hata:</strong> ${error.message}<br>
+                        <small>Lütfen GITHUB_REPO_URL ve GITHUB_PAGES_BASE değişkenlerini kontrol edin.</small>
+                    </div>
+                `;
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        // base.json dosyasından açıklamaları yükle
+        async function loadDescriptions() {
+            try {
+                const response = await fetch(GITHUB_PAGES_BASE + 'base.json');
+                if (response.ok) {
+                    const descriptions = await response.json();
+                    
+                    Object.keys(projectsData).forEach(projectKey => {
+                        if (descriptions[projectKey]) {
+                            projectsData[projectKey].description = descriptions[projectKey].description || '';
+                            projectsData[projectKey].year = descriptions[projectKey].year || new Date().getFullYear();
+                        }
+                    });
+                }
+            } catch (error) {
+                console.log('base.json yüklenemedi, varsayılan açıklamalar kullanılacak');
+            }
+        }
+
+        // Projeleri render et
+        function renderProjects() {
+            const content = document.getElementById('content');
+            
+            // Yıllara göre grupla
+            const projectsByYear = {};
+            Object.values(projectsData).forEach(project => {
+                const year = project.year;
+                if (!projectsByYear[year]) projectsByYear[year] = [];
+                projectsByYear[year].push(project);
+            });
+
+            let html = '';
+            
+            // Yılları tersine sırala (en yeni önce)
+            const sortedYears = Object.keys(projectsByYear).sort((a, b) => b - a);
+            
+            sortedYears.forEach(year => {
+                html += `
+                    <div class="year-section">
+                        <h2 class="year-title">${year} Projeleri</h2>
+                        <div class="projects-grid">
+                `;
+                
+                projectsByYear[year].forEach(project => {
+                    const latestVersion = project.versions[0];
+                    
+                    html += `
+                        <div class="project-card">
+                            <div class="project-title">${project.name}</div>
+                            <div class="versions-container">
+                    `;
+                    
+                    project.versions.forEach((version, index) => {
+                        const isLatest = index === 0;
+                        html += `
+                            <a href="${version.url}" target="_blank" class="version-btn ${isLatest ? 'latest' : ''}">
+                                ${isLatest ? '🌟 ' : ''}v${version.version}
+                            </a>
+                        `;
+                    });
+                    
+                    html += `</div>`;
+                    
+                    if (project.description) {
+                        const shortDesc = truncateDescription(project.description);
+                        const needsExpansion = project.description.length > 120;
+                        
+                        html += `
+                            <div class="description">
+                                <div class="description-text" id="desc-${project.name.replace(/\s+/g, '-')}">
+                                    ${shortDesc}
+                                </div>
+                                ${needsExpansion ? `
+                                    <div class="show-more" onclick="toggleDescription('${project.name.replace(/\s+/g, '-')}', '${project.description.replace(/'/g, "\\'")}')">
+                                        Devamını gör
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    }
+                    
+                    html += `</div>`;
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+            
+            content.innerHTML = html;
+        }
+
+        // Açıklama genişletme/daraltma fonksiyonu
+        function toggleDescription(projectId, fullDescription) {
+            const descElement = document.getElementById(`desc-${projectId}`);
+            const showMoreElement = descElement.nextElementSibling;
+            
+            if (showMoreElement.textContent === 'Devamını gör') {
+                descElement.textContent = fullDescription;
+                showMoreElement.textContent = 'Daha az göster';
+            } else {
+                descElement.textContent = truncateDescription(fullDescription);
+                showMoreElement.textContent = 'Devamını gör';
+            }
+        }
+
+        // Sayfa yüklendiğinde projeleri getir
+        window.addEventListener('load', fetchProjects);
+    </script>
+</body>
+</html>
