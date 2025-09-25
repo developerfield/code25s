@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yakıt Masrafı Hesaplayıcısı</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.5s ease;
+        }
+
+        /* Light Mode (Gündüz) */
+        body.light-mode {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        /* Dark Mode (Gece) */
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        }
+
+        .container {
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            transition: all 0.5s ease;
+        }
+
+        /* Light Mode Container */
+        body.light-mode .container {
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        /* Dark Mode Container */
+        body.dark-mode .container {
+            background: rgba(30, 30, 50, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            transition: color 0.5s ease;
+            margin: 0;
+        }
+
+        .theme-toggle {
+            position: absolute;
+            right: 45px;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .alt-calc-toggle {
+            position: absolute;
+            right: 0;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        body.light-mode .theme-toggle {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        body.dark-mode .theme-toggle {
+            background: linear-gradient(135deg, #4a5568, #2d3748);
+            color: white;
+            box-shadow: 0 2px 8px rgba(74, 85, 104, 0.4);
+        }
+
+        body.light-mode .alt-calc-toggle {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        }
+
+        body.dark-mode .alt-calc-toggle {
+            background: linear-gradient(135deg, #38a169, #2f855a);
+            color: white;
+            box-shadow: 0 2px 8px rgba(56, 161, 105, 0.4);
+        }
+
+        .theme-toggle:hover, .alt-calc-toggle:hover {
+            transform: scale(1.1);
+        }
+
+        .theme-toggle:active, .alt-calc-toggle:active {
+            transform: scale(0.95);
+        }
+
+        body.light-mode h1 {
+            color: #333;
+        }
+
+        body.dark-mode h1 {
+            color: #e0e6ed;
+        }
+
+        .input-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group label {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            transition: color 0.5s ease;
+        }
+
+        body.light-mode .input-group label {
+            color: #555;
+        }
+
+        body.dark-mode .input-group label {
+            color: #b0b7c3;
+        }
+
+        .input-group input {
+            padding: 12px 15px;
+            border: 2px solid #e1e8ed;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        body.light-mode .input-group input {
+            background: white;
+            border-color: #e1e8ed;
+            color: #333;
+        }
+
+        body.dark-mode .input-group input {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #e0e6ed;
+        }
+
+        body.light-mode .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        body.dark-mode .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+        }
+
+        .buttons-section {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .preset-btn {
+            padding: 10px 4px;
+            border: none;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        body.light-mode .preset-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        body.dark-mode .preset-btn {
+            background: linear-gradient(135deg, #4a5568, #2d3748);
+            box-shadow: 0 4px 15px rgba(74, 85, 104, 0.4);
+        }
+
+        body.light-mode .preset-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        body.dark-mode .preset-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(74, 85, 104, 0.6);
+            background: linear-gradient(135deg, #5a6578, #3d4758);
+        }
+
+        .preset-btn:active {
+            transform: translateY(0);
+        }
+
+        .calculate-btn {
+            width: 100%;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            color: white;
+            transition: all 0.3s ease;
+            margin-bottom: 25px;
+        }
+
+        body.light-mode .calculate-btn {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        }
+
+        body.dark-mode .calculate-btn {
+            background: linear-gradient(135deg, #e53e3e, #c53030);
+            box-shadow: 0 4px 15px rgba(229, 62, 62, 0.4);
+        }
+
+        body.light-mode .calculate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
+        }
+
+        body.dark-mode .calculate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(229, 62, 62, 0.6);
+        }
+
+        .result {
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+            line-height: 1.5;
+        }
+
+        .result.green {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+            box-shadow: 0 8px 25px rgba(78, 205, 196, 0.3);
+        }
+
+        .result.blue {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .result.orange {
+            background: linear-gradient(135deg, #ff8a00, #e52e71);
+            box-shadow: 0 8px 25px rgba(255, 138, 0, 0.3);
+        }
+
+        .result.purple {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .result.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Popup Styles */
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        .popup-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .popup {
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 450px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            position: relative;
+            transform: scale(0.8);
+            transition: all 0.3s ease;
+        }
+
+        .popup-overlay.show .popup {
+            transform: scale(1);
+        }
+
+        body.light-mode .popup {
+            background: rgba(255, 255, 255, 0.98);
+        }
+
+        body.dark-mode .popup {
+            background: rgba(30, 30, 50, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .popup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .popup-title {
+            font-size: 20px;
+            font-weight: 600;
+            transition: color 0.5s ease;
+        }
+
+        body.light-mode .popup-title {
+            color: #333;
+        }
+
+        body.dark-mode .popup-title {
+            color: #e0e6ed;
+        }
+
+        .close-btn {
+            width: 30px;
+            height: 30px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        body.light-mode .close-btn {
+            background: rgba(255, 107, 107, 0.1);
+            color: #ff6b6b;
+        }
+
+        body.dark-mode .close-btn {
+            background: rgba(229, 62, 62, 0.2);
+            color: #e53e3e;
+        }
+
+        .close-btn:hover {
+            transform: scale(1.1);
+        }
+
+        body.light-mode .close-btn:hover {
+            background: rgba(255, 107, 107, 0.2);
+        }
+
+        body.dark-mode .close-btn:hover {
+            background: rgba(229, 62, 62, 0.3);
+        }
+
+        .popup-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .popup-input-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .popup-input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .popup-input-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .popup-input-group label {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            transition: color 0.5s ease;
+        }
+
+        body.light-mode .popup-input-group label {
+            color: #555;
+        }
+
+        body.dark-mode .popup-input-group label {
+            color: #b0b7c3;
+        }
+
+        .popup-input-group input {
+            padding: 12px 15px;
+            border: 2px solid #e1e8ed;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        body.light-mode .popup-input-group input {
+            background: white;
+            border-color: #e1e8ed;
+            color: #333;
+        }
+
+        body.dark-mode .popup-input-group input {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #e0e6ed;
+        }
+
+        body.light-mode .popup-input-group input:focus {
+            outline: none;
+            border-color: #28a745;
+            box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
+        }
+
+        body.dark-mode .popup-input-group input:focus {
+            outline: none;
+            border-color: #38a169;
+            box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.3);
+        }
+
+        .popup-buttons-section {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .popup-speed-buttons {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .popup-preset-btn {
+            padding: 10px 4px;
+            border: none;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        body.light-mode .popup-preset-btn {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        body.dark-mode .popup-preset-btn {
+            background: linear-gradient(135deg, #38a169, #2f855a);
+            box-shadow: 0 4px 15px rgba(56, 161, 105, 0.4);
+        }
+
+        body.light-mode .popup-preset-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+        }
+
+        body.dark-mode .popup-preset-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(56, 161, 105, 0.6);
+        }
+
+        .popup-calculate-btn {
+            width: 100%;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        body.light-mode .popup-calculate-btn {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        body.dark-mode .popup-calculate-btn {
+            background: linear-gradient(135deg, #38a169, #2f855a);
+            box-shadow: 0 4px 15px rgba(56, 161, 105, 0.4);
+        }
+
+        body.light-mode .popup-calculate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+        }
+
+        body.dark-mode .popup-calculate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(56, 161, 105, 0.6);
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .header {
+                margin-bottom: 20px;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+
+            .theme-toggle {
+                width: 30px;
+                height: 30px;
+                font-size: 14px;
+                right: 35px;
+            }
+
+            .alt-calc-toggle {
+                width: 30px;
+                height: 30px;
+                font-size: 14px;
+            }
+
+            .buttons-section {
+                grid-template-columns: repeat(4, 1fr);
+            }
+
+            .preset-btn {
+                font-size: 12px;
+                padding: 8px 4px;
+            }
+
+            .popup {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .popup-input-section {
+                grid-template-columns: 1fr;
+            }
+
+            .popup-buttons-section {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .popup-speed-buttons {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⛽ Yakıt Masrafı Hesaplayıcısı</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Tema Değiştir">
+                🌙
+            </button>
+            <button class="alt-calc-toggle" onclick="openPopup()" title="Maaş Karşılaştırması">
+                💼
+            </button>
+        </div>
+        
+        <div class="input-section">
+            <div class="input-group">
+                <label for="fuelConsumption">Motor Yakıt Tüketimi (L/100km)</label>
+                <input type="number" id="fuelConsumption" placeholder="6.5" step="0.1">
+            </div>
+            
+            <div class="buttons-section">
+                <button class="preset-btn" onclick="setFuelConsumption(2)">2L</button>
+                <button class="preset-btn" onclick="setFuelConsumption(3)">3L</button>
+                <button class="preset-btn" onclick="setFuelConsumption(3.5)">3.5L</button>
+                <button class="preset-btn" onclick="setFuelConsumption(4)">4L</button>
+                <button class="preset-btn" onclick="setFuelConsumption(5)">5L</button>
+                <button class="preset-btn" onclick="setFuelConsumption(6)">6L</button>
+                <button class="preset-btn" onclick="setFuelConsumption(7)">7L</button>
+                <button class="preset-btn" onclick="clearAll()">Temizle</button>
+            </div>
+
+            <div class="input-group">
+                <label for="fuelPrice">Yakıt Fiyatı (TL/L)</label>
+                <input type="number" id="fuelPrice" value="55" step="0.1" placeholder="55.00">
+            </div>
+
+            <div class="input-group">
+                <label for="distance">Gidilecek Mesafe (km)</label>
+                <input type="number" id="distance" placeholder="22" step="0.1">
+            </div>
+        </div>
+
+        <button class="calculate-btn" onclick="calculateFuelCost()">💰 Masrafı Hesapla</button>
+
+        <div class="result" id="result"></div>
+    </div>
+
+    <!-- Popup Modal -->
+    <div class="popup-overlay" id="popupOverlay">
+        <div class="popup">
+            <div class="popup-header">
+                <h2 class="popup-title">💼 Maaş Karşılaştırması</h2>
+                <button class="close-btn" onclick="closePopup()">×</button>
+            </div>
+            <div class="popup-content">
+                <div class="popup-input-section">
+                    <div class="popup-input-group">
+                        <label for="monthlySalary">Aylık Maaş (TL)</label>
+                        <input type="number" id="monthlySalary" placeholder="25000">
+                    </div>
+                    <div class="popup-input-group">
+                        <label for="weeklyHours">Haftalık Çalışma Saati</label>
+                        <input type="number" id="weeklyHours" placeholder="40">
+                    </div>
+                </div>
+                
+                <div class="popup-buttons-section">
+                    <button class="popup-preset-btn" onclick="setMinimumWage()">Asgari</button>
+                    <button class="popup-preset-btn" onclick="addMoney(2500)">+2500₺</button>
+                    <button class="popup-preset-btn" onclick="addMoney(1000)">+1000₺</button>
+                    <button class="popup-preset-btn" onclick="addMoney(-1000)">-1000₺</button>
+                </div>
+
+                <div class="popup-input-group full-width">
+                    <label for="averageSpeed">Ortalama Hız (km/saat)</label>
+                    <input type="number" id="averageSpeed" placeholder="70">
+                </div>
+
+                <div class="popup-speed-buttons">
+                    <button class="popup-preset-btn" onclick="setSpeed(50)">50</button>
+                    <button class="popup-preset-btn" onclick="setSpeed(60)">60</button>
+                    <button class="popup-preset-btn" onclick="setSpeed(70)">70</button>
+                    <button class="popup-preset-btn" onclick="setSpeed(80)">80</button>
+                    <button class="popup-preset-btn" onclick="setSpeed(90)">90</button>
+                </div>
+
+                <button class="popup-calculate-btn" onclick="calculateSalaryComparison()">📊 Karşılaştır</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Türkiye için aylık güneş doğuş/batış saatleri (ortalama)
+        const sunTimes = {
+            1: { sunrise: 7.5, sunset: 17.5 },   // Ocak
+            2: { sunrise: 7.0, sunset: 18.5 },   // Şubat
+            3: { sunrise: 6.5, sunset: 19.0 },   // Mart
+            4: { sunrise: 6.0, sunset: 19.5 },   // Nisan
+            5: { sunrise: 5.5, sunset: 20.0 },   // Mayıs
+            6: { sunrise: 5.0, sunset: 20.5 },   // Haziran
+            7: { sunrise: 5.0, sunset: 20.5 },   // Temmuz
+            8: { sunrise: 5.5, sunset: 20.0 },   // Ağustos
+            9: { sunrise: 6.0, sunset: 19.0 },   // Eylül
+            10: { sunrise: 6.5, sunset: 18.0 },  // Ekim
+            11: { sunrise: 7.0, sunset: 17.0 },  // Kasım
+            12: { sunrise: 7.5, sunset: 17.0 }   // Aralık
+        };
+
+        // Manuel tema kontrolü için değişken
+        let isManualMode = false;
+        let currentTheme = 'light-mode';
+
+        function checkTimeAndSetTheme() {
+            // Manuel modda otomatik tema değişimi yapma
+            if (isManualMode) return;
+            
+            const now = new Date();
+            const currentHour = now.getHours() + now.getMinutes() / 60;
+            const currentMonth = now.getMonth() + 1;
+            
+            const { sunrise, sunset } = sunTimes[currentMonth];
+            
+            if (currentHour >= sunrise && currentHour < sunset) {
+                // Gündüz - Light Mode
+                setTheme('light-mode');
+            } else {
+                // Gece - Dark Mode
+                setTheme('dark-mode');
+            }
+        }
+
+        function setTheme(theme) {
+            currentTheme = theme;
+            document.body.className = theme;
+            
+            // Buton ikonu güncelle
+            const toggleBtn = document.querySelector('.theme-toggle');
+            if (theme === 'light-mode') {
+                toggleBtn.textContent = '🌙';
+                toggleBtn.title = 'Karanlık Moda Geç';
+            } else {
+                toggleBtn.textContent = '☀️';
+                toggleBtn.title = 'Aydınlık Moda Geç';
+            }
+        }
+
+        function toggleTheme() {
+            isManualMode = true;
+            
+            // Tema değiştir
+            const newTheme = currentTheme === 'light-mode' ? 'dark-mode' : 'light-mode';
+            setTheme(newTheme);
+            
+            // 30 saniye sonra otomatik moda geri dön
+            setTimeout(() => {
+                isManualMode = false;
+                checkTimeAndSetTheme();
+            }, 30000);
+        }
+
+        // Popup functions
+        function openPopup() {
+            document.getElementById('popupOverlay').classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closePopup() {
+            document.getElementById('popupOverlay').classList.remove('show');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Popup dışına tıklayınca kapat
+        document.getElementById('popupOverlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePopup();
+            }
+        });
+
+        // ESC tuşuyla popup kapat
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closePopup();
+            }
+        });
+
+        // Sayfa yüklendiğinde tema ayarla
+        checkTimeAndSetTheme();
+
+        // Her dakika tema kontrolü yap
+        setInterval(checkTimeAndSetTheme, 60000);
+
+        // Yakıt tüketim presetleri
+        function setFuelConsumption(value) {
+            document.getElementById('fuelConsumption').value = value;
+        }
+
+        // Tümünü temizle
+        function clearAll() {
+            document.getElementById('fuelConsumption').value = '';
+            document.getElementById('fuelPrice').value = '55';
+            document.getElementById('distance').value = '';
+            document.getElementById('monthlySalary').value = '';
+            document.getElementById('weeklyHours').value = '';
+            document.getElementById('averageSpeed').value = '';
+            
+            const resultDiv = document.getElementById('result');
+            resultDiv.classList.remove('show', 'green', 'blue', 'orange', 'purple');
+        }
+
+        // Popup - Asgari ücret ayarla
+        function setMinimumWage() {
+            document.getElementById('monthlySalary').value = 22500;
+            document.getElementById('weeklyHours').value = 45;
+        }
+
+        // Popup - Maaş ekle/çıkar
+        function addMoney(amount) {
+            const salaryInput = document.getElementById('monthlySalary');
+            const currentValue = parseFloat(salaryInput.value) || 0;
+            salaryInput.value = Math.max(0, currentValue + amount);
+        }
+
+        // Popup - Hız ayarla
+        function setSpeed(speed) {
+            document.getElementById('averageSpeed').value = speed;
+        }
+
+        // Ana hesaplama
+        function calculateFuelCost() {
+            const fuelConsumption = parseFloat(document.getElementById('fuelConsumption').value);
+            const fuelPrice = parseFloat(document.getElementById('fuelPrice').value);
+            const distance = parseFloat(document.getElementById('distance').value);
+
+            if (!fuelConsumption || !fuelPrice || !distance) {
+                alert('Lütfen tüm alanları doldurun!');
+                return;
+            }
+
+            // Yakıt masrafı hesaplama: ((mesafe * 100km'de yakılan yakıt) / 100) * litre yakıt fiyatı
+            const fuelCost = ((distance * fuelConsumption) / 100) * fuelPrice;
+
+            displayResult(`Bu yolun maliyeti ${fuelCost.toFixed(2)} TL'dir 💰`, 'blue');
+        }
+
+        // Popup hesaplama
+        function calculateSalaryComparison() {
+            const monthlySalary = parseFloat(document.getElementById('monthlySalary').value);
+            const weeklyHours = parseFloat(document.getElementById('weeklyHours').value);
+            const averageSpeed = parseFloat(document.getElementById('averageSpeed').value);
+            const fuelConsumption = parseFloat(document.getElementById('fuelConsumption').value);
+            const fuelPrice = parseFloat(document.getElementById('fuelPrice').value);
+            const distance = parseFloat(document.getElementById('distance').value);
+
+            if (!monthlySalary || !weeklyHours || !averageSpeed || !fuelConsumption || !fuelPrice || !distance) {
+                alert('Lütfen tüm alanları doldurun!');
+                return;
+            }
+
+            // Saatlik kazanç hesaplama (ayda yaklaşık 4.33 hafta var)
+            const hourlyEarning = monthlySalary / (weeklyHours * 4.33);
+            
+            // Yakıt masrafı hesaplama
+            const fuelCost = ((distance * fuelConsumption) / 100) * fuelPrice;
+            
+            // Bu masraf için kaç saat çalışmak gerekiyor
+            const workHours = fuelCost / hourlyEarning;
+            const workHoursInt = Math.floor(workHours);
+            const workMinutes = Math.floor((workHours - workHoursInt) * 60);
+            
+            // Yol süresi hesaplama
+            const travelTime = distance / averageSpeed;
+            const travelHoursInt = Math.floor(travelTime);
+            const travelMinutes = Math.floor((travelTime - travelHoursInt) * 60);
+
+            let resultText = `Bu yol ${fuelCost.toFixed(2)} TL 💰\n`;
+            
+            if (workHoursInt > 0) {
+                resultText += `${workHoursInt} sa ${workMinutes} dk çalışma ⏰\n`;
+            } else {
+                resultText += `${workMinutes} dk çalışma ⏰\n`;
+            }
+            
+            if (travelHoursInt > 0) {
+                resultText += `Yaklaşık ${travelHoursInt} sa ${travelMinutes} dk yol süresi 🚗`;
+            } else {
+                resultText += `Yaklaşık ${travelMinutes} dk yol süresi 🚗`;
+            }
+
+            displayResult(resultText, 'purple');
+            closePopup();
+        }
+
+        // Sonuç gösterme
+        function displayResult(text, colorClass) {
+            const resultDiv = document.getElementById('result');
+            
+            // Tüm renk sınıflarını temizle
+            resultDiv.classList.remove('green', 'blue', 'orange', 'purple');
+            
+            resultDiv.classList.add(colorClass);
+            resultDiv.innerHTML = text.replace(/\n/g, '<br>');
+            resultDiv.classList.add('show');
+        }
+
+        // Enter tuşu ile hesaplama - Ana form
+        document.getElementById('distance').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                calculateFuelCost();
+            }
+        });
+
+        document.getElementById('fuelConsumption').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                calculateFuelCost();
+            }
+        });
+
+        document.getElementById('fuelPrice').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                calculateFuelCost();
+            }
+        });
+
+        // Enter tuşu ile hesaplama - Popup form
+        document.getElementById('averageSpeed').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                calculateSalaryComparison();
+            }
+        });
+
+        document.getElementById('monthlySalary').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                calculateSalaryComparison();
+            }
+        });
+
+        document.getElementById('weeklyHours').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                calculateSalaryComparison();
+            }
+        });
+    </script>
+</body>
+</html>
