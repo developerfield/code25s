@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gelişmiş Test Analiz</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+        }
+
+        h2 {
+            color: #1e40af;
+            margin-bottom: 20px;
+            font-size: 1.6rem;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 10px;
+        }
+
+        .input-section {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .advanced-params {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 10px;
+        }
+
+        .input-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #4b5563;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            background: #fff;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: #3b82f6;
+            outline: none;
+        }
+
+        .small-input {
+            max-width: 100px;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #1e40af;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #1e3a8a;
+        }
+
+        .results {
+            margin-top: 30px;
+        }
+
+        .chart-container {
+            margin: 25px 0;
+            position: relative;
+            height: 400px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .metric-card {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #e5e7eb;
+        }
+
+        .metric-card h4 {
+            color: #1e40af;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .metric-value {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #1f2937;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h2>📊 Gelişmiş Test Analiz</h2>
+            
+            <div class="input-section">
+                <div class="input-group">
+                    <label>✅ Doğru (D)</label>
+                    <input type="number" id="D" min="0" value="0">
+                </div>
+                <div class="input-group">
+                    <label>❌ Yanlış (Y)</label>
+                    <input type="number" id="Y" min="0" value="0">
+                </div>
+                <div class="input-group">
+                    <label>⬜ Boş (B)</label>
+                    <input type="number" id="B" min="0" value="0">
+                </div>
+                <div class="input-group">
+                    <label>⏱️ Süre (T)</label>
+                    <input type="number" id="T" step="0.1" value="0">
+                </div>
+                <div class="input-group">
+                    <label>🎯 Referans (R)</label>
+                    <input type="number" id="R" step="0.1" value="1">
+                </div>
+                <div class="input-group">
+                    <label>📈 Test Sayısı (N)</label>
+                    <input type="number" id="N" min="1" value="1">
+                </div>
+            </div>
+
+            <h2>Gelişmiş Parametreler</h2>
+            <div class="advanced-params">
+                <div class="input-group">
+                    <label>α2: orjn</label>
+                    <input type="number" id="alpha2" step="0.01" value="0.25" class="small-input">
+                </div>
+                <div class="input-group">
+                    <label>n: D*</label>
+                    <input type="number" id="n" step="0.1" value="2" class="small-input">
+                </div>
+                <div class="input-group">
+                    <label>m Y*</label>
+                    <input type="number" id="m" step="0.1" value="1.5" class="small-input">
+                </div>
+                <div class="input-group">
+                    <label>ΔP: +/-</label>
+                    <input type="number" id="deltaP" step="0.01" value="0" class="small-input">
+                </div>
+            </div>
+
+            <button onclick="calculateAll()">HESAPLA</button>
+        </div>
+
+        <div class="card results">
+            <h2>📈 Performans Metrikleri</h2>
+            
+            <div class="chart-container">
+                <canvas id="radarChart"></canvas>
+            </div>
+            
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h4>H Skoru</h4>
+                    <div class="metric-value" id="hValue">-</div>
+                </div>
+                <div class="metric-card">
+                    <h4>Öğrenme Faktörü (L)</h4>
+                    <div class="metric-value" id="lValue">-</div>
+                </div>
+                <div class="metric-card">
+                    <h4>Performans Faktörü (P)</h4>
+                    <div class="metric-value" id="pValue">-</div>
+                </div>
+                <div class="metric-card">
+                    <h4>Etkinlik Faktörü (E)</h4>
+                    <div class="metric-value" id="eValue">-</div>
+                </div>
+                <div class="metric-card">
+                    <h4>Kalibrasyon (K)</h4>
+                    <div class="metric-value" id="kValue">-</div>
+                </div>
+                <div class="metric-card">
+                    <h4>Doğruluk Oranı</h4>
+                    <div class="metric-value" id="accuracyValue">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let radarChart = null;
+
+        function calculateAll() {
+            // Temel değerleri al
+            const D = parseInt(document.getElementById('D').value) || 0;
+            const Y = parseInt(document.getElementById('Y').value) || 0;
+            const N = D-Y/4;
+            document.getElementById('N').textContent = N;
+            
+            const B = parseInt(document.getElementById('B').value) || 0;
+            const T = parseFloat(document.getElementById('T').value) || 1;
+            const R = parseFloat(document.getElementById('R').value) || 1;
+            
+            // Gelişmiş parametreleri al
+            const alpha2 = parseFloat(document.getElementById('alpha2').value) || 0.25;
+            const n = parseFloat(document.getElementById('n').value) || 2;
+            const m = parseFloat(document.getElementById('m').value) || 1.5;
+            const deltaP = parseFloat(document.getElementById('deltaP').value) || 0;
+
+            // Toplam soru sayısı
+            const S = D + Y + B;
+            if (S === 0) return;
+
+            // H Skoru bileşenlerini hesapla
+            const L = Math.pow(D/S, n) * Math.pow(1 - Y/S, m);
+            const P = (R * S / T) * (1 + deltaP);
+            const E = (1 - B/S) * (D/(D + Y || 1));
+            const K = (1 + Math.log(1 + N))/2;
+
+            // Ana H Skorunu hesapla
+            const H = alpha2 * (L + P + E) * K;
+            const finalH = Math.min(Math.max(H, 0), 100).toFixed(1);
+
+            // Değerleri güncelle
+            document.getElementById('hValue').textContent = `${finalH}%`;
+            document.getElementById('lValue').textContent = `${(L * 100).toFixed(1)}%`;
+            document.getElementById('pValue').textContent = `${(P * 10).toFixed(1)}x`;
+            document.getElementById('eValue').textContent = `${(E * 100).toFixed(1)}%`;
+            document.getElementById('kValue').textContent = `${K.toFixed(2)}`;
+            document.getElementById('accuracyValue').textContent = `${((D/S) * 100).toFixed(1)}%`;
+
+            // Radar grafiğini güncelle
+            updateRadarChart([
+                finalH,
+                L * 100,
+                P * 10,
+                E * 100,
+                K * 50
+            ]);
+        }
+
+        function updateRadarChart(data) {
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            
+            if(radarChart) radarChart.destroy();
+            
+            radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: [
+                        'H Skoru', 
+                        'Öğrenme (L)', 
+                        'Performans (P)', 
+                        'Etkinlik (E)', 
+                        'Kalibrasyon (K)'
+                    ],
+                    datasets: [{
+                        label: 'Performans Değerleri',
+                        data: data,
+                        backgroundColor: 'rgba(30, 64, 175, 0.2)',
+                        borderColor: '#1e40af',
+                        pointBackgroundColor: '#1e40af',
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                stepSize: 20,
+                                color: '#4b5563',
+                                showLabelBackdrop: false
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            },
+                            pointLabels: {
+                                color: '#1f2937',
+                                font: {
+                                    size: 12,
+                                    weight: '500'
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+    </script>
+</body>
+</html>
