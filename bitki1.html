@@ -1,0 +1,673 @@
+import React, { useState } from 'react';
+
+const PLANT_DATA = {
+  "🌱 Sarımsak": {
+    name: "Sarımsak",
+    latin: "Allium sativum",
+    origin: "Orta Asya, yaygın olarak dünyanın her yerinde yetiştirilir",
+    benefits: "Güçlü antibakteriyel ve antiviral özellikler, kan basıncını düzenler, kolesterolü düşürür, bağışıklık sistemini güçlendirir, kalp sağlığını destekler, antioksidan açısından zengin",
+    sideEffects: "Yüksek dozlarda mide yanması, bulantı, ishal yapabilir. Kan sulandırıcı ilaçlarla etkileşime girebilir. Ameliyat öncesi kullanımdan kaçınılmalı",
+    usage: "Günde 1-2 diş çiğ veya 600-1200mg ekstrakt. Aç karnına alınabilir. Ezilerek 10 dakika bekletildikten sonra tüketmek allicin aktivasyonu için önerilir",
+    dosage: "💥‼️ Yüksek dozlarda kan sulandırıcı etki",
+    activeCompounds: "Allicin, diallyl disulfide, S-allyl cysteine"
+  },
+  "🌾 Zerdeçal": {
+    name: "Zerdeçal",
+    latin: "Curcuma longa",
+    origin: "Hindistan ve Güneydoğu Asya",
+    benefits: "Güçlü anti-inflamatuar, eklem ağrılarını azaltır, sindirim sistemini destekler, karaciğer sağlığını korur, beyin fonksiyonlarını iyileştirir, kanser önleyici özellikler",
+    sideEffects: "Yüksek dozlarda mide bulantısı, safra kesesi problemlerini tetikleyebilir. Kan sulandırıcılarla etkileşim olabilir",
+    usage: "Günde 500-2000mg kurkumin ekstrakt veya 1-3g taze kök. Karabiber ile birlikte alındığında emilimi 2000% artar",
+    dosage: "⚠️❗️ Orta-yüksek doz: Safra taşı olanlar dikkatli kullanmalı",
+    activeCompounds: "Kurkumin, demetoksikurkumin, bisdemetoksikurkumin"
+  },
+  "🌱 Zencefil": {
+    name: "Zencefil",
+    latin: "Zingiber officinale",
+    origin: "Güneydoğu Asya, tropikal bölgeler",
+    benefits: "Bulantı ve kusmayı azaltır, sindirim problemlerini giderir, anti-inflamatuar, soğuk algınlığında etkili, kan dolaşımını artırır, ağrı kesici",
+    sideEffects: "Fazla tüketimde mide yanması, ishal. Safra taşı olanlar dikkatli kullanmalı. Kan sulandırıcılarla etkileşim",
+    usage: "Günde 1-3g taze kök veya 250-1000mg kuru ekstrakt. Çay olarak demlenerek veya yemeklerdekullanılabilir",
+    dosage: "⚠️❗️ Orta-yüksek doz: Hamilelikte dikkatli kullanım",
+    activeCompounds: "Gingerol, shogaol, zingerone"
+  },
+  "🧅 Kırmızı soğan": {
+    name: "Kırmızı Soğan",
+    latin: "Allium cepa var. purpurea",
+    origin: "Akdeniz ve Orta Asya",
+    benefits: "Yüksek antioksidan (antosiyanin), kalp sağlığını destekler, kan şekerini dengeleyebilir, bağışıklığı güçlendirir, kemik sağlığına katkı",
+    sideEffects: "Çiğ tüketimde gaz, şişkinlik yapabilir. Hassas midelerde tahriş edici olabilir",
+    usage: "Günde yarım veya 1 orta boy soğan, tercihen çiğ veya hafif pişmiş",
+    dosage: "⚠️🔰 Orta risk: Genel olarak güvenli",
+    activeCompounds: "Quercetin, antosiyaninler, allyl sulfitler"
+  },
+  "🌿 Kekik Yağı": {
+    name: "Kekik Yağı",
+    latin: "Thymus vulgaris oil",
+    origin: "Akdeniz bölgesi",
+    benefits: "Güçlü antibakteriyel ve antifungal, solunum yolu enfeksiyonlarında etkili, bağışıklık desteği, antioksidan",
+    sideEffects: "Konsantre yağ ciltte tahriş yapabilir. Ağız yoluyla içeriden yüksek dozda alınmamalı. Hamilelikte kullanılmamalı",
+    usage: "2-3 damla günde 2 kez, su veya yağda seyreltilmiş. Dışarıdan kullanımda taşıyıcı yağ ile karıştırılmalı",
+    dosage: "💥‼️ Yüksek risk: Sadece seyreltilmiş kullanım",
+    activeCompounds: "Thymol, carvacrol, p-cymene"
+  },
+  "🍇 Çekirdekli üzüm": {
+    name: "Çekirdekli Üzüm",
+    latin: "Vitis vinifera",
+    origin: "Akdeniz, Orta Doğu",
+    benefits: "Yüksek resveratrol içeriği, damar sağlığını destekler, antioksidan, anti-aging, kalp koruyucu, kolesterol dengeleyici",
+    sideEffects: "Genel olarak güvenli, aşırı tüketimde ishal yapabilir",
+    usage: "Günde 1-2 su bardağı çekirdekli üzüm veya çekirdek ekstrakt takviyesi",
+    dosage: "⚠️🔰 Orta risk: Güvenli tüketim",
+    activeCompounds: "Resveratrol, proanthocyanidins, quercetin"
+  },
+  "🍇 Zeytin yaprağı çayı": {
+    name: "Zeytin Yaprağı Çayı",
+    latin: "Olea europaea leaf",
+    origin: "Akdeniz havzası",
+    benefits: "Güçlü antiviral ve antibakteriyel, bağışıklık desteği, kan basıncını düzenler, antioksidan, kalp sağlığı",
+    sideEffects: "Yüksek dozlarda mide bulantısı, baş ağrısı. Kan basıncı ilaçlarıyla etkileşim olabilir",
+    usage: "Günde 2-3 fincan çay veya 500-1000mg ekstrakt",
+    dosage: "⚠️❗️ Orta-yüksek doz: Düşük tansiyon olanlar dikkatli",
+    activeCompounds: "Oleuropein, hydroxytyrosol, oleacein"
+  },
+  "🌿 Kekik": {
+    name: "Kekik",
+    latin: "Thymus vulgaris",
+    origin: "Akdeniz, Güney Avrupa",
+    benefits: "Antibakteriyel, öksürük ve bronşit için iyi, sindirim destekleyici, bağışıklık güçlendirici, antioksidan",
+    sideEffects: "Genel olarak güvenli, yüksek dozlarda tiroid fonksiyonlarını etkileyebilir",
+    usage: "Günde 2-3 fincan kekik çayı veya yemeklerde baharat olarak",
+    dosage: "⚠️❗️ Orta-yüksek doz: Uzun süreli yüksek doz dikkat gerektirir",
+    activeCompounds: "Thymol, carvacrol, flavonoidler"
+  },
+  "🍋 Limon kabuğu": {
+    name: "Limon Kabuğu",
+    latin: "Citrus limon peel",
+    origin: "Güney Asya, Akdeniz",
+    benefits: "Yüksek C vitamini, antioksidan, sindirim destekleyici, detoksifikasyon, bağışıklık desteği, antimikrobiyal",
+    sideEffects: "Organik olmayan kabuklarda pestisit riski. Aşırı tüketimde diş minesine zarar verebilir",
+    usage: "Günde 1-2 limonun rendelenmiş kabuğu, çaylara veya yemeklere eklenebilir",
+    dosage: "⚠️🔰 Orta risk: Organik tercih edilmeli",
+    activeCompounds: "Limonene, citral, flavonoidler"
+  },
+  "🫘 Ceviz": {
+    name: "Ceviz",
+    latin: "Juglans regia",
+    origin: "Orta Asya, İran bölgesi",
+    benefits: "Omega-3 açısından zengin, beyin sağlığını destekler, kalp dostu, antioksidan, kolesterol dengeleyici, anti-inflamatuar",
+    sideEffects: "Alerji riski. Yüksek kalorili olduğu için porsiyon kontrolü önemli",
+    usage: "Günde 7-8 adet (yaklaşık 30g)",
+    dosage: "⚠️🔰 Orta risk: Alerjik reaksiyonlara dikkat",
+    activeCompounds: "Alfa-linolenik asit (ALA), ellagic acid, melatonin"
+  },
+  "🌿 Moringa": {
+    name: "Moringa",
+    latin: "Moringa oleifera",
+    origin: "Hindistan, Afrika, Asya",
+    benefits: "Yüksek protein ve vitamin içeriği, anti-inflamatuar, antioksidan, kan şekerini dengeleyebilir, bağışıklık desteği",
+    sideEffects: "Yüksek dozlarda hafif laksatif etki. Hamilelikte kök ve kabuk kullanılmamalı",
+    usage: "Günde 1-2 çay kaşığı toz veya 400-800mg kapsül",
+    dosage: "⚠️❗️ Orta-yüksek doz: Hamilelik ve emzirmede dikkat",
+    activeCompounds: "İsothiocyanates, quercetin, chlorogenic acid"
+  },
+  "🌿 Isırgan Otu": {
+    name: "Isırgan Otu",
+    latin: "Urtica dioica",
+    origin: "Avrupa, Asya, Kuzey Amerika",
+    benefits: "Anti-inflamatuar, eklem ağrıları için etkili, alerji semptomlarını azaltır, prostat sağlığını destekler, detoks etkisi",
+    sideEffects: "Taze bitkiye temas ciltte kaşıntı yapar. Çay veya kapsül formunda genel olarak güvenli",
+    usage: "Günde 2-3 fincan çay veya 300-600mg kapsül",
+    dosage: "⚠️❗️ Orta-yüksek doz: Kan sulandırıcı etkisi olabilir",
+    activeCompounds: "Histamin, serotonin, acetylcholine (taze halde)"
+  },
+  "🍏 Yeşil elma kabuğu": {
+    name: "Yeşil Elma Kabuğu",
+    latin: "Malus domestica (green var.)",
+    origin: "Kazakistan, Orta Asya",
+    benefits: "Yüksek pektin, sindirim sağlığı, kolesterol düşürücü, antioksidan, prebiyotik etki",
+    sideEffects: "Organik olmayan kabuklarda pestisit riski",
+    usage: "Günde 1-2 elma, kabuklu tüketim",
+    dosage: "⚠️🔰 Orta risk: Organik tercih edilmeli",
+    activeCompounds: "Quercetin, pektin, klorojenik asit"
+  },
+  "🫒 Çiğ zeytin": {
+    name: "Çiğ Zeytin",
+    latin: "Olea europaea fruit",
+    origin: "Akdeniz havzası",
+    benefits: "Sağlıklı yağlar, antioksidan, kalp sağlığı, anti-inflamatuar, damar koruyucu",
+    sideEffects: "Tuzlu olanlar yüksek sodyum içerir, kan basıncı kontrolü gerekir",
+    usage: "Günde 7-10 adet orta boy zeytin",
+    dosage: "⚠️🔰 Orta risk: Tuz oranına dikkat",
+    activeCompounds: "Oleik asit, hydroxytyrosol, oleuropein"
+  },
+  "🍋 Tarçın": {
+    name: "Tarçın",
+    latin: "Cinnamomum verum",
+    origin: "Sri Lanka, Hindistan",
+    benefits: "Kan şekerini düzenler, insülin duyarlılığını artırır, antimikrobiyal, antioksidan, metabolizmayı hızlandırır",
+    sideEffects: "Yüksek dozlarda (Cassia tarçını) karaciğer toksisitesi riski (kumarin nedeniyle). Ceylon tarçını daha güvenli",
+    usage: "Günde 1-6g (½-1 çay kaşığı), tercihen Ceylon tarçını",
+    dosage: "💥‼️ Yüksek risk: Cassia türü uzun süreli yüksek doz kullanımda dikkat",
+    activeCompounds: "Cinnamaldehyde, kumarin, kateşinler"
+  },
+  "🌿 Biberiye": {
+    name: "Biberiye",
+    latin: "Rosmarinus officinalis",
+    origin: "Akdeniz",
+    benefits: "Hafızayı güçlendirir, konsantrasyonu artırır, antioksidan, saç sağlığını destekler, sindirim yardımcısı",
+    sideEffects: "Yüksek dozlarda kas spazmı, kusma yapabilir. Hamilelikte yüksek doz kullanılmamalı",
+    usage: "Günde 2-3 fincan çay veya yemeklerde baharat olarak",
+    dosage: "⚠️❗️ Orta-yüksek doz: Hamilelik ve epilepside dikkat",
+    activeCompounds: "Rosmarinik asit, carnosic acid, carnosol"
+  },
+  "🍫 Ham kakao": {
+    name: "Ham Kakao",
+    latin: "Theobroma cacao",
+    origin: "Orta ve Güney Amerika",
+    benefits: "Yüksek antioksidan (flavonoid), ruh halini iyileştirir, kardiyovasküler sağlık, beyin fonksiyonları, magnezyum kaynağı",
+    sideEffects: "Kafein içerir, uykusuzluk yapabilir. Aşırı tüketimde baş ağrısı",
+    usage: "Günde 1-2 yemek kaşığı ham kakao tozu veya nibs",
+    dosage: "⚠️🔰 Orta risk: Kafein hassasiyeti olanlarda dikkat",
+    activeCompounds: "Theobromine, anandamide, epicatechin"
+  },
+  "🌿 Kudret Narı": {
+    name: "Kudret Narı",
+    latin: "Momordica charantia",
+    origin: "Tropik Afrika ve Asya",
+    benefits: "Kan şekerini düşürür, anti-diyabetik, bağışıklık desteği, antimikrobiyal, karaciğer koruyucu",
+    sideEffects: "Yüksek dozlarda ishal, karın ağrısı. Hamilelikte kullanılmamalı, düşük yapabilir",
+    usage: "Günde 50-100ml meyve suyu veya 3-6g kuru ekstrakt",
+    dosage: "⚠️❗️ Orta-yüksek doz: Hamilelikte kesinlikle yasak",
+    activeCompounds: "Charantin, vicine, polypeptide-p"
+  },
+  "🍄 Reishi mantarı": {
+    name: "Reishi Mantarı",
+    latin: "Ganoderma lucidum",
+    origin: "Asya (Çin, Japonya)",
+    benefits: "Bağışıklık sistemini güçlendirir, adaptojenik, anti-tümör özellikleri, karaciğer koruyucu, anti-aging",
+    sideEffects: "Baş dönmesi, ağız kuruluğu yapabilir. Bağışıklık baskılayıcı ilaçlarla etkileşim",
+    usage: "Günde 1-3g kuru mantar tozu veya 1500-9000mg ekstrakt",
+    dosage: "⚠️❗️ Orta-yüksek doz: Otoimmün hastalıklarda doktor gözetimi",
+    activeCompounds: "Triterpenes, polysaccharides, beta-glucanlar"
+  },
+  "🍃 Matcha": {
+    name: "Matcha",
+    latin: "Camellia sinensis (toz)",
+    origin: "Japonya",
+    benefits: "Yüksek antioksidan (EGCG), metabolizmayı hızlandırır, konsantrasyonu artırır, sakinleştirici etki (L-theanine), detoks",
+    sideEffects: "Kafein içerir, hassas kişilerde kalp çarpıntısı, uykusuzluk yapabilir",
+    usage: "Günde 1-2 çay kaşığı (2-4g) toz, su veya süt ile karıştırılır",
+    dosage: "⚠️🔰 Orta risk: Kafein hassasiyeti olanlarda dikkat",
+    activeCompounds: "EGCG, L-theanine, kafein, klorofil"
+  },
+  "🌶️ Acı biber": {
+    name: "Acı Biber",
+    latin: "Capsicum annuum",
+    origin: "Orta ve Güney Amerika",
+    benefits: "Metabolizmayı hızlandırır, ağrı kesici (topikal), sindirim destekleyici, anti-inflamatuar, kan dolaşımını artırır",
+    sideEffects: "Mide hassasiyeti olanlarda yanma, tahriş. Hemoroid problemi olanlarda dikkatli kullanılmalı",
+    usage: "Yemeklerde taze veya kuru olarak, porsiyon kişisel toleransa göre",
+    dosage: "💥‼️ Yüksek risk: Mide problemlerinde dikkat",
+    activeCompounds: "Capsaicin, dihydrocapsaicin, C vitamini"
+  },
+  "🌿 Kuşburnu": {
+    name: "Kuşburnu",
+    latin: "Rosa canina",
+    origin: "Avrupa, Kuzey Afrika, Batı Asya",
+    benefits: "Çok yüksek C vitamini, bağışıklık desteği, eklem sağlığı, antioksidan, cilt sağlığı",
+    sideEffects: "Genel olarak güvenli, yüksek dozlarda mide bulantısı yapabilir",
+    usage: "Günde 2-3 fincan kuşburnu çayı veya 5g kuru meyve",
+    dosage: "⚠️🔰 Orta risk: Güvenli kullanım",
+    activeCompounds: "Askorbik asit (C vitamini), karotenoidler, flavonoidler"
+  },
+  "🌱 Spirulina": {
+    name: "Spirulina",
+    latin: "Arthrospira platensis",
+    origin: "Tropik ve subtropik alkalin göller",
+    benefits: "Yüksek protein, detoks etkisi, bağışıklık desteği, antioksidan, besin desteği, ağır metal bağlayıcı",
+    sideEffects: "Kontamine kaynaklardan alındığında mikrosistin riski. Otoimmün hastalıklarda dikkatli kullanılmalı",
+    usage: "Günde 1-8g toz veya tablet",
+    dosage: "⚠️❗️ Orta-yüksek doz: Kaliteli, test edilmiş ürün seçimi önemli",
+    activeCompounds: "Phycocyanin, gamma-linolenik asit, B vitaminleri"
+  },
+  "🍀 Karahindiba": {
+    name: "Karahindiba",
+    latin: "Taraxacum officinale",
+    origin: "Avrupa, dünya çapında yetişir",
+    benefits: "Karaciğer detoksu, diüretik, sindirim destekleyici, kan şekerini dengeleyebilir, prebiyotik",
+    sideEffects: "Safra yolu tıkanıklığı olanlarda kullanılmamalı. Diüretik etkisi nedeniyle sık idrara çıkarma",
+    usage: "Günde 2-3 fincan çay (kök veya yaprak) veya 500-2000mg ekstrakt",
+    dosage: "⚠️🔰 Orta risk: Safra taşı olanlar dikkatli",
+    activeCompounds: "Taraxasterol, inulin, sesquiterpene lactones"
+  },
+  "🌱 Ginseng": {
+    name: "Ginseng",
+    latin: "Panax ginseng",
+    origin: "Kore, Çin, Sibirya",
+    benefits: "Enerji artırıcı, adaptojenik, beyin fonksiyonlarını iyileştirir, stres azaltıcı, bağışıklık desteği, metabolik destek",
+    sideEffects: "Yüksek dozlarda uykusuzluk, baş ağrısı, tansiyon yükselmesi. Otoimmün hastalıklarda dikkatli kullanılmalı",
+    usage: "Günde 200-400mg standartize ekstrakt veya 1-2g kuru kök",
+    dosage: "💥‼️ Yüksek risk: Kan basıncı, hormon hassasiyeti",
+    activeCompounds: "Ginsenosides, panaxosides"
+  },
+  "🌿 Mate Yaprağı": {
+    name: "Mate Yaprağı",
+    latin: "Ilex paraguariensis",
+    origin: "Güney Amerika (Arjantin, Brezilya, Paraguay)",
+    benefits: "Enerji artırıcı, mental netlik, antioksidan, metabolizma destekleyici, fiziksel performans artırıcı",
+    sideEffects: "Kafein içerir, yüksek dozlarda uykusuzluk, kalp çarpıntısı. Çok sıcak içildiğinde özofagus kanseri riski",
+    usage: "Günde 1-3 fincan mate çayı",
+    dosage: "⚠️❗️ Orta-yüksek doz: Kafein hassasiyeti, sıcak içim riski",
+    activeCompounds: "Kafein, theobromine, chlorogenic acid"
+  },
+  "🌱 Chia tohumu": {
+    name: "Chia Tohumu",
+    latin: "Salvia hispanica",
+    origin: "Meksika, Guatemala",
+    benefits: "Omega-3, lif açısından zengin, kan şekerini dengeler, sindirim sağlığı, tokluk hissi verir, kalp sağlığı",
+    sideEffects: "Yeterli su ile tüketilmezse boğulma riski. Aşırı tüketimde gaz, şişkinlik",
+    usage: "Günde 1-2 yemek kaşığı (15-30g), mutlaka sıvı ile",
+    dosage: "⚠️🔰 Orta risk: Bol su ile tüketim şart",
+    activeCompounds: "Alfa-linolenik asit (ALA), fiber, protein"
+  },
+  "🍃 Yeşil çay": {
+    name: "Yeşil Çay",
+    latin: "Camellia sinensis",
+    origin: "Çin, Japonya",
+    benefits: "Antioksidan (kateşinler), metabolizmayı hızlandırır, beyin fonksiyonlarını destekler, yağ yakımı, kalp sağlığı",
+    sideEffects: "Kafein içerir, aşırı tüketimde uykusuzluk, mide bulantısı, demir emilimini azaltabilir",
+    usage: "Günde 2-3 fincan, tercihen yemeklerden uzak",
+    dosage: "⚠️🔰 Orta risk: Kafein hassasiyeti, demir emilimi",
+    activeCompounds: "EGCG, L-theanine, kafein"
+  },
+  "🌿 Ashwagandha": {
+    name: "Ashwagandha",
+    latin: "Withania somnifera",
+    origin: "Hindistan, Kuzey Afrika, Orta Doğu",
+    benefits: "Güçlü adaptojenik, stres ve anksiyete azaltıcı, uyku kalitesini artırır, kortizol düzenleyici, kas gücü artırıcı",
+    sideEffects: "Yüksek dozlarda mide rahatsızlığı, ishal. Tiroid ilaçlarıyla etkileşim olabilir",
+    usage: "Günde 300-600mg standartize ekstrakt (withanolides %5)",
+    dosage: "⚠️❗️ Orta-yüksek doz: Tiroid problemlerinde dikkat",
+    activeCompounds: "Withanolides, withanolide A, withaferin A"
+  },
+  "🌿 Sumak": {
+    name: "Sumak",
+    latin: "Rhus coriaria",
+    origin: "Akdeniz, Orta Doğu",
+    benefits: "Yüksek antioksidan, anti-inflamatuar, kan şekerini dengeleyebilir, sindirim destekleyici, antimikrobiyal",
+    sideEffects: "Genel olarak güvenli, nadir alerjik reaksiyonlar",
+    usage: "Yemeklerde baharat olarak günde 1-3g",
+    dosage: "⚠️🔰 Orta risk: Güvenli kullanım",
+    activeCompounds: "Gallic acid, tanninler, flavonoidler"
+  },
+  "🌿 Nane": {
+    name: "Nane",
+    latin: "Mentha piperita",
+    origin: "Avrupa, Orta Doğu",
+    benefits: "Sindirim rahatsızlıklarını giderir, IBS semptomlarını azaltır, mide bulantısı için iyi, solunum yollarını açar, baş ağrısını hafifletir",
+    sideEffects: "Yüksek dozlarda reflü belirtilerini artırabilir. Hamilelikte dikkatli kullanılmalı",
+    usage: "Günde 2-3 fincan nane çayı veya nane yağı kapsülü (0.2-0.4ml)",
+    dosage: "⚠️🔰 Orta risk: Reflü olanlarda dikkat",
+    activeCompounds: "Menthol, menthone, limonene"
+  },
+  "🍃 Maydanoz": {
+    name: "Maydanoz",
+    latin: "Petroselinum crispum",
+    origin: "Akdeniz",
+    benefits: "Yüksek K vitamini, antioksidan, böbrek sağlığını destekler, anti-inflamatuar, detoks etkisi, kemik sağlığı",
+    sideEffects: "Hamilelikte yüksek dozlarda kullanılmamalı (uterin stimülasyon). Böbrek taşı riski olanlarda dikkatli",
+    usage: "Günde 1-2 demet taze maydanoz veya çay olarak",
+    dosage: "⚠️🔰 Orta risk: Hamilelik ve böbrek taşında dikkat",
+    activeCompounds: "Apigenin, luteolin, K vitamini"
+  },
+  "🌿 Adaçayı": {
+    name: "Adaçayı",
+    latin: "Salvia officinalis",
+    origin: "Akdeniz",
+    benefits: "Hafızayı güçlendirir, menopoz semptomlarını azaltır, boğaz ağrısına iyi gelir, antimikrobiyal, antioksidan, terlemeyi azaltır",
+    sideEffects: "Yüksek dozlarda thujone nedeniyle toksik olabilir. Hamilelik ve emzirmede kullanılmamalı",
+    usage: "Günde 2-3 fincan çay veya 400-600mg ekstrakt",
+    dosage: "⚠️❗️ Orta-yüksek doz: Hamilelik, emzirme ve epilepside yasak",
+    activeCompounds: "Thujone, rosmarinik asit, carnosic acid"
+  },
+  "🌰 Çam fıstığı / badem": {
+    name: "Çam Fıstığı / Badem",
+    latin: "Pinus pinea / Prunus dulcis",
+    origin: "Akdeniz, Orta Doğu",
+    benefits: "Kalp sağlığı, beyin fonksiyonları, E vitamini, sağlıklı yağlar, kolesterol düşürücü, tokluk hissi",
+    sideEffects: "Yüksek kalorili, alerji riski. Porsiyon kontrolü gerekir",
+    usage: "Günde 20-30g (bir avuç)",
+    dosage: "⚠️🔰 Orta risk: Alerji ve porsiyon kontrolü",
+    activeCompounds: "Monosaturated fats, E vitamini, magnezyum"
+  },
+  "🌿 Lion's Mane": {
+    name: "Lion's Mane Mantarı",
+    latin: "Hericium erinaceus",
+    origin: "Kuzey Amerika, Avrupa, Asya",
+    benefits: "Beyin sağlığı ve nörogenez, sinir sistemi onarımı, hafıza ve konsantrasyon, nörodejeneratif hastalıklarda koruyucu",
+    sideEffects: "Genel olarak güvenli, nadiren alerjik reaksiyonlar",
+    usage: "Günde 500-3000mg ekstrakt veya 3-5g kuru mantar tozu",
+    dosage: "⚠️🔰 Orta risk: Güvenli kullanım",
+    activeCompounds: "Hericenones, erinacines, beta-glucanlar"
+  },
+  "🌱 Aloe vera": {
+    name: "Aloe Vera",
+    latin: "Aloe barbadensis miller",
+    origin: "Arap Yarımadası",
+    benefits: "Sindirim sistemini rahatlatır, bağırsak sağlığı, cilt için yatıştırıcı, yanık tedavisi, detoks etkisi",
+    sideEffects: "İçeriden aşırı kullanımda ishal, karın krampları. Hamilelikte kullanılmamalı",
+    usage: "Günde 30-60ml aloe vera suyu veya jeli (aloin içermeyen)",
+    dosage: "⚠️❗️ Orta-yüksek doz: Hamilelik ve böbrek hastalığında dikkat",
+    activeCompounds: "Acemannan, anthraquinones, polysaccharides"
+  },
+  "🌿 Ekinezya": {
+    name: "Ekinezya",
+    latin: "Echinacea purpurea",
+    origin: "Kuzey Amerika",
+    benefits: "Bağışıklık sistemini güçlendirir, soğuk algınlığı süresini kısaltır, üst solunum yolu enfeksiyonlarında etkili",
+    sideEffects: "Otoimmün hastalıklarda kullanılmamalı. Uzun süreli kullanımda etkinlik azalabilir",
+    usage: "Günde 300-500mg ekstrakt, maksimum 8 hafta süreyle",
+    dosage: "⚠️❗️ Orta-yüksek doz: Otoimmün hastalıklarda yasak",
+    activeCompounds: "Alkamides, polysaccharides, caffeic acid derivatives"
+  },
+  "🌿 Melisa": {
+    name: "Melisa",
+    latin: "Melissa officinalis",
+    origin: "Akdeniz, Orta Asya",
+    benefits: "Sakinleştirici, anksiyete azaltıcı, uyku kalitesini artırır, sindirim destekleyici, antioksidan, antiviral",
+    sideEffects: "Genel olarak çok güvenli, nadiren baş ağrısı yapabilir",
+    usage: "Günde 2-3 fincan çay veya 300-500mg ekstrakt",
+    dosage: "✅☘️ Düşük risk: Güvenli ve yumuşak etki",
+    activeCompounds: "Rosmarinik asit, citral, citronellal"
+  },
+  "🌼 Papatya": {
+    name: "Papatya",
+    latin: "Matricaria chamomilla",
+    origin: "Avrupa, Asya",
+    benefits: "Sakinleştirici, uyku kalitesini artırır, anti-inflamatuar, sindirim rahatsızlıklarını giderir, cilt için yatıştırıcı",
+    sideEffects: "Papatya alerjisi nadirdir, hamilelikte yüksek dozda dikkatli kullanılmalı",
+    usage: "Günde 2-4 fincan çay",
+    dosage: "✅☘️ Düşük risk: Çok güvenli",
+    activeCompounds: "Apigenin, bisabolol, chamazulene"
+  },
+  "🍯 Ham bal": {
+    name: "Ham Bal",
+    latin: "Mel (honey)",
+    origin: "Dünya çapında",
+    benefits: "Antimikrobiyal, yara iyileştirici, öksürük kesici, antioksidan, enerji kaynağı, bağışıklık desteği",
+    sideEffects: "1 yaş altı bebeklerde botulism riski. Diyabetiklerde kan şekerini yükseltebilir",
+    usage: "Günde 1-2 yemek kaşığı",
+    dosage: "⚠️🔰 Orta risk: Bebeklerde yasak, diyabet kontrolü",
+    activeCompounds: "Hydrogen peroxide, phenolic compounds, enzymes"
+  },
+  "🌿 Rezene": {
+    name: "Rezene",
+    latin: "Foeniculum vulgare",
+    origin: "Akdeniz",
+    benefits: "Gaz ve şişkinlik giderici, sindirim destekleyici, kolik için etkili, süt artırıcı (emzirme), solunum yollarını rahatlatır",
+    sideEffects: "Yüksek dozlarda östrojenik etki, hamilelikte dikkatli kullanılmalı. Hormon hassasiyeti olanlarda dikkat",
+    usage: "Günde 2-3 fincan çay veya yemeklerde baharat olarak",
+    dosage: "⚠️🔰 Orta risk: Hamilelik ve hormon hassasiyeti",
+    activeCompounds: "Anethole, fenchone, estragole"
+  },
+  "🌿 Hatmi çiçeği": {
+    name: "Hatmi Çiçeği",
+    latin: "Althaea officinalis",
+    origin: "Avrupa, Batı Asya, Kuzey Afrika",
+    benefits: "Boğaz ağrısını yatıştırır, öksürük kesici, sindirim sistemini korur, anti-inflamatuar, mukoza koruyucu",
+    sideEffects: "Çok güvenli, nadiren hafif mide bulantısı",
+    usage: "Günde 2-3 fincan çay veya 6g kuru kök",
+    dosage: "✅☘️ Düşük risk: Oldukça güvenli",
+    activeCompounds: "Mucilage, flavonoidler, phenolic acids"
+  },
+  "🥥 Hindistan cevizi": {
+    name: "Hindistan Cevizi",
+    latin: "Cocos nucifera",
+    origin: "Tropik bölgeler",
+    benefits: "MCT yağları (beyin için enerji), bağışıklık desteği, antimikrobiyal, beyin fonksiyonları, metabolizma desteği",
+    sideEffects: "Yüksek kalorili, aşırı tüketimde sindirim problemleri",
+    usage: "Günde 1-2 yemek kaşığı hindistan cevizi yağı veya 30-50g taze ceviz",
+    dosage: "⚠️🔰 Orta risk: Porsiyon kontrolü gerekir",
+    activeCompounds: "Lauric acid, capric acid, MCT oils"
+  },
+  "🌿 Kırkkilit (At kuyruğu otu)": {
+    name: "Kırkkilit Otu",
+    latin: "Equisetum arvense",
+    origin: "Kuzey yarımküre",
+    benefits: "Yüksek silika, kemik ve eklem sağlığı, diüretik, saç ve tırnak güçlendirici, yara iyileştirici",
+    sideEffects: "Thiaminase içerir (B1 vitamini yıkıcı), uzun süreli kullanımda dikkat. Böbrek problemlerinde kullanılmamalı",
+    usage: "Günde 2-3 fincan çay, maksimum 6 hafta süreyle",
+    dosage: "⚠️❗️ Orta-yüksek doz: Böbrek hastalığında yasak, B1 vitamini ile birlikte alınmalı",
+    activeCompounds: "Silica, flavonoidler, saponinler"
+  }
+};
+
+const HerbalTable = () => {
+  const [selectedPlant, setSelectedPlant] = useState(null);
+  const [comparisonList, setComparisonList] = useState([]);
+
+  const tableData = [
+    ["🌱 Bitki","🪣doz","🔥 Anti-inf.","🧠 Beyin","🛡 Bağışıklık","🫀 Damar","🌬 Sindirim","⚖️ Metab.","⭐Genel"],
+    ["🌱 Sarımsak","💥‼️",4,2,5,5,3,3,4.0],
+    ["🌾 Zerdeçal","⚠️❗️",5,2,4,3,2,2,3.5],
+    ["🌱 Zencefil","⚠️❗️",4,2,3,3,5,3,3.5],
+    ["🧅 Kırmızı soğan","⚠️🔰",4,2,3,5,2,2,3.4],
+    ["🌿 Kekik Yağı","💥‼️",4,1,5,3,3,2,3.3],
+    ["🍇 Çekirdekli üzüm","⚠️🔰",3,3,3,5,2,2,3.3],
+    ["🍇 Zeytin yaprağı çayı","⚠️❗️",3,2,5,4,2,2,3.3],
+    ["🌿 Kekik","⚠️❗️",3,1,5,3,3,2,3.2],
+    ["🍋 Limon kabuğu","⚠️🔰",3,2,4,4,2,2,3.2],
+    ["🫘 Ceviz","⚠️🔰",3,5,2,4,2,2,3.2],
+    ["🌿 Moringa","⚠️❗️",3,3,4,3,3,2,3.0],
+    ["🌿 Isırgan Otu","⚠️❗️",3,2,4,3,3,2,3.0],
+    ["🍏 Yeşil elma kabuğu","⚠️🔰",3,2,3,3,4,3,3.0],
+    ["🫒 Çiğ zeytin","⚠️🔰",3,2,3,4,2,2,3.0],
+    ["🍋 Tarçın","💥‼️",3,2,3,3,2,5,3.0],
+    ["🌿 Biberiye","⚠️❗️",3,5,2,3,2,2,3.1],
+    ["🍫 Ham kakao","⚠️🔰",3,4,2,4,2,2,3.1],
+    ["🌿 Kudret Narı","⚠️❗️",4,1,4,2,3,2,2.8],
+    ["🍄 Reishi mantarı","⚠️❗️",4,2,5,2,2,1,2.8],
+    ["🍃 Matcha","⚠️🔰",2,4,3,3,2,3,2.8],
+    ["🌶️ Acı biber","💥‼️",3,2,2,3,2,5,2.8],
+    ["🌿 Kuşburnu","⚠️🔰",3,1,5,3,2,2,2.9],
+    ["🌱 Spirulina","⚠️❗️",3,3,4,2,2,2,2.7],
+    ["🍀 Karahindiba","⚠️🔰",3,2,3,2,4,2,2.7],
+    ["🌱 Ginseng","💥‼️",2,5,3,2,1,3,2.7],
+    ["🌿 Mate Yaprağı","⚠️❗️",2,4,2,2,2,3,2.5],
+    ["🌱 Chia tohumu","⚠️🔰",2,3,2,3,3,2,2.5],
+    ["🍃 Yeşil çay","⚠️🔰",2,3,2,3,2,3,2.5],
+    ["🌿 Ashwagandha","⚠️❗️",2,4,2,2,1,2,2.3],
+    ["🌿 Sumak","⚠️🔰",3,1,3,3,2,2,2.3],
+    ["🌿 Nane","⚠️🔰",2,2,2,2,4,2,2.3],
+    ["🍃 Maydanoz","⚠️🔰",2,1,3,3,3,2,2.3],
+    ["🌿 Adaçayı","⚠️❗️",2,3,4,2,2,1,2.3],
+    ["🌰 Çam fıstığı / badem","⚠️🔰",2,3,2,3,2,2,2.3],
+    ["🌿 Lion's Mane","⚠️🔰",2,5,2,2,2,1,2.3],
+    ["🌱 Aloe vera","⚠️❗️",2,1,3,1,5,1,2.1],
+    ["🌿 Ekinezya","⚠️❗️",2,1,5,1,2,1,2.0],
+    ["🌿 Melisa","✅☘️",1,4,2,2,2,1,2.0],
+    ["🌼 Papatya","✅☘️",1,2,3,1,4,1,2.0],
+    ["🍯 Ham bal","⚠️🔰",1,1,4,2,2,2,2.0],
+    ["🌿 Rezene","⚠️🔰",2,1,2,2,4,1,2.0],
+    ["🌿 Hatmi çiçeği","✅☘️",1,1,3,1,4,1,1.9],
+    ["🥥 Hindistan cevizi","⚠️🔰",1,3,1,2,2,2,1.9],
+    ["🌿 Kırkkilit (At kuyruğu otu)","⚠️❗️",2,1,2,3,1,1,1.7]
+  ];
+
+  const handleRowClick = (plant) => {
+    setSelectedPlant(plant);
+  };
+
+  const toggleComparison = (plant) => {
+    if (comparisonList.find(p => p[0] === plant[0])) {
+      setComparisonList(comparisonList.filter(p => p[0] !== plant[0]));
+    } else if (comparisonList.length < 5) {
+      setComparisonList([...comparisonList, plant]);
+    }
+  };
+
+  const isInComparison = (plantName) => {
+    return comparisonList.some(p => p[0] === plantName);
+  };
+
+  const getScoreColor = (score) => {
+    if (score >= 4) return 'text-green-600 font-bold';
+    if (score >= 3) return 'text-blue-600';
+    if (score >= 2) return 'text-yellow-600';
+    return 'text-gray-500';
+  };
+
+  const selectedPlantData = selectedPlant ? PLANT_DATA[selectedPlant[0]] : null;
+
+  return (
+    <div className="max-w-7xl mx-auto p-6 bg-gradient-to-br from-green-50 to-emerald-50 min-h-screen">
+      <h1 className="text-4xl font-bold text-center mb-2 text-green-800">🌿 Bitkisel Destek Rehberi</h1>
+      <p className="text-center text-gray-600 mb-6">Doğanın iyileştirici gücünü keşfedin</p>
+      
+      <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gradient-to-r from-green-700 to-emerald-600">
+                {tableData[0].map((header, i) => (
+                  <th key={i} className="p-3 text-left text-white font-semibold text-sm border border-green-600">
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {tableData.slice(1).map((row, i) => {
+                const isSelected = selectedPlant && selectedPlant[0] === row[0];
+                const inComparison = isInComparison(row[0]);
+                return (
+                  <tr 
+                    key={i} 
+                    onClick={() => handleRowClick(row)}
+                    className={`cursor-pointer transition-all duration-200 hover:bg-green-50 ${
+                      isSelected ? 'bg-teal-50 border-2 border-teal-400' : inComparison ? 'bg-blue-50' : ''
+                    }`}
+                  >
+                    <td className={`p-3 font-medium border border-gray-300 ${inComparison ? 'bg-cyan-100 text-cyan-900' : ''}`}>
+                      {row[0]}
+                    </td>
+                    <td className="p-3 text-center border border-gray-300">{row[1]}</td>
+                    <td className={`p-3 text-center border border-gray-300 ${getScoreColor(row[2])}`}>{row[2]}</td>
+                    <td className={`p-3 text-center border border-gray-300 ${getScoreColor(row[3])}`}>{row[3]}</td>
+                    <td className={`p-3 text-center border border-gray-300 ${getScoreColor(row[4])}`}>{row[4]}</td>
+                    <td className={`p-3 text-center border border-gray-300 ${getScoreColor(row[5])}`}>{row[5]}</td>
+                    <td className={`p-3 text-center border border-gray-300 ${getScoreColor(row[6])}`}>{row[6]}</td>
+                    <td className={`p-3 text-center border border-gray-300 ${getScoreColor(row[7])}`}>{row[7]}</td>
+                    <td className="p-3 text-center font-bold border border-gray-300 text-green-700">{row[8]}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {selectedPlantData && (
+        <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg shadow-xl p-6 mb-6 text-white">
+          <h2 className="text-3xl font-bold mb-4 text-emerald-400">{selectedPlantData.name}</h2>
+          <p className="text-sm italic text-gray-300 mb-4">{selectedPlantData.latin}</p>
+          
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-xl font-semibold mb-2 text-yellow-400">📍 Yetiştiği Yer</h3>
+              <p className="text-gray-200 mb-4">{selectedPlantData.origin}</p>
+              
+              <h3 className="text-xl font-semibold mb-2 text-green-400">✨ Faydaları</h3>
+              <p className="text-gray-200 mb-4">{selectedPlantData.benefits}</p>
+            </div>
+            
+            <div>
+              <h3 className="text-xl font-semibold mb-2 text-red-400">⚠️ Yan Etkiler & Dikkat</h3>
+              <p className="text-gray-200 mb-4">{selectedPlantData.sideEffects}</p>
+              
+              <h3 className="text-xl font-semibold mb-2 text-blue-400">💊 Kullanım Şekli</h3>
+              <p className="text-gray-200 mb-4">{selectedPlantData.usage}</p>
+              
+              <h3 className="text-xl font-semibold mb-2 text-orange-400">🪣 Dozaj Uyarısı</h3>
+              <p className="text-gray-200 mb-4">{selectedPlantData.dosage}</p>
+              
+              <h3 className="text-xl font-semibold mb-2 text-purple-400">🧪 Aktif Bileşenler</h3>
+              <p className="text-gray-200">{selectedPlantData.activeCompounds}</p>
+            </div>
+          </div>
+          
+          <button
+            onClick={() => toggleComparison(selectedPlant)}
+            className={`mt-4 px-6 py-2 rounded-lg font-semibold transition-all ${
+              isInComparison(selectedPlant[0])
+                ? 'bg-red-500 hover:bg-red-600'
+                : 'bg-blue-500 hover:bg-blue-600'
+            }`}
+          >
+            {isInComparison(selectedPlant[0]) ? '❌ Karşılaştırmadan Çıkar' : '➕ Karşılaştırmaya Ekle'}
+          </button>
+        </div>
+      )}
+
+      {comparisonList.length > 0 && (
+        <div className="bg-white rounded-lg shadow-xl p-6">
+          <h2 className="text-2xl font-bold mb-4 text-gray-800">🔬 Karşılaştırma Paneli ({comparisonList.length}/5)</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-blue-600 text-white">
+                  <th className="p-3 text-left border border-blue-500">Bitki</th>
+                  <th className="p-3 text-center border border-blue-500">Doz</th>
+                  <th className="p-3 text-center border border-blue-500">🔥 Anti-inf.</th>
+                  <th className="p-3 text-center border border-blue-500">🧠 Beyin</th>
+                  <th className="p-3 text-center border border-blue-500">🛡 Bağışıklık</th>
+                  <th className="p-3 text-center border border-blue-500">🫀 Damar</th>
+                  <th className="p-3 text-center border border-blue-500">🌬 Sindirim</th>
+                  <th className="p-3 text-center border border-blue-500">⚖️ Metab.</th>
+                  <th className="p-3 text-center border border-blue-500">⭐ Genel</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparisonList.map((plant, i) => (
+                  <tr key={i} className="hover:bg-blue-50">
+                    <td className="p-3 font-medium border border-gray-300 bg-cyan-100 text-cyan-900">{plant[0]}</td>
+                    <td className="p-3 text-center border border-gray-300">{plant[1]}</td>
+                    <td className={`p-3 text-center border border-gray-300 ${getScoreColor(plant[2])}`}>{plant[2]}</td>
+                    <td className={`p-3 text-center border border-gray-300 ${getScoreColor(plant[3])}`}>{plant[3]}</td>
+                    <td className={`p-3 text-center border border-gray-300 ${getScoreColor(plant[4])}`}>{plant[4]}</td>
+                    <td className={`p-3 text-center border border-gray-300 ${getScoreColor(plant[5])}`}>{plant[5]}</td>
+                    <td className={`p-3 text-center border border-gray-300 ${getScoreColor(plant[6])}`}>{plant[6]}</td>
+                    <td className={`p-3 text-center border border-gray-300 ${getScoreColor(plant[7])}`}>{plant[7]}</td>
+                    <td className="p-3 text-center font-bold border border-gray-300 text-green-700">{plant[8]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          <div className="mt-6 grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {comparisonList.map((plant, i) => {
+              const data = PLANT_DATA[plant[0]];
+              return (
+                <div key={i} className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border-2 border-blue-200">
+                  <h3 className="font-bold text-lg mb-2 text-blue-800">{plant[0]}</h3>
+                  <p className="text-xs text-gray-600 mb-2"><strong>Kullanım:</strong> {data.usage}</p>
+                  <p className="text-xs text-gray-600"><strong>Dikkat:</strong> {data.dosage}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+        <p className="text-sm text-yellow-800">
+          <strong>⚠️ Önemli Not:</strong> Bu bilgiler eğitim amaçlıdır. Herhangi bir bitkisel desteği kullanmadan önce mutlaka bir sağlık profesyoneli ile görüşün.
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default HerbalTable;
