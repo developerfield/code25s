@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Gelişmiş Eksen Dönüştürücü</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; padding: 20px; background-color: #eceff1; }
+        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 450px; }
+        .input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        label { display: block; font-size: 13px; color: #555; font-weight: bold; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        .scale-section { background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #007bff; margin: 20px 0; }
+        button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-forward { background: #007bff; color: white; }
+        .btn-backward { background: #28a745; color: white; }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        .result { margin-top: 20px; padding: 15px; background: #343a40; color: #fff; border-radius: 8px; }
+        .result span { color: #00d4ff; font-family: monospace; font-size: 1.1em; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h3>Eksen ve Ölçek Dönüşümü</h3>
+    
+    <div class="input-group">
+        <div>
+            <label id="lbl1">Giriş 1 (x veya kx):</label>
+            <input type="number" id="val1" value="2" step="any">
+        </div>
+        <div>
+            <label id="lbl2">Giriş 2 (y veya py):</label>
+            <input type="number" id="val2" value="0" step="any">
+        </div>
+    </div>
+
+    <div class="input-group">
+        <div>
+            <label>Doğrunun Eğimi (m):</label>
+            <input type="number" id="slopeM" value="1" step="any">
+        </div>
+        <div>
+            <label>İşlem Tipi (Ölçek için):</label>
+            <select id="scaleOp">
+                <option value="multiply">Ölçekle Çarp</option>
+                <option value="divide">Ölçekle Böl</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="scale-section">
+        <label>Ölçek Faktörü (S):</label>
+        <input type="number" id="scaleS" value="1" step="any">
+    </div>
+
+    <button class="btn-forward" onclick="donustur(true)">İleri Dönüştür (Standart -> Doğruya)</button>
+    <button class="btn-backward" onclick="donustur(false)">Geri Dönüştür (Doğrudan -> Standarta)</button>
+
+    <div class="result" id="resultArea" style="display:none;">
+        <div id="resTitle" style="margin-bottom:10px; text-decoration: underline;">Sonuçlar:</div>
+        <div id="out1"></div>
+        <div id="out2"></div>
+    </div>
+</div>
+
+<script>
+function donustur(isForward) {
+    const v1 = parseFloat(document.getElementById('val1').value);
+    const v2 = parseFloat(document.getElementById('val2').value);
+    const m = parseFloat(document.getElementById('slopeM').value);
+    const s = parseFloat(document.getElementById('scaleS').value) || 1;
+    const op = document.getElementById('scaleOp').value;
+
+    const theta = Math.atan(m);
+    let res1, res2;
+
+    if (isForward) {
+        // Standart (x,y) -> Doğruya (kx, py)
+        res1 = v1 * Math.cos(theta) + v2 * Math.sin(theta);
+        res2 = -v1 * Math.sin(theta) + v2 * Math.cos(theta);
+    } else {
+        // Doğrudan (kx, py) -> Standarta (x, y)
+        res1 = v1 * Math.cos(theta) - v2 * Math.sin(theta);
+        res2 = v1 * Math.sin(theta) + v2 * Math.cos(theta);
+    }
+
+    // Ölçek Faktörü Uygulama
+    if (op === "multiply") {
+        res1 *= s;
+        res2 *= s;
+    } else {
+        res1 /= s;
+        res2 /= s;
+    }
+
+    const area = document.getElementById('resultArea');
+    area.style.display = 'block';
+    
+    if (isForward) {
+        document.getElementById('out1').innerHTML = "kx (Yeni X): <span>" + res1.toFixed(4) + "</span>";
+        document.getElementById('out2').innerHTML = "py (Yeni Y): <span>" + res2.toFixed(4) + "</span>";
+    } else {
+        document.getElementById('out1').innerHTML = "x (Eski X): <span>" + res1.toFixed(4) + "</span>";
+        document.getElementById('out2').innerHTML = "y (Eski Y): <span>" + res2.toFixed(4) + "</span>";
+    }
+}
+</script>
+
+</body>
+</html>
