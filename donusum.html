@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Koordinat Dönüştürücü</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; padding: 20px; background-color: #f4f4f9; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 350px; }
+        h3 { color: #333; margin-top: 0; }
+        label { display: block; margin-top: 10px; font-size: 14px; color: #666; }
+        input { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; margin-top: 20px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin-top: 20px; padding: 15px; background: #e9ecef; border-radius: 4px; }
+        .result p { margin: 5px 0; font-weight: bold; color: #333; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h3>Eksen Dönüşümü</h3>
+    <label>Nokta X (Eski):</label>
+    <input type="number" id="posX" value="2">
+    
+    <label>Nokta Y (Eski):</label>
+    <input type="number" id="posY" value="0">
+    
+    <label>Doğrunun Eğimi (m):</label>
+    <input type="number" id="slopeM" value="1" step="0.1">
+
+    <button onclick="hesapla()">Koordinatları Bul</button>
+
+    <div class="result" id="resultArea" style="display:none;">
+        <p id="resKx"></p>
+        <p id="resPy"></p>
+        <small id="resAngle" style="color:#888;"></small>
+    </div>
+</div>
+
+<script>
+function hesapla() {
+    // Girdileri al
+    const x = parseFloat(document.getElementById('posX').value);
+    const y = parseFloat(document.getElementById('posY').value);
+    const m = parseFloat(document.getElementById('slopeM').value);
+
+    // Eğimi radyan cinsinden açıya çevir: theta = arctan(m)
+    const theta = Math.atan(m);
+
+    // Dönüşüm formülleri (Rotation of Axes)
+    // kx: Noktanın doğru üzerindeki izdüşüm mesafesi (C noktasının orijine uzaklığı)
+    // py: Noktanın doğruya olan dik uzaklığı (B ile C arası mesafe)
+    const kx = x * Math.cos(theta) + y * Math.sin(theta);
+    const py = -x * Math.sin(theta) + y * Math.cos(theta);
+
+    // Sonuçları göster
+    document.getElementById('resultArea').style.display = 'block';
+    document.getElementById('resKx').innerText = "kx (İzdüşüm): " + kx.toFixed(4);
+    document.getElementById('resPy').innerText = "py (Dik Uzaklık): " + py.toFixed(4);
+    document.getElementById('resAngle').innerText = "Eğim Açısı: " + (theta * 180 / Math.PI).toFixed(2) + "°";
+}
+</script>
+
+</body>
+</html>
