@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Yüksek Performanslı Matematiksel Render</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #050505; font-family: 'Segoe UI', sans-serif; }
+        canvas { display: block; touch-action: none; }
+
+        /* Sabit HUD */
+        #hud {
+            position: fixed; top: 10px; left: 10px;
+            background: rgba(0, 0, 0, 0.7); color: #00ff00;
+            padding: 10px; border-radius: 8px; font-size: 11px;
+            pointer-events: none; border: 1px solid rgba(0,255,0,0.3);
+            z-index: 100; backdrop-filter: blur(4px);
+        }
+
+        /* UI Kontrolleri */
+        .ui-panel {
+            position: fixed; top: 10px; right: 10px;
+            display: flex; flex-direction: column; gap: 10px; z-index: 101;
+        }
+
+        .btn {
+            background: rgba(40, 40, 40, 0.8); border: 1px solid rgba(255,255,255,0.2);
+            color: white; width: 45px; height: 45px; border-radius: 12px;
+            cursor: pointer; font-size: 20px; backdrop-filter: blur(5px);
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        /* Ayar Menüsü */
+        #settings {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(15, 15, 15, 0.95); padding: 25px; border-radius: 20px;
+            border: 1px solid #333; color: white; width: 85%; max-width: 380px;
+            display: none; z-index: 1000; box-shadow: 0 0 40px rgba(0,0,0,0.8);
+        }
+
+        input {
+            width: 100%; background: #222; border: 1px solid #444;
+            padding: 10px; color: #00ff00; border-radius: 8px; margin: 8px 0;
+            font-family: monospace;
+        }
+
+        .grid-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        label { font-size: 12px; color: #888; }
+    </style>
+</head>
+<body>
+
+<div id="hud">
+    <b>FPS:</b> <span id="fps">60</span><br>
+    <b>Konum:</b> (<span id="hx">0</span>, <span id="hy">0</span>)<br>
+    <b>Sonuç:</b> <span id="hv">0</span>
+</div>
+
+<div class="ui-panel">
+    <button class="btn" onclick="toggleMenu()">⚙</button>
+    <button class="btn" onclick="manualZoom(1.4)">+</button>
+    <button class="btn" onclick="manualZoom(0.7)">-</button>
+</div>
+
+<div id="settings">
+    <h3 style="margin:0 0 15px 0">Fonksiyon Düzenle</h3>
+    <label>Örnekler: abs(x+y), sqrt(x^2), sin(x)*y</label>
+    <input type="text" id="eqInput" value="abs(x) + abs(y)">
+    
+    <div class="grid-inputs">
+        <div><label>i2 (K.Kırmızı)</label><input type="number" id="i2" value="2"></div>
+        <div><label>i (Sarı)</label><input type="number" id="i" value="4"></div>
+        <div><label>h (Yeşil)</label><input type="number" id="h" value="6"></div>
+        <div><label>h2 (Mavi)</label><input type="number" id="h2" value="8"></div>
+    </div>
+    
+    <button class="btn" style="width:100%; height:auto; padding:12px; background:#007bff; border:none; margin-top:10px;" onclick="applySettings()">UYGULA</button>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', { alpha: false }); // Performans için alpha kapatıldı
+    
+    let config = { eq: "abs(x) + abs(y)", i2: 2, i: 4, h: 6, h2: 8 };
+    let view = { x: 0, y: 0, zoom: 40, isMoving: false };
+    let compiledEq = math.compile(config.eq);
+    let renderTimer;
+
+    // Renk Hafızası (Performans için önceden hesapla)
+    function getRGB(val) {
+        const { i2, i, h, h2 } = config;
+        if (val < i2 || val > h2) return [0, 0, 0];
+
+        let r, g, b, t;
+        if (val < i) { // i2 -> i (Kırmızı -> Sarı)
+            t = (val - i2) / (i - i2);
+            r = 139 + (255 - 139) * t; g = 255 * t; b = 0;
+        } else if (val < h) { // i -> h (Sarı -> Yeşil)
+            t = (val - i) / (h - i);
+            r = 255 * (1 - t); g = 255; b = 0;
+        } else { // h -> h2 (Yeşil -> Mavi)
+            t = (val - h) / (h2 - h);
+            r = 0; g = 255 * (1 - t); b = 255 * t;
+        }
+        return [r, g, b];
+    }
+
+    function render(stepSize = 1) {
+        const w = canvas.width;
+        const h = canvas.height;
+        const zoom = view.zoom;
+        const vx = view.x;
+        const vy = view.y;
+        
+        // Sadece ekrandaki pikseller üzerinde döngü kurar (Optimize)
+        for (let px = 0; px < w; px += stepSize) {
+            for (let py = 0; py < h; py += stepSize) {
+                const x = (px - w / 2) / zoom + vx;
+                const y = -(py - h / 2) / zoom + vy;
+                
+                try {
+                    const val = compiledEq.evaluate({ x, y });
+                    const [r, g, b] = getRGB(val);
+                    ctx.fillStyle = `rgb(${r},${g},${b})`;
+                    ctx.fillRect(px, py, stepSize, stepSize);
+                } catch (e) {
+                    ctx.fillStyle = "#000";
+                    ctx.fillRect(px, py, stepSize, stepSize);
+                }
+            }
+        }
+    }
+
+    // Hareket bittiğinde yüksek kaliteye geç
+    function highResRender() {
+        view.isMoving = false;
+        render(2); // Net görüntü
+    }
+
+    function startMoving() {
+        view.isMoving = true;
+        clearTimeout(renderTimer);
+        ctx.imageSmoothingEnabled = false;
+        render(8); // Hareket anında düşük çözünürlük (Yüksek FPS)
+        renderTimer = setTimeout(highResRender, 150);
+    }
+
+    // Etkileşimler (Mouse & Touch)
+    let lastPos = { x: 0, y: 0 };
+    let isDown = false;
+
+    function moveEvent(ex, ey) {
+        if (!isDown) return;
+        view.x -= (ex - lastPos.x) / view.zoom;
+        view.y += (ey - lastPos.y) / view.zoom;
+        lastPos = { x: ex, y: ey };
+        startMoving();
+    }
+
+    canvas.addEventListener('mousedown', e => { isDown = true; lastPos = { x: e.clientX, y: e.clientY }; });
+    window.addEventListener('mouseup', () => isDown = false);
+    window.addEventListener('mousemove', e => moveEvent(e.clientX, e.clientY));
+
+    // Pinch Zoom (Mobil)
+    let initialDist = 0;
+    canvas.addEventListener('touchstart', e => {
+        if (e.touches.length === 1) {
+            isDown = true;
+            lastPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        } else if (e.touches.length === 2) {
+            initialDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+        }
+    });
+
+    canvas.addEventListener('touchmove', e => {
+        if (e.touches.length === 1) {
+            moveEvent(e.touches[0].clientX, e.touches[0].clientY);
+        } else if (e.touches.length === 2) {
+            let dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+            manualZoom(dist / initialDist);
+            initialDist = dist;
+        }
+        e.preventDefault();
+    }, {passive: false});
+
+    window.addEventListener('touchend', () => isDown = false);
+
+    function manualZoom(f) {
+        view.zoom *= f;
+        startMoving();
+    }
+
+    function toggleMenu() {
+        const s = document.getElementById('settings');
+        s.style.display = s.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function applySettings() {
+        config.eq = document.getElementById('eqInput').value;
+        config.i2 = parseFloat(document.getElementById('i2').value);
+        config.i = parseFloat(document.getElementById('i').value);
+        config.h = parseFloat(document.getElementById('h').value);
+        config.h2 = parseFloat(document.getElementById('h2').value);
+        compiledEq = math.compile(config.eq);
+        toggleMenu();
+        startMoving();
+    }
+
+    // Pencere Boyutu
+    window.addEventListener('resize', () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        render(2);
+    });
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    render(2);
+
+</script>
+</body>
+</html>
