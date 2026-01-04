@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matematiksel Alan Görselleştirici</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #111; font-family: 'Segoe UI', sans-serif; }
+        canvas { display: block; cursor: crosshair; }
+
+        /* Sabit HUD (FPS Göstergesi gibi) */
+        #hud {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #0f0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            pointer-events: none;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.1);
+            z-index: 100;
+        }
+
+        /* Sağ Üst Kontrol Paneli */
+        #ui-container {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 101;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            transition: 0.3s;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .btn:hover { background: rgba(255, 255, 255, 0.4); }
+
+        /* Popup Ayar Menüsü */
+        #settings-popup {
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(15px);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            width: 300px;
+            display: none; /* Başlangıçta kapalı */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 12px; color: #aaa; margin-bottom: 5px; }
+        input {
+            width: 100%;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 8px;
+            color: white;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        .instruction { font-size: 11px; color: #777; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div id="hud">
+    X: <span id="hx">0</span> | Y: <span id="hy">0</span><br>
+    Değer: <span id="hv">0</span><br>
+    Zoom: <span id="hz">1.0</span>
+</div>
+
+<div id="ui-container">
+    <button class="btn" onclick="togglePopup()">⚙ Ayarları Aç/Kapat</button>
+    
+    <div id="settings-popup">
+        <h3 style="margin-top:0">Grafik Ayarları</h3>
+        <div class="input-group">
+            <label>Denklem f(x, y):</label>
+            <input type="text" id="equation" value="(x + y)^2" placeholder="örn: x^2 + y^2">
+        </div>
+        <div class="input-group" style="display:flex; gap:10px;">
+            <div>
+                <label>Min (i):</label>
+                <input type="number" id="minI" value="0">
+            </div>
+            <div>
+                <label>Max (h):</label>
+                <input type="number" id="maxH" value="10">
+            </div>
+        </div>
+        <div class="input-group">
+            <label>Hassasiyet (Kutu Boyutu):</label>
+            <input type="range" id="res" min="2" max="20" value="5">
+        </div>
+        <button class="btn" style="width:100%; background: #007bff;" onclick="updateRender()">Uygula</button>
+        <p class="instruction">Kaydırmak için sürükle, yakınlaştırmak için tekerleği kullan.</p>
+    </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Uygulama Durumu
+    let config = {
+        eq: "(x + y)^2",
+        i: 0,
+        h: 10,
+        res: 5
+    };
+
+    let view = {
+        x: 0,
+        y: 0,
+        zoom: 50, // Birim başına piksel
+        isDragging: false,
+        lastMouseX: 0,
+        lastMouseY: 0
+    };
+
+    let mouseWorld = { x: 0, y: 0, val: 0 };
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        render();
+    }
+
+    function togglePopup() {
+        const p = document.getElementById('settings-popup');
+        p.style.display = p.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function updateRender() {
+        config.eq = document.getElementById('equation').value;
+        config.i = parseFloat(document.getElementById('minI').value);
+        config.h = parseFloat(document.getElementById('maxH').value);
+        config.res = parseInt(document.getElementById('res').value);
+        render();
+    }
+
+    // Renk Hesaplama Fonksiyonu (Gradyan Mantığı)
+    function getColor(val) {
+        const { i, h } = config;
+        
+        if (val < i) {
+            // i'den küçükse: Kırmızılaşma
+            let intensity = Math.min(255, Math.abs(i - val) * 20);
+            return `rgb(${150 + intensity/2}, 0, 0)`;
+        } else if (val > h) {
+            // h'den büyükse: Mavileşme
+            let intensity = Math.min(255, Math.abs(val - h) * 20);
+            return `rgb(0, 0, ${150 + intensity/2})`;
+        } else {
+            // i ve h arasındaysa: Sarı (i) -> Yeşil (h)
+            // Sarı: rgb(255, 255, 0) | Yeşil: rgb(0, 255, 0)
+            let ratio = (val - i) / (h - i);
+            let r = Math.floor(255 * (1 - ratio));
+            let g = 255;
+            let b = 0;
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+    }
+
+    function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        const step = config.res; 
+        const compiledEq = math.compile(config.eq);
+
+        for (let px = 0; px < canvas.width; px += step) {
+            for (let py = 0; py < canvas.height; py += step) {
+                
+                // Pikselden Dünya Koordinatına çevir
+                let x = (px - canvas.width / 2) / view.zoom + view.x;
+                let y = -(py - canvas.height / 2) / view.zoom + view.y;
+
+                try {
+                    let val = compiledEq.evaluate({ x, y });
+                    ctx.fillStyle = getColor(val);
+                    ctx.fillRect(px, py, step, step);
+                } catch (e) {
+                    ctx.fillStyle = "#000";
+                    ctx.fillRect(px, py, step, step);
+                }
+            }
+        }
+        drawAxes();
+    }
+
+    function drawAxes() {
+        ctx.strokeStyle = "rgba(255,255,255,0.2)";
+        ctx.lineWidth = 1;
+        
+        // Merkezi çizgiler
+        let centerX = canvas.width / 2 - view.x * view.zoom;
+        let centerY = canvas.height / 2 + view.y * view.zoom;
+
+        ctx.beginPath();
+        ctx.moveTo(0, centerY); ctx.lineTo(canvas.width, centerY);
+        ctx.moveTo(centerX, 0); ctx.lineTo(centerX, canvas.height);
+        ctx.stroke();
+    }
+
+    // Etkileşimler
+    canvas.addEventListener('mousedown', (e) => {
+        view.isDragging = true;
+        view.lastMouseX = e.clientX;
+        view.lastMouseY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => view.isDragging = false);
+
+    window.addEventListener('mousemove', (e) => {
+        if (view.isDragging) {
+            view.x -= (e.clientX - view.lastMouseX) / view.zoom;
+            view.y += (e.clientY - view.lastMouseY) / view.zoom;
+            view.lastMouseX = e.clientX;
+            view.lastMouseY = e.clientY;
+            render();
+        }
+
+        // HUD güncelleme
+        mouseWorld.x = ((e.clientX - canvas.width / 2) / view.zoom + view.x).toFixed(2);
+        mouseWorld.y = (-(e.clientY - canvas.height / 2) / view.zoom + view.y).toFixed(2);
+        
+        try {
+            mouseWorld.val = math.evaluate(config.eq, {x: mouseWorld.x, y: mouseWorld.y}).toFixed(4);
+        } catch(e) { mouseWorld.val = "Hata"; }
+
+        document.getElementById('hx').innerText = mouseWorld.x;
+        document.getElementById('hy').innerText = mouseWorld.y;
+        document.getElementById('hv').innerText = mouseWorld.val;
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        let zoomAmount = e.deltaY > 0 ? 0.9 : 1.1;
+        view.zoom *= zoomAmount;
+        document.getElementById('hz').innerText = (view.zoom / 50).toFixed(2);
+        render();
+    }, { passive: false });
+
+    window.addEventListener('resize', resize);
+    
+    // Başlat
+    resize();
+</script>
+
+</body>
+</html>
