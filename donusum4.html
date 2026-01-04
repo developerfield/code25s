@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Mobil Uyumlu Gelişmiş Grafik</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: sans-serif; }
+        canvas { display: block; touch-action: none; }
+
+        /* HUD Göstergesi */
+        #hud {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #0f0;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 12px;
+            pointer-events: none;
+            border: 1px solid rgba(255,255,255,0.2);
+            z-index: 100;
+        }
+
+        /* Kontrol Paneli */
+        #ui-container {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 101;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px;
+            cursor: pointer;
+            border-radius: 50%;
+            width: 45px; height: 45px;
+            font-weight: bold;
+            backdrop-filter: blur(5px);
+            margin-bottom: 10px;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        #settings-popup {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(20, 20, 20, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            width: 85%; max-width: 350px;
+            display: none;
+            z-index: 102;
+        }
+
+        .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        label { font-size: 11px; color: #aaa; }
+        input {
+            width: 100%; background: #333; border: 1px solid #555;
+            padding: 8px; color: white; border-radius: 5px; box-sizing: border-box;
+        }
+
+        .zoom-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+</head>
+<body>
+
+<div id="hud">
+    X: <span id="hx">0</span> | Y: <span id="hy">0</span><br>
+    V: <span id="hv">0</span> | Z: <span id="hz">1.0</span>
+</div>
+
+<div id="ui-container">
+    <button class="btn" onclick="togglePopup()">⚙</button>
+</div>
+
+<div class="zoom-controls">
+    <button class="btn" onclick="manualZoom(1.2)">+</button>
+    <button class="btn" onclick="manualZoom(0.8)">-</button>
+</div>
+
+<div id="settings-popup">
+    <h4 style="margin:0 0 15px 0">Grafik Ayarları</h4>
+    <label>Denklem f(x, y):</label>
+    <input type="text" id="equation" value="(x + y)^2" style="margin-bottom:15px">
+    
+    <div class="input-row">
+        <div><label>i2 (Koyu Kırmızı)</label><input type="number" id="i2" value="-5"></div>
+        <div><label>i (Sarı)</label><input type="number" id="i" value="0"></div>
+    </div>
+    <div class="input-row">
+        <div><label>h (Yeşil)</label><input type="number" id="h" value="10"></div>
+        <div><label>h2 (Mavi)</label><input type="number" id="h2" value="20"></div>
+    </div>
+    <label>Hassasiyet (Düşük sayı = Daha net):</label>
+    <input type="range" id="res" min="2" max="15" value="6">
+    
+    <button class="btn" style="width:100%; border-radius:8px; margin-top:15px; background:#28a745" onclick="updateRender()">Uygula</button>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    let config = { eq: "(x + y)^2", i2: -5, i: 0, h: 10, h2: 20, res: 6 };
+    let view = { x: 0, y: 0, zoom: 40, isDragging: false, lastDist: 0 };
+    let lastPos = { x: 0, y: 0 };
+
+    function togglePopup() {
+        const p = document.getElementById('settings-popup');
+        p.style.display = p.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function updateRender() {
+        config.eq = document.getElementById('equation').value;
+        config.i2 = parseFloat(document.getElementById('i2').value);
+        config.i = parseFloat(document.getElementById('i').value);
+        config.h = parseFloat(document.getElementById('h').value);
+        config.h2 = parseFloat(document.getElementById('h2').value);
+        config.res = parseInt(document.getElementById('res').value);
+        togglePopup();
+        render();
+    }
+
+    // Renk Karıştırma (LERP)
+    function lerpColor(c1, c2, t) {
+        return {
+            r: Math.floor(c1.r + (c2.r - c1.r) * t),
+            g: Math.floor(c1.g + (c2.g - c1.g) * t),
+            b: Math.floor(c1.b + (c2.b - c1.b) * t)
+        };
+    }
+
+    function getPixelColor(val) {
+        const { i2, i, h, h2 } = config;
+        if (val < i2 || val > h2) return "rgb(0,0,0)";
+
+        let c1, c2, t;
+        if (val < i) {
+            c1 = {r: 139, g: 0, b: 0}; // Koyu Kırmızı
+            c2 = {r: 255, g: 255, b: 0}; // Sarı
+            t = (val - i2) / (i - i2);
+        } else if (val < h) {
+            c1 = {r: 255, g: 255, b: 0}; // Sarı
+            c2 = {r: 0, g: 255, b: 0};   // Yeşil
+            t = (val - i) / (h - i);
+        } else {
+            c1 = {r: 0, g: 255, b: 0};   // Yeşil
+            c2 = {r: 0, g: 0, b: 255};   // Mavi
+            t = (val - h) / (h2 - h);
+        }
+        const res = lerpColor(c1, c2, t);
+        return `rgb(${res.r},${res.g},${res.b})`;
+    }
+
+    function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const compiled = math.compile(config.eq);
+        const step = config.res;
+
+        for (let px = 0; px < canvas.width; px += step) {
+            for (let py = 0; py < canvas.height; py += step) {
+                let x = (px - canvas.width / 2) / view.zoom + view.x;
+                let y = -(py - canvas.height / 2) / view.zoom + view.y;
+                try {
+                    let val = compiled.evaluate({ x, y });
+                    ctx.fillStyle = getPixelColor(val);
+                    ctx.fillRect(px, py, step, step);
+                } catch (e) {}
+            }
+        }
+        drawGrid();
+    }
+
+    function drawGrid() {
+        ctx.strokeStyle = "rgba(255,255,255,0.15)";
+        let cx = canvas.width / 2 - view.x * view.zoom;
+        let cy = canvas.height / 2 + view.y * view.zoom;
+        ctx.beginPath();
+        ctx.moveTo(0, cy); ctx.lineTo(canvas.width, cy);
+        ctx.moveTo(cx, 0); ctx.lineTo(cx, canvas.height);
+        ctx.stroke();
+    }
+
+    // Dokunmatik ve Mouse Olayları
+    function handleStart(x, y) { view.isDragging = true; lastPos = { x, y }; }
+    function handleMove(x, y) {
+        if (!view.isDragging) return;
+        view.x -= (x - lastPos.x) / view.zoom;
+        view.y += (y - lastPos.y) / view.zoom;
+        lastPos = { x, y };
+        render();
+    }
+
+    canvas.addEventListener('mousedown', e => handleStart(e.clientX, e.clientY));
+    window.addEventListener('mousemove', e => {
+        handleMove(e.clientX, e.clientY);
+        // HUD Bilgi
+        let mx = ((e.clientX - canvas.width / 2) / view.zoom + view.x).toFixed(2);
+        let my = (-(e.clientY - canvas.height / 2) / view.zoom + view.y).toFixed(2);
+        document.getElementById('hx').innerText = mx;
+        document.getElementById('hy').innerText = my;
+    });
+    window.addEventListener('mouseup', () => view.isDragging = false);
+
+    // Zoom
+    function manualZoom(factor) {
+        view.zoom *= factor;
+        document.getElementById('hz').innerText = (view.zoom / 40).toFixed(1);
+        render();
+    }
+    canvas.addEventListener('wheel', e => { manualZoom(e.deltaY > 0 ? 0.9 : 1.1); e.preventDefault(); }, {passive:false});
+
+    // Mobil Dokunmatik (Pinch Zoom & Pan)
+    canvas.addEventListener('touchstart', e => {
+        if (e.touches.length === 1) handleStart(e.touches[0].clientX, e.touches[0].clientY);
+        else if (e.touches.length === 2) view.lastDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+    });
+
+    canvas.addEventListener('touchmove', e => {
+        if (e.touches.length === 1) handleMove(e.touches[0].clientX, e.touches[0].clientY);
+        else if (e.touches.length === 2) {
+            let dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+            manualZoom(dist / view.lastDist);
+            view.lastDist = dist;
+        }
+        e.preventDefault();
+    }, {passive:false});
+
+    window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; render(); });
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+    render();
+</script>
+</body>
+</html>
