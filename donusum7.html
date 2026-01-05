@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Gelişmiş Alan Görselleştirici V4</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #050505; font-family: 'Segoe UI', sans-serif; color: white; }
+        canvas { display: block; touch-action: none; }
+
+        /* HUD Paneli */
+        #hud {
+            position: fixed; top: 15px; left: 15px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 12px; border-radius: 10px;
+            font-family: 'Courier New', monospace; font-size: 13px;
+            border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(8px); pointer-events: none; z-index: 100;
+        }
+        #hud span { color: #00ffcc; font-weight: bold; }
+        #hud .mode-indicator { color: #ffcc00; font-size: 10px; text-transform: uppercase; margin-bottom: 5px; display: block; letter-spacing: 1px; }
+        #hud .equation-display { color: #fff; border-bottom: 1px solid #444; padding-bottom: 5px; margin-bottom: 5px; font-style: italic; display: block; }
+
+        /* Sağ Kontrol Paneli */
+        .ui-panel {
+            position: fixed; top: 15px; right: 15px;
+            display: flex; flex-direction: column; gap: 10px; z-index: 101;
+        }
+
+        .btn {
+            background: rgba(40, 40, 40, 0.85); border: 1px solid rgba(255,255,255,0.25);
+            color: white; width: 50px; height: 50px; border-radius: 12px;
+            cursor: pointer; font-size: 22px; backdrop-filter: blur(5px);
+            display: flex; align-items: center; justify-content: center;
+            transition: 0.2s;
+        }
+        .btn:active { transform: scale(0.9); }
+        .btn.active { background: #007bff; border-color: #fff; box-shadow: 0 0 15px rgba(0,123,255,0.4); }
+        .btn.locked { background: #dc3545; border-color: #fff; }
+
+        /* Ayar Menüsü */
+        #settings {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(15, 15, 15, 0.98); padding: 25px; border-radius: 20px;
+            border: 1px solid #333; width: 90%; max-width: 400px;
+            display: none; z-index: 1000; box-shadow: 0 20px 50px rgba(0,0,0,1);
+            max-height: 85vh; overflow-y: auto;
+        }
+
+        label { font-size: 11px; color: #888; display: block; margin-top: 10px; }
+        input {
+            width: 100%; background: #222; border: 1px solid #444;
+            padding: 10px; color: #0f0; border-radius: 8px; margin: 5px 0;
+            font-family: monospace; box-sizing: border-box;
+        }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .apply-btn {
+            width: 100%; background: #28a745; color: white; border: none;
+            padding: 15px; border-radius: 10px; font-weight: bold;
+            margin-top: 20px; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div id="hud">
+    <span class="mode-indicator" id="modeTxt">NAVİGASYON</span>
+    <span class="equation-display" id="eqDisplay">f(x,y) = ...</span>
+    <b>FPS:</b> <span id="fpsDisplay">60</span><br>
+    <b>Orijin:</b> (<span id="hx">0.00</span>, <span id="hy">0.00</span>)
+    <div id="targetStats" style="display:none; border-top: 1px solid #444; margin-top: 5px; padding-top: 5px;">
+        <b>İmleç X:</b> <span id="tx">0.00</span><br>
+        <b>İmleç Y:</b> <span id="ty">0.00</span><br>
+        <b>Değer:</b> <span id="tv">0.00</span>
+    </div>
+</div>
+
+<div class="ui-panel">
+    <button class="btn" onclick="toggleMenu()">⚙</button>
+    <button class="btn" onclick="manualZoom(1.4)">+</button>
+    <button class="btn" onclick="manualZoom(0.7)">-</button>
+    <button class="btn" id="targetBtn" onclick="toggleTargetMode()" title="Konum Seçme">🎯</button>
+    <button class="btn" id="masterLockBtn" onclick="toggleMasterLock()" title="Tam Kilit">🔒</button>
+</div>
+
+<div id="settings">
+    <h3 style="margin:0">Ayarlar</h3>
+    
+    <label>Denklem f(x, y):</label>
+    <input type="text" id="eqInput" value="abs(x) + abs(y)">
+
+    <div class="grid-2">
+        <div><label>i2 (Kırmızı)</label><input type="number" id="i2" value="2"></div>
+        <div><label>i (Sarı)</label><input type="number" id="i" value="4"></div>
+        <div><label>h (Yeşil)</label><input type="number" id="h" value="6"></div>
+        <div><label>h2 (Mavi)</label><input type="number" id="h2" value="8"></div>
+    </div>
+    <label>h3 (Mor)</label><input type="number" id="h3" value="10">
+
+    <div style="border-top:1px solid #333; margin-top:15px">
+        <label><input type="checkbox" id="boxEnable"> Kutu Çerçevesi</label>
+        <div class="grid-2">
+            <div><label>x1</label><input type="number" id="bx1" value="-2"></div>
+            <div><label>x2</label><input type="number" id="bx2" value="2"></div>
+            <div><label>y1</label><input type="number" id="by1" value="-2"></div>
+            <div><label>y2</label><input type="number" id="by2" value="2"></div>
+        </div>
+    </div>
+    
+    <button class="apply-btn" onclick="applySettings()">UYGULA</button>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+    
+    let config = { 
+        eq: "abs(x) + abs(y)", i2: 2, i: 4, h: 6, h2: 8, h3: 10,
+        box: { enabled: false, x1: -2, x2: 2, y1: -2, y2: 2 }
+    };
+    
+    let view = { 
+        x: 0, y: 0, zoom: 40, 
+        isMoving: false, 
+        isTargetMode: false, 
+        isMasterLocked: false,
+        target: { x: 0, y: 0 } 
+    };
+
+    let compiledEq = math.compile(config.eq);
+    let renderTimer;
+    let lastFrameTime = performance.now();
+
+    function interpolateColor(c1, c2, t) {
+        return [Math.floor(c1[0]+(c2[0]-c1[0])*t), Math.floor(c1[1]+(c2[1]-c1[1])*t), Math.floor(c1[2]+(c2[2]-c1[2])*t)];
+    }
+
+    function getRGB(val) {
+        const { i2, i, h, h2, h3 } = config;
+        if (val < i2 || val > h3) return [0, 0, 0];
+        const colors = { r:[130,0,0], y:[255,255,0], g:[0,255,0], b:[0,0,255], p:[150,0,255] };
+        if (val < i) return interpolateColor(colors.r, colors.y, (val-i2)/(i-i2));
+        if (val < h) return interpolateColor(colors.y, colors.g, (val-i)/(h-i));
+        if (val < h2) return interpolateColor(colors.g, colors.b, (val-h)/(h2-h));
+        return interpolateColor(colors.b, colors.p, (val-h2)/(h3-h2));
+    }
+
+    function render(step = 2) {
+        const w = canvas.width, h = canvas.height, z = view.zoom;
+        for (let px = 0; px < w; px += step) {
+            for (let py = 0; py < h; py += step) {
+                const wx = (px - w/2)/z + view.x, wy = -(py - h/2)/z + view.y;
+                try {
+                    const val = compiledEq.evaluate({ x: wx, y: wy });
+                    const [r,g,b] = getRGB(val);
+                    ctx.fillStyle = `rgb(${r},${g},${b})`;
+                    ctx.fillRect(px, py, step, step);
+                } catch(e) { ctx.fillStyle="#000"; ctx.fillRect(px, py, step, step); }
+            }
+        }
+        drawUIElements();
+        updateHUD();
+    }
+
+    function drawUIElements() {
+        const w = canvas.width, h = canvas.height, z = view.zoom;
+        if (config.box.enabled) {
+            ctx.strokeStyle = "white"; ctx.lineWidth = 2;
+            const x = (config.box.x1-view.x)*z+w/2, y = -(config.box.y1-view.y)*z+h/2;
+            ctx.strokeRect(x, y, (config.box.x2-config.box.x1)*z, -(config.box.y2-config.box.y1)*z);
+        }
+        if (view.isTargetMode || view.isMasterLocked) {
+            const tx = (view.target.x-view.x)*z+w/2, ty = -(view.target.y-view.y)*z+h/2;
+            ctx.beginPath(); ctx.arc(tx, ty, 8, 0, 7); ctx.fillStyle="white"; ctx.fill();
+            ctx.strokeStyle="black"; ctx.lineWidth=2; ctx.stroke();
+        }
+    }
+
+    function updateHUD() {
+        const now = performance.now();
+        document.getElementById('fpsDisplay').innerText = Math.round(1000/(now-lastFrameTime));
+        lastFrameTime = now;
+        document.getElementById('hx').innerText = view.x.toFixed(2);
+        document.getElementById('hy').innerText = view.y.toFixed(2);
+        document.getElementById('eqDisplay').innerText = "f(x,y) = " + config.eq;
+        
+        if (view.isTargetMode || view.isMasterLocked) {
+            try {
+                const val = compiledEq.evaluate({ x: view.target.x, y: view.target.y });
+                document.getElementById('tx').innerText = view.target.x.toFixed(2);
+                document.getElementById('ty').innerText = view.target.y.toFixed(2);
+                document.getElementById('tv').innerText = typeof val === 'number' ? val.toFixed(4) : "N/A";
+            } catch(e){}
+        }
+    }
+
+    function startMoving() {
+        if (view.isMasterLocked) return;
+        view.isMoving = true; clearTimeout(renderTimer);
+        render(10); renderTimer = setTimeout(() => { view.isMoving=false; render(2); }, 150);
+    }
+
+    function toggleTargetMode() {
+        if (view.isMasterLocked) return;
+        view.isTargetMode = !view.isTargetMode;
+        document.getElementById('targetBtn').classList.toggle('active', view.isTargetMode);
+        document.getElementById('targetStats').style.display = view.isTargetMode ? 'block' : 'none';
+        document.getElementById('modeTxt').innerText = view.isTargetMode ? "KONUM SEÇME" : "NAVİGASYON";
+        if (view.isTargetMode) { view.target.x = view.x; view.target.y = view.y; }
+        render(2);
+    }
+
+    function toggleMasterLock() {
+        view.isMasterLocked = !view.isMasterLocked;
+        const btn = document.getElementById('masterLockBtn');
+        btn.classList.toggle('locked', view.isMasterLocked);
+        btn.innerText = view.isMasterLocked ? "🔓" : "🔒";
+        document.getElementById('modeTxt').innerText = view.isMasterLocked ? "TAM KİLİT" : (view.isTargetMode ? "KONUM SEÇME" : "NAVİGASYON");
+        render(2);
+    }
+
+    let isDown = false, lastMouse = { x:0, y:0 };
+    function handleInput(ex, ey) {
+        if (view.isMasterLocked || !isDown) return;
+        const w = canvas.width, h = canvas.height, z = view.zoom;
+        if (view.isTargetMode) {
+            view.target.x = (ex - w/2)/z + view.x;
+            view.target.y = -(ey - h/2)/z + view.y;
+            render(2);
+        } else {
+            view.x -= (ex - lastMouse.x)/z; view.y += (ey - lastMouse.y)/z;
+            lastMouse = { x:ex, y:ey }; startMoving();
+        }
+    }
+
+    canvas.addEventListener('mousedown', e => { isDown=true; lastMouse={x:e.clientX, y:e.clientY}; handleInput(e.clientX, e.clientY); });
+    window.addEventListener('mouseup', () => isDown=false);
+    window.addEventListener('mousemove', e => handleInput(e.clientX, e.clientY));
+
+    canvas.addEventListener('touchstart', e => {
+        isDown=true; lastMouse={x:e.touches[0].clientX, y:e.touches[0].clientY};
+        if (e.touches.length === 2 && !view.isTargetMode && !view.isMasterLocked) initialDist = Math.hypot(e.touches[0].pageX-e.touches[1].pageX, e.touches[0].pageY-e.touches[1].pageY);
+    });
+    canvas.addEventListener('touchmove', e => {
+        if (e.touches.length === 1) handleInput(e.touches[0].clientX, e.touches[0].clientY);
+        e.preventDefault();
+    }, {passive:false});
+    window.addEventListener('touchend', () => isDown=false);
+
+    function manualZoom(f) { if (!view.isMasterLocked && !view.isTargetMode) { view.zoom *= f; startMoving(); } }
+    canvas.addEventListener('wheel', e => { manualZoom(e.deltaY > 0 ? 0.8 : 1.25); e.preventDefault(); }, {passive:false});
+
+    function toggleMenu() { const s = document.getElementById('settings'); s.style.display = s.style.display==='block' ? 'none' : 'block'; }
+    function applySettings() {
+        try {
+            config.eq = document.getElementById('eqInput').value; compiledEq = math.compile(config.eq);
+            config.i2 = parseFloat(document.getElementById('i2').value); config.i = parseFloat(document.getElementById('i').value);
+            config.h = parseFloat(document.getElementById('h').value); config.h2 = parseFloat(document.getElementById('h2').value);
+            config.h3 = parseFloat(document.getElementById('h3').value);
+            config.box.enabled = document.getElementById('boxEnable').checked;
+            config.box.x1 = parseFloat(document.getElementById('bx1').value); config.box.x2 = parseFloat(document.getElementById('bx2').value);
+            config.box.y1 = parseFloat(document.getElementById('by1').value); config.box.y2 = parseFloat(document.getElementById('by2').value);
+            toggleMenu(); render(2);
+        } catch(e) { alert("Hata: " + e.message); }
+    }
+
+    window.addEventListener('resize', () => { canvas.width=window.innerWidth; canvas.height=window.innerHeight; render(2); });
+    canvas.width=window.innerWidth; canvas.height=window.innerHeight; render(2);
+</script>
+</body>
+</html>
+
