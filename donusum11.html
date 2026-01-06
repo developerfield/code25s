@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Gelişmiş Alan Görselleştirici V13</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; color: white; }
+        canvas { display: block; touch-action: none; }
+
+        /* HUD - Şeffaf ve Tıklanabilir */
+        #hud {
+            position: fixed; top: 15px; left: 15px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 12px; border-radius: 10px;
+            font-family: 'Courier New', monospace; font-size: 13px;
+            border: 1px solid rgba(255,255,255,0.15);
+            backdrop-filter: blur(5px); z-index: 100;
+            max-width: 250px; cursor: pointer;
+            transition: background 0.3s;
+        }
+        #hud:hover { background: rgba(30, 30, 30, 0.8); }
+        #hud span { color: #00ffcc; font-weight: bold; }
+        #hud .func-def { color: #ffcc00; font-size: 11px; display: block; margin-bottom: 2px; }
+        #hud .equation-display { 
+            color: #fff; border-bottom: 1px solid #444; padding-bottom: 5px; margin-bottom: 5px; 
+            font-style: italic; display: block; word-break: break-all; font-size: 12px;
+        }
+
+        /* Spectator (Göz) Butonu */
+        #spectatorBtn {
+            position: fixed; top: 165px; left: 15px;
+            width: 35px; height: 35px; border-radius: 50%;
+            background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2);
+            color: white; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 102; font-size: 18px;
+        }
+
+        .ui-panel {
+            position: fixed; top: 15px; right: 15px;
+            display: flex; flex-direction: column; gap: 10px; z-index: 101;
+            align-items: center;
+        }
+
+        .btn {
+            background: rgba(40, 40, 40, 0.85); border: 1px solid rgba(255,255,255,0.25);
+            color: white; width: 50px; height: 50px; border-radius: 12px;
+            cursor: pointer; font-size: 20px; backdrop-filter: blur(5px);
+            display: flex; align-items: center; justify-content: center;
+            transition: 0.2s; font-weight: bold;
+        }
+        .btn.active { background: #007bff; border-color: #fff; }
+        .btn.locked { background: #dc3545; border-color: #fff; }
+
+        /* Dinamik Uzayan Slider */
+        .s-slider-container {
+            height: 45vh; width: 50px;
+            background: rgba(40, 40, 40, 0.85);
+            border-radius: 12px; border: 1px solid rgba(255,255,255,0.25);
+            display: flex; flex-direction: column; align-items: center;
+            padding: 15px 0; gap: 5px;
+        }
+        .s-slider {
+            -webkit-appearance: none; width: calc(45vh - 40px); height: 8px;
+            background: #222; border-radius: 5px; transform: rotate(-90deg);
+            margin-top: calc(22.5vh - 20px); cursor: pointer;
+        }
+        .s-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 25px; height: 25px;
+            background: #00ffcc; border-radius: 50%; cursor: pointer; border: 2px solid white;
+        }
+
+        #settings, #s-config-popup, #summary-popup {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(10, 10, 10, 0.98); padding: 20px; border-radius: 20px;
+            border: 1px solid #444; width: 90%; max-width: 480px;
+            display: none; z-index: 1000; box-shadow: 0 20px 60px rgba(0,0,0,1);
+            max-height: 85vh; overflow-y: auto;
+        }
+
+        /* Summary Styles */
+        #summary-content { font-family: monospace; font-size: 11px; color: #ddd; line-height: 1.4; }
+        .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        #summary-canvas { width: 100%; height: 200px; background: #000; margin-top: 15px; border: 1px solid #333; border-radius: 10px; }
+
+        .left-bottom-btn { position: fixed; bottom: 15px; left: 15px; z-index: 101; }
+        .right-bottom-btn { position: fixed; bottom: 15px; right: 15px; z-index: 101; display:flex; flex-direction:column; align-items:flex-end; gap:5px; }
+
+        #var-menu {
+            display: none; background: rgba(30,30,30,0.95); border: 1px solid #555;
+            border-radius: 10px; padding: 5px; margin-bottom: 5px;
+        }
+        #var-menu button {
+            display: block; width: 45px; height: 45px; margin: 4px;
+            background: #222; border: 1px solid #444; color: white; border-radius: 8px; cursor: pointer;
+        }
+
+        .param-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .param-row input[type="number"] { flex: 1; background: #222; border: 1px solid #444; color: #0f0; padding: 8px; border-radius: 5px; }
+        .param-row input[type="checkbox"] { width: 22px; height: 22px; cursor: pointer; }
+        label { font-size: 12px; color: #aaa; min-width: 90px; }
+
+        .var-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 15px; background: #111; padding: 10px; border-radius: 8px;}
+        .var-col { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .section-title { margin:15px 0 5px 0; color:#00ffcc; border-top:1px solid #333; padding-top:10px; font-size:14px; }
+        
+        input[type="text"] { width: 100%; background: #222; border: 1px solid #444; padding: 10px; color: #fff; border-radius: 8px; margin: 5px 0; }
+        .apply-btn { width: 100%; background: #28a745; color: white; border: none; padding: 15px; border-radius: 10px; font-weight: bold; margin-top: 15px; cursor: pointer; }
+        select { background: #222; color: #fff; border: 1px solid #444; padding: 8px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+<div id="hud" onclick="showSummary()">
+    <span class="func-def">f(x, y, s, p, d, f)</span>
+    <span class="equation-display" id="eqDisplay">...</span>
+    <div style="margin-top:5px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">
+        X: <span id="curX">0.0</span> Y: <span id="curY">0.0</span><br>
+        Val: <span id="curVal" style="color:#ff0055; font-size:14px;">0.000</span>
+    </div>
+    <div style="font-size: 10px; margin-top: 5px; color: #aaa;">
+        S:<span id="valS">1.0</span> P:<span id="valP">1.0</span> D:<span id="valD">1.0</span> F:<span id="valF">1.0</span>
+    </div>
+</div>
+
+<button id="spectatorBtn" onclick="toggleSpectator()">👁️</button>
+
+<div class="ui-panel ui-hideable">
+    <button class="btn" onclick="toggleMenu()">⚙</button>
+    <button class="btn" onclick="manualZoom(1.4)">+</button>
+    <button class="btn" onclick="manualZoom(0.7)">-</button>
+    <button class="btn" id="targetBtn" onclick="toggleTargetMode()">🎯</button>
+    <button class="btn" id="masterLockBtn" onclick="toggleMasterLock()">🔒</button>
+    <div class="s-slider-container">
+        <span style="font-size: 10px; color: #888;">MAX</span>
+        <input type="range" id="mainSlider" class="s-slider" min="0" max="100" value="10" step="1" oninput="handleSliderChange(this.value)">
+        <span style="font-size: 10px; color: #888;">MIN</span>
+    </div>
+</div>
+
+<div class="left-bottom-btn ui-hideable">
+    <button class="btn" id="cfgBtn" onclick="toggleSConfig()">S Ayar</button>
+</div>
+
+<div class="right-bottom-btn ui-hideable">
+    <div id="var-menu">
+        <button onclick="selectVariable('s')">S</button>
+        <button onclick="selectVariable('p')">P</button>
+        <button onclick="selectVariable('d')">D</button>
+        <button onclick="selectVariable('f')">F</button>
+    </div>
+    <button class="btn" id="letterBtn" onclick="toggleVarMenu()" style="color:#00ffcc; border-color:#00ffcc">S</button>
+</div>
+
+<!-- SUMMARY POPUP -->
+<div id="summary-popup">
+    <h3 style="margin:0 0 15px 0; border-bottom:1px solid #444; color:#00ffcc">Sistem Özeti</h3>
+    <div id="summary-content"></div>
+    <canvas id="summary-canvas" width="400" height="400"></canvas>
+    <button class="apply-btn" onclick="closePopup('summary-popup')">KAPAT</button>
+</div>
+
+<!-- VARIABLE CONFIG POPUP -->
+<div id="s-config-popup">
+    <h3 style="margin:0 0 10px 0; border-bottom:1px solid #333;">Değişken Yönetimi</h3>
+    <div class="var-grid">
+        <div class="var-col"><label>S</label><input type="checkbox" id="en_s" onchange="updateVarEnables()"></div>
+        <div class="var-col"><label>P</label><input type="checkbox" id="en_p" onchange="updateVarEnables()"></div>
+        <div class="var-col"><label>D</label><input type="checkbox" id="en_d" onchange="updateVarEnables()"></div>
+        <div class="var-col"><label>F</label><input type="checkbox" id="en_f" onchange="updateVarEnables()"></div>
+    </div>
+    <div class="section-title">Ayar: <span id="cfgTitle">S</span></div>
+    <div class="param-row"><label>Maksimum:</label><input type="number" id="vMax" value="10" step="0.1"></div>
+    <div class="param-row"><label>Sabit Değer:</label><input type="number" id="vCurrent" step="0.1"></div>
+    <div class="param-row"><label>Minimum:</label><input type="number" id="vMin" value="0" step="0.1"></div>
+    <div class="param-row"><label>Adım (Step):</label><input type="number" id="vStep" value="0.1" step="0.001"></div>
+    <button class="apply-btn" onclick="applyVarConfig()">KAYDET</button>
+</div>
+
+<!-- MAIN SETTINGS -->
+<div id="settings">
+    <h3 style="margin:0 0 10px 0; border-bottom:1px solid #333;">Görsel Ayarlar</h3>
+    <label>Denklem f(x, y, s, p, d, f):</label>
+    <input type="text" id="eqInput" value="sin(x*s) * cos(y*p)">
+    <div id="colorParams">
+        <div class="param-row"><input type="checkbox" id="en_i3"><label>i3 (Siyah)</label><input type="number" id="i3" value="-1"></div>
+        <div class="param-row"><input type="checkbox" id="en_i2" checked><label>i2 (K.Kırmızı)</label><input type="number" id="i2" value="0"></div>
+        <div class="param-row"><input type="checkbox" id="en_i1" checked><label>i1 (Sarı)</label><input type="number" id="i1" value="0.5"></div>
+        <div class="param-row"><input type="checkbox" id="en_h0" checked><label>h0 (Yeşil)</label><input type="number" id="h0" value="1"></div>
+        <div class="param-row"><input type="checkbox" id="en_h1"><label>h1 (Mavi)</label><input type="number" id="h1" value="1.5"></div>
+        <div class="param-row"><input type="checkbox" id="en_h2"><label>h2 (Mor)</label><input type="number" id="h2" value="2"></div>
+        <div class="param-row"><input type="checkbox" id="en_h3"><label>h3 (Siyah)</label><input type="number" id="h3" value="2.5"></div>
+    </div>
+    <div class="section-title">Maskeleme</div>
+    <div class="param-row">
+        <input type="checkbox" id="boxEnable"><label>Aktif</label>
+        <select id="maskType"><option value="rect">Kare</option><option value="circle">Daire</option><option value="diamond">Elmas</option></select>
+        <select id="maskStyle"><option value="dashed">Kesikli</option><option value="solid">Düz</option><option value="grid">Izgara</option><option value="blackout">Karart</option></select>
+    </div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;"><input type="number" id="bx1" value="-3"><input type="number" id="bx2" value="3"><input type="number" id="by1" value="-3"><input type="number" id="by2" value="3"></div>
+    <button class="apply-btn" onclick="applySettings()">UYGULA</button>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+    
+    let activeLetter = 's';
+    const letters = ['s', 'p', 'd', 'f'];
+    let isSpectator = false;
+
+    let config = { 
+        eq: "sin(x*s) * cos(y*p)", 
+        colorOrigin: { x: 0, y: 0 },
+        vars: {
+            s: { val: 1.0, min: 0, max: 10, step: 0.1, enabled: true },
+            p: { val: 1.0, min: 0, max: 10, step: 0.1, enabled: true },
+            d: { val: 1.0, min: 0, max: 10, step: 0.1, enabled: true },
+            f: { val: 1.0, min: 0, max: 10, step: 0.1, enabled: true }
+        },
+        params: {
+            i3: { val: -1, en: false, color: [0, 0, 0] },
+            i2: { val: 0,  en: true,  color: [130, 0, 0] },
+            i1: { val: 0.5, en: true,  color: [255, 255, 0] },
+            h0: { val: 1,  en: true,  color: [0, 255, 0] },
+            h1: { val: 1.5, en: false, color: [0, 0, 255] },
+            h2: { val: 2,  en: false, color: [150, 0, 255] },
+            h3: { val: 2.5, en: false, color: [0, 0, 0] }
+        },
+        box: { enabled: false, type: 'rect', style: 'grid', x1: -3, x2: 3, y1: -3, y2: 3 },
+        fixedTarget: { enabled: false, x: 0, y: 0 }
+    };
+    
+    let view = { x: 0, y: 0, zoom: 40, isMoving: false, isTargetMode: false, isMasterLocked: false, target: { x: 0, y: 0 } };
+    let compiledEq = math.compile(config.eq);
+    let renderTimer, lastFrameTime = performance.now();
+
+    function interpolate(c1, c2, t) {
+        return [Math.floor(c1[0]+(c2[0]-c1[0])*t), Math.floor(c1[1]+(c2[1]-c1[1])*t), Math.floor(c1[2]+(c2[2]-c1[2])*t)];
+    }
+
+    function getRGB(val) {
+        const p = config.params;
+        const keys = ['i3', 'i2', 'i1', 'h0', 'h1', 'h2', 'h3'];
+        for (let j = 0; j < keys.length - 1; j++) {
+            const k1 = keys[j], k2 = keys[j+1];
+            if (p[k1].en && p[k2].en) {
+                if (val >= p[k1].val && val <= p[k2].val) {
+                    const t = (val - p[k1].val) / (p[k2].val - p[k1].val);
+                    return interpolate(p[k1].color, p[k2].color, t);
+                }
+            }
+        }
+        return [0, 0, 0];
+    }
+
+    function render(step = 2) {
+        const w = canvas.width, h = canvas.height, z = view.zoom;
+        const scope = { s: config.vars.s.val, p: config.vars.p.val, d: config.vars.d.val, f: config.vars.f.val };
+        const b = config.box;
+
+        for (let px = 0; px < w; px += step) {
+            for (let py = 0; py < h; py += step) {
+                const wx = (px - w / 2) / z + view.x;
+                const wy = -(py - h / 2) / z + view.y;
+
+                if (b.enabled && b.style === 'blackout') {
+                    let inside = false;
+                    if (b.type === 'rect') { if (wx >= b.x1 && wx <= b.x2 && wy >= b.y1 && wy <= b.y2) inside = true; }
+                    else if (b.type === 'circle') { if (Math.hypot(wx, wy) <= Math.abs(b.x1)) inside = true; }
+                    else if (b.type === 'diamond') { if (Math.abs(wx) + Math.abs(wy) <= Math.abs(b.x1)) inside = true; }
+                    if (!inside) { ctx.fillStyle = "#000"; ctx.fillRect(px, py, step, step); continue; }
+                }
+
+                try {
+                    scope.x = wx - config.colorOrigin.x; scope.y = wy - config.colorOrigin.y;
+                    const val = compiledEq.evaluate(scope);
+                    const [r, g, bc] = getRGB(val);
+                    ctx.fillStyle = `rgb(${r},${g},${bc})`;
+                    ctx.fillRect(px, py, step, step);
+                } catch(e) { ctx.fillStyle = "#000"; ctx.fillRect(px, py, step, step); }
+            }
+        }
+        drawUIOverlay();
+        updateHUD();
+    }
+
+    // --- UI LOGIC ---
+    function toggleSpectator() {
+        isSpectator = !isSpectator;
+        document.querySelectorAll('.ui-hideable, #hud').forEach(el => el.style.display = isSpectator ? 'none' : '');
+        document.getElementById('spectatorBtn').style.opacity = isSpectator ? "0.3" : "1";
+    }
+
+    function toggleVarMenu() { document.getElementById('var-menu').style.display = (document.getElementById('var-menu').style.display === 'block') ? 'none' : 'block'; }
+    
+    function selectVariable(char) {
+        activeLetter = char;
+        document.getElementById('letterBtn').innerText = char.toUpperCase();
+        document.getElementById('var-menu').style.display = 'none';
+        document.getElementById('cfgBtn').innerText = char.toUpperCase() + " Ayar";
+        const v = config.vars[char];
+        document.getElementById('mainSlider').value = ((v.val - v.min) / (v.max - v.min)) * 100;
+        render(2);
+    }
+
+    function handleSliderChange(sliderVal) {
+        const v = config.vars[activeLetter];
+        if (!v.enabled) return;
+        let rawVal = v.min + (v.max - v.min) * (sliderVal / 100);
+        if (v.step > 0) rawVal = Math.round(rawVal / v.step) * v.step;
+        v.val = rawVal;
+        startMoving();
+    }
+
+    function toggleSConfig() {
+        const p = document.getElementById('s-config-popup');
+        document.getElementById('cfgTitle').innerText = activeLetter.toUpperCase();
+        letters.forEach(l => document.getElementById('en_' + l).checked = config.vars[l].enabled);
+        const v = config.vars[activeLetter];
+        document.getElementById('vCurrent').value = v.val;
+        document.getElementById('vMin').value = v.min;
+        document.getElementById('vMax').value = v.max;
+        document.getElementById('vStep').value = v.step;
+        p.style.display = p.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function updateVarEnables() { letters.forEach(l => config.vars[l].enabled = document.getElementById('en_' + l).checked); }
+
+    function applyVarConfig() {
+        const v = config.vars[activeLetter];
+        v.val = parseFloat(document.getElementById('vCurrent').value);
+        v.min = parseFloat(document.getElementById('vMin').value);
+        v.max = parseFloat(document.getElementById('vMax').value);
+        v.step = parseFloat(document.getElementById('vStep').value);
+        document.getElementById('s-config-popup').style.display = 'none';
+        render(2);
+    }
+
+    function showSummary() {
+        const p = document.getElementById('summary-popup');
+        const cont = document.getElementById('summary-content');
+        let html = `<b>Denklem:</b> ${config.eq}<br><br>`;
+        letters.forEach(l => {
+            const v = config.vars[l];
+            html += `<b>${l.toUpperCase()}:</b> ${v.val.toFixed(3)} (Min: ${v.min}, Max: ${v.max}, Aktif: ${v.enabled})<br>`;
+        });
+        html += `<div class="summary-grid"><div><b>Maske:</b> ${config.box.type} (${config.box.style})<br><b>Alan:</b> [${config.box.x1}, ${config.box.x2}] x [${config.box.y1}, ${config.box.y2}]</div>`;
+        html += `<div><b>Hedef:</b> X:${view.target.x.toFixed(2)}, Y:${view.target.y.toFixed(2)}<br><b>Renk Merk:</b> X:${config.colorOrigin.x}, Y:${config.colorOrigin.y}</div></div>`;
+        cont.innerHTML = html;
+        p.style.display = 'block';
+        renderMiniMap();
+    }
+
+    function renderMiniMap() {
+        const mCanvas = document.getElementById('summary-canvas');
+        const mCtx = mCanvas.getContext('2d');
+        const res = 200; // Mini harita cozunurlugu
+        const step = mCanvas.width / res;
+        const scope = { s: config.vars.s.val, p: config.vars.p.val, d: config.vars.d.val, f: config.vars.f.val };
+
+        for(let i=0; i<res; i++) {
+            for(let j=0; j<res; j++) {
+                const wx = (i/res)*200 - 100;
+                const wy = 100 - (j/res)*200;
+                scope.x = wx - config.colorOrigin.x; scope.y = wy - config.colorOrigin.y;
+                try {
+                    const val = compiledEq.evaluate(scope);
+                    const [r,g,b] = getRGB(val);
+                    mCtx.fillStyle = `rgb(${r},${g},${b})`;
+                    mCtx.fillRect(i*step, j*step, step, step);
+                } catch(e) { mCtx.fillStyle = "#000"; mCtx.fillRect(i*step, j*step, step, step); }
+            }
+        }
+    }
+
+    function closePopup(id) { document.getElementById(id).style.display = 'none'; }
+
+    // Overlay Drawing
+    function drawUIOverlay() {
+        const w = canvas.width, h = canvas.height, z = view.zoom;
+        const b = config.box;
+        if (b.enabled && b.style !== 'blackout') {
+            const x1 = (b.x1 - view.x) * z + w / 2, y1 = -(b.y1 - view.y) * z + h / 2;
+            const x2 = (b.x2 - view.x) * z + w / 2, y2 = -(b.y2 - view.y) * z + h / 2;
+            ctx.strokeStyle = "rgba(255,255,255,0.7)"; ctx.lineWidth = 2;
+            if (b.type === 'rect') {
+                const rx = Math.min(x1, x2), ry = Math.min(y1, y2), rw = Math.abs(x2-x1), rh = Math.abs(y2-y1);
+                if (b.style === 'grid') {
+                    ctx.save(); ctx.beginPath(); ctx.rect(rx,ry,rw,rh); ctx.clip();
+                    ctx.strokeStyle = "rgba(255,255,255,0.2)";
+                    for(let i=Math.floor(view.x-w/z); i<=Math.ceil(view.x+w/z); i++) {
+                        let sx = (i-view.x)*z+w/2; ctx.beginPath(); ctx.moveTo(sx,0); ctx.lineTo(sx,h); ctx.stroke();
+                    }
+                    for(let i=Math.floor(view.y-h/z); i<=Math.ceil(view.y+h/z); i++) {
+                        let sy = -(i-view.y)*z+h/2; ctx.beginPath(); ctx.moveTo(0,sy); ctx.lineTo(w,sy); ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+                if (b.style === 'dashed') ctx.setLineDash([8,6]);
+                ctx.strokeRect(rx, ry, rw, rh);
+            }
+            ctx.setLineDash([]);
+        }
+        let tx = (view.isTargetMode || config.fixedTarget.enabled) ? (view.target.x - view.x) * z + w / 2 : w/2;
+        let ty = (view.isTargetMode || config.fixedTarget.enabled) ? -(view.target.y - view.y) * z + h / 2 : h/2;
+        ctx.beginPath(); ctx.arc(tx, ty, 5, 0, Math.PI*2); ctx.fillStyle="white"; ctx.fill();
+        ctx.strokeStyle="black"; ctx.stroke();
+    }
+
+    function updateHUD() {
+        document.getElementById('fpsDisplay') && (document.getElementById('fpsDisplay').innerText = Math.round(1000/(performance.now()-lastFrameTime)));
+        lastFrameTime = performance.now();
+        document.getElementById('eqDisplay').innerText = config.eq;
+        ['s','p','d','f'].forEach(l => document.getElementById('val'+l.toUpperCase()).innerText = config.vars[l].val.toFixed(2));
+        let cx = (view.isTargetMode || config.fixedTarget.enabled) ? view.target.x : view.x;
+        let cy = (view.isTargetMode || config.fixedTarget.enabled) ? view.target.y : view.y;
+        document.getElementById('curX').innerText = cx.toFixed(2);
+        document.getElementById('curY').innerText = cy.toFixed(2);
+        try {
+            const v = compiledEq.evaluate({x:cx-config.colorOrigin.x, y:cy-config.colorOrigin.y, s:config.vars.s.val, p:config.vars.p.val, d:config.vars.d.val, f:config.vars.f.val});
+            document.getElementById('curVal').innerText = (typeof v === 'number') ? v.toFixed(4) : "0.000";
+        } catch(e) { document.getElementById('curVal').innerText = "Err"; }
+    }
+
+    function startMoving() { if(view.isMasterLocked) return; view.isMoving=true; clearTimeout(renderTimer); render(12); renderTimer=setTimeout(()=>{view.isMoving=false; render(2);}, 150); }
+    function toggleMenu() { const s = document.getElementById('settings'); s.style.display = s.style.display==='block' ? 'none':'block'; }
+    function toggleTargetMode() { view.isTargetMode=!view.isTargetMode; document.getElementById('targetBtn').classList.toggle('active'); render(2); }
+    function toggleMasterLock() { view.isMasterLocked=!view.isMasterLocked; const b=document.getElementById('masterLockBtn'); b.classList.toggle('locked'); b.innerText=view.isMasterLocked?"🔓":"🔒"; render(2); }
+
+    function applySettings() {
+        config.eq = document.getElementById('eqInput').value; compiledEq = math.compile(config.eq);
+        const ks = ['i3','i2','i1','h0','h1','h2','h3'];
+        ks.forEach(k => { config.params[k].val = parseFloat(document.getElementById(k).value); config.params[k].en = document.getElementById('en_'+k).checked; });
+        config.box.enabled = document.getElementById('boxEnable').checked;
+        config.box.type = document.getElementById('maskType').value;
+        config.box.style = document.getElementById('maskStyle').value;
+        config.box.x1 = parseFloat(document.getElementById('bx1').value); config.box.x2 = parseFloat(document.getElementById('bx2').value);
+        config.box.y1 = parseFloat(document.getElementById('by1').value); config.box.y2 = parseFloat(document.getElementById('by2').value);
+        toggleMenu(); render(2);
+    }
+
+    // Input Handling
+    let isDown = false, lastMouse = {x:0, y:0};
+    function handleIn(ex, ey) {
+        if(view.isMasterLocked || !isDown) return;
+        if(view.isTargetMode) { view.target.x = (ex-canvas.width/2)/view.zoom + view.x; view.target.y = -(ey-canvas.height/2)/view.zoom + view.y; render(2); }
+        else { view.x -= (ex-lastMouse.x)/view.zoom; view.y += (ey-lastMouse.y)/view.zoom; lastMouse={x:ex, y:ey}; startMoving(); }
+    }
+    canvas.addEventListener('mousedown', e => {isDown=true; lastMouse={x:e.clientX, y:e.clientY}; handleIn(e.clientX, e.clientY);});
+    window.addEventListener('mouseup', () => isDown=false);
+    window.addEventListener('mousemove', e => handleIn(e.clientX, e.clientY));
+    canvas.addEventListener('touchstart', e => {if(e.touches.length===1){isDown=true; lastMouse={x:e.touches[0].clientX, y:e.touches[0].clientY}; handleIn(lastMouse.x, lastMouse.y);}}, {passive:false});
+    canvas.addEventListener('touchmove', e => {if(e.touches.length===1)handleIn(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault();}, {passive:false});
+    window.addEventListener('touchend', ()=>isDown=false);
+    function manualZoom(f) { view.zoom *= f; startMoving(); }
+    canvas.addEventListener('wheel', e => {manualZoom(e.deltaY>0?0.8:1.25); e.preventDefault();}, {passive:false});
+
+    window.addEventListener('resize', () => { canvas.width=window.innerWidth; canvas.height=window.innerHeight; render(2); });
+    canvas.width=window.innerWidth; canvas.height=window.innerHeight;
+    render(2);
+</script>
+</body>
+</html>
+
