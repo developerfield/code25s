@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Gelişmiş Alan Görselleştirici V11</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; color: white; }
+        canvas { display: block; touch-action: none; }
+
+        #hud {
+            position: fixed; top: 15px; left: 15px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 12px; border-radius: 10px;
+            font-family: 'Courier New', monospace; font-size: 13px;
+            border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(8px); pointer-events: none; z-index: 100;
+        }
+        #hud span { color: #00ffcc; font-weight: bold; }
+        #hud .equation-display { color: #fff; border-bottom: 1px solid #444; padding-bottom: 5px; margin-bottom: 5px; font-style: italic; display: block; }
+
+        .ui-panel {
+            position: fixed; top: 15px; right: 15px;
+            display: flex; flex-direction: column; gap: 10px; z-index: 101;
+            align-items: center;
+        }
+
+        .btn {
+            background: rgba(40, 40, 40, 0.85); border: 1px solid rgba(255,255,255,0.25);
+            color: white; width: 50px; height: 50px; border-radius: 12px;
+            cursor: pointer; font-size: 20px; backdrop-filter: blur(5px);
+            display: flex; align-items: center; justify-content: center;
+            transition: 0.2s; font-weight: bold;
+        }
+        .btn.active { background: #007bff; border-color: #fff; }
+        .btn.locked { background: #dc3545; border-color: #fff; }
+
+        .s-slider-container {
+            height: 200px; width: 50px;
+            background: rgba(40, 40, 40, 0.85);
+            border-radius: 12px; border: 1px solid rgba(255,255,255,0.25);
+            display: flex; flex-direction: column; align-items: center;
+            padding: 10px 0; gap: 5px;
+        }
+        .s-slider {
+            -webkit-appearance: none; width: 180px; height: 8px;
+            background: #222; border-radius: 5px; transform: rotate(-90deg);
+            margin-top: 85px; cursor: pointer;
+        }
+        .s-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 25px; height: 25px;
+            background: #00ffcc; border-radius: 50%; cursor: pointer; border: 2px solid white;
+        }
+
+        #settings, #s-config-popup {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(15, 15, 15, 0.98); padding: 20px; border-radius: 20px;
+            border: 1px solid #333; width: 95%; max-width: 420px;
+            display: none; z-index: 1000; box-shadow: 0 20px 50px rgba(0,0,0,1);
+            max-height: 90vh; overflow-y: auto;
+        }
+
+        .left-bottom-btn { position: fixed; bottom: 15px; left: 15px; z-index: 101; }
+        .right-bottom-btn { position: fixed; bottom: 15px; right: 15px; z-index: 101; }
+
+        .param-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .param-row input[type="number"] { flex: 1; background: #222; border: 1px solid #444; color: #0f0; padding: 8px; border-radius: 5px; }
+        .param-row input[type="checkbox"] { width: 22px; height: 22px; cursor: pointer; }
+        label { font-size: 12px; color: #aaa; min-width: 90px; }
+
+        input[type="text"] { width: 100%; background: #222; border: 1px solid #444; padding: 10px; color: #fff; border-radius: 8px; margin: 5px 0; font-family: monospace; }
+        .apply-btn { width: 100%; background: #28a745; color: white; border: none; padding: 15px; border-radius: 10px; font-weight: bold; margin-top: 15px; cursor: pointer; }
+        
+        .origin-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        select { background: #222; color: #fff; border: 1px solid #444; padding: 8px; border-radius: 8px; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+<div id="hud">
+    <span id="modeTxt" style="color:#ffcc00; font-size:10px; display:block; margin-bottom:5px; letter-spacing:1px;">NAVİGASYON</span>
+    <span class="equation-display" id="eqDisplay">f(x,y,s,p,d,f) = ...</span>
+    <b>FPS:</b> <span id="fpsDisplay">60</span><br>
+    <b>Parametreler:</b> 
+    S:<span id="valS">1.0</span> P:<span id="valP">1.0</span> D:<span id="valD">1.0</span> F:<span id="valF">1.0</span>
+</div>
+
+<div class="ui-panel">
+    <button class="btn" onclick="toggleMenu()">⚙</button>
+    <button class="btn" onclick="manualZoom(1.4)">+</button>
+    <button class="btn" onclick="manualZoom(0.7)">-</button>
+    <button class="btn" id="targetBtn" onclick="toggleTargetMode()">🎯</button>
+    <button class="btn" id="masterLockBtn" onclick="toggleMasterLock()">🔒</button>
+    <div class="s-slider-container">
+        <span style="font-size: 10px; color: #888;">MAX</span>
+        <input type="range" id="mainSlider" class="s-slider" min="0" max="100" value="10" step="1" oninput="handleSliderChange(this.value)">
+        <span style="font-size: 10px; color: #888;">MIN</span>
+    </div>
+</div>
+
+<div class="left-bottom-btn">
+    <button class="btn" id="cfgBtn" onclick="toggleSConfig()">S Ayar</button>
+</div>
+
+<div class="right-bottom-btn">
+    <button class="btn" id="letterBtn" onclick="cycleLetter()" style="color:#00ffcc; border-color:#00ffcc">S</button>
+</div>
+
+<div id="s-config-popup">
+    <h3 style="margin:0 0 10px 0; border-bottom:1px solid #333; padding-bottom:5px;"><span id="cfgTitle">S</span> Ayarları</h3>
+    <div class="param-row"><label>Minimum:</label><input type="number" id="vMin" value="0" step="0.1"></div>
+    <div class="param-row"><label>Maksimum:</label><input type="number" id="vMax" value="10" step="0.1"></div>
+    <div class="param-row"><label>Adım:</label><input type="number" id="vStep" value="0.1" step="0.01"></div>
+    
+    <h4 style="margin:15px 0 5px 0; color:#00ffcc; border-top:1px solid #333; padding-top:10px;">Sabit Hedef (🎯)</h4>
+    <div class="param-row">
+        <input type="checkbox" id="fixedTargetEnable">
+        <label>Hedef Kilitle:</label>
+    </div>
+    <div class="origin-inputs">
+        <div><label>Hedef X:</label><input type="number" id="fTargetX" value="0" step="0.1"></div>
+        <div><label>Hedef Y:</label><input type="number" id="fTargetY" value="0" step="0.1"></div>
+    </div>
+    
+    <button class="apply-btn" onclick="applyLetterConfig()">KAYDET</button>
+</div>
+
+<div id="settings">
+    <h3 style="margin:0 0 10px 0; border-bottom:1px solid #333; padding-bottom:5px;">Parametreler</h3>
+    <label>Denklem f(x, y, s, p, d, f):</label>
+    <input type="text" id="eqInput" value="sqrt(x^2 + y^2) + s">
+
+    <div id="colorParams">
+        <div class="param-row"><input type="checkbox" id="en_i3"><label>i3 (Siyah)</label><input type="number" id="i3" value="0"></div>
+        <div class="param-row"><input type="checkbox" id="en_i2" checked><label>i2 (K.Kırmızı)</label><input type="number" id="i2" value="3"></div>
+        <div class="param-row"><input type="checkbox" id="en_i1" checked><label>i1 (Sarı)</label><input type="number" id="i1" value="7"></div>
+        <div class="param-row"><input type="checkbox" id="en_h0" checked><label>h0 (Yeşil)</label><input type="number" id="h0" value="11"></div>
+        <div class="param-row"><input type="checkbox" id="en_h1" checked><label>h1 (Mavi)</label><input type="number" id="h1" value="15"></div>
+        <div class="param-row"><input type="checkbox" id="en_h2" checked><label>h2 (Mor)</label><input type="number" id="h2" value="19"></div>
+        <div class="param-row"><input type="checkbox" id="en_h3"><label>h3 (Siyah)</label><input type="number" id="h3" value="23"></div>
+    </div>
+
+    <div style="border-top:1px solid #333; margin-top:10px; padding-top:10px;">
+        <div class="param-row">
+            <input type="checkbox" id="boxEnable">
+            <label>Alan Maskesi:</label>
+            <select id="maskType">
+                <option value="rect">Dikdörtgen</option>
+                <option value="circle">Daire</option>
+                <option value="diamond">Elmas</option>
+            </select>
+            <select id="maskStyle">
+                <option value="dashed">Kesikli</option>
+                <option value="solid">Düz</option>
+                <option value="blackout">Karart</option>
+            </select>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-top:5px;">
+            <input type="number" id="bx1" value="-2">
+            <input type="number" id="bx2" value="2">
+            <input type="number" id="by1" value="-2">
+            <input type="number" id="by2" value="2">
+        </div>
+    </div>
+
+    <div class="origin-inputs">
+        <div><label>Renk Orijini X:</label><input type="number" id="origX" value="0" step="0.1"></div>
+        <div><label>Renk Orijini Y:</label><input type="number" id="origY" value="0" step="0.1"></div>
+    </div>
+    <button class="apply-btn" onclick="applySettings()">UYGULA</button>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+    
+    let activeLetter = 's';
+    const letters = ['s', 'p', 'd', 'f'];
+
+    let config = { 
+        eq: "sqrt(x^2 + y^2) + s", 
+        colorOrigin: { x: 0, y: 0 },
+        vars: {
+            s: { val: 1.0, min: 0, max: 10, step: 0.1, sliderPos: 10 },
+            p: { val: 1.0, min: 0, max: 10, step: 0.1, sliderPos: 10 },
+            d: { val: 1.0, min: 0, max: 10, step: 0.1, sliderPos: 10 },
+            f: { val: 1.0, min: 0, max: 10, step: 0.1, sliderPos: 10 }
+        },
+        params: {
+            i3: { val: 0,  en: false, color: [0, 0, 0] },
+            i2: { val: 3,  en: true,  color: [130, 0, 0] },
+            i1: { val: 7,  en: true,  color: [255, 255, 0] },
+            h0: { val: 11, en: true,  color: [0, 255, 0] },
+            h1: { val: 15, en: true,  color: [0, 0, 255] },
+            h2: { val: 19, en: true,  color: [150, 0, 255] },
+            h3: { val: 23, en: false, color: [0, 0, 0] }
+        },
+        box: { enabled: false, type: 'rect', style: 'dashed', x1: -2, x2: 2, y1: -2, y2: 2 },
+        fixedTarget: { enabled: false, x: 0, y: 0 }
+    };
+    
+    let view = { x: 0, y: 0, zoom: 40, isMoving: false, isTargetMode: false, isMasterLocked: false, target: { x: 0, y: 0 } };
+    let compiledEq = math.compile(config.eq);
+    let renderTimer, lastFrameTime = performance.now();
+
+    function interpolate(c1, c2, t) {
+        return [Math.floor(c1[0]+(c2[0]-c1[0])*t), Math.floor(c1[1]+(c2[1]-c1[1])*t), Math.floor(c1[2]+(c2[2]-c1[2])*t)];
+    }
+
+    function getRGB(val) {
+        const p = config.params;
+        const keys = ['i3', 'i2', 'i1', 'h0', 'h1', 'h2', 'h3'];
+        for (let j = 0; j < keys.length - 1; j++) {
+            const k1 = keys[j], k2 = keys[j+1];
+            if (p[k1].en && p[k2].en) {
+                if (val >= p[k1].val && val <= p[k2].val) {
+                    const t = (val - p[k1].val) / (p[k2].val - p[k1].val);
+                    return interpolate(p[k1].color, p[k2].color, t);
+                }
+            }
+        }
+        return [0, 0, 0];
+    }
+
+    function render(step = 2) {
+        const w = canvas.width, h = canvas.height, z = view.zoom;
+        const ox = config.colorOrigin.x, oy = config.colorOrigin.y;
+        
+        const scope = {
+            s: config.vars.s.val,
+            p: config.vars.p.val,
+            d: config.vars.d.val,
+            f: config.vars.f.val
+        };
+
+        const b = config.box;
+
+        for (let px = 0; px < w; px += step) {
+            for (let py = 0; py < h; py += step) {
+                const wx = (px - w / 2) / z + view.x;
+                const wy = -(py - h / 2) / z + view.y;
+
+                if (b.enabled && b.style === 'blackout') {
+                    let inside = false;
+                    if (b.type === 'rect') {
+                        if (wx >= b.x1 && wx <= b.x2 && wy >= b.y1 && wy <= b.y2) inside = true;
+                    } else if (b.type === 'circle') {
+                        if (Math.hypot(wx, wy) <= Math.abs(b.x1)) inside = true;
+                    } else if (b.type === 'diamond') {
+                        if (Math.abs(wx) + Math.abs(wy) <= Math.abs(b.x1)) inside = true;
+                    }
+                    if (!inside) {
+                        ctx.fillStyle = "#000";
+                        ctx.fillRect(px, py, step, step);
+                        continue;
+                    }
+                }
+
+                try {
+                    scope.x = wx - ox;
+                    scope.y = wy - oy;
+                    const val = compiledEq.evaluate(scope);
+                    const [r, g, b_col] = getRGB(val);
+                    ctx.fillStyle = `rgb(${r},${g},${b_col})`;
+                    ctx.fillRect(px, py, step, step);
+                } catch(e) {
+                    ctx.fillStyle = "#000"; ctx.fillRect(px, py, step, step);
+                }
+            }
+        }
+        drawUIOverlay();
+        updateHUD();
+    }
+
+    function cycleLetter() {
+        const idx = (letters.indexOf(activeLetter) + 1) % letters.length;
+        activeLetter = letters[idx];
+        const btn = document.getElementById('letterBtn');
+        btn.innerText = activeLetter.toUpperCase();
+        document.getElementById('mainSlider').value = config.vars[activeLetter].sliderPos;
+        document.getElementById('cfgBtn').innerText = activeLetter.toUpperCase() + " Ayar";
+        render(2);
+    }
+
+    function handleSliderChange(val) {
+        const v = config.vars[activeLetter];
+        v.sliderPos = val;
+        v.val = v.min + (v.max - v.min) * (val / 100);
+        startMoving();
+    }
+
+    function toggleSConfig() {
+        const p = document.getElementById('s-config-popup');
+        document.getElementById('cfgTitle').innerText = activeLetter.toUpperCase();
+        const v = config.vars[activeLetter];
+        document.getElementById('vMin').value = v.min;
+        document.getElementById('vMax').value = v.max;
+        document.getElementById('vStep').value = v.step;
+        document.getElementById('fixedTargetEnable').checked = config.fixedTarget.enabled;
+        document.getElementById('fTargetX').value = config.fixedTarget.x;
+        document.getElementById('fTargetY').value = config.fixedTarget.y;
+        p.style.display = p.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function applyLetterConfig() {
+        const v = config.vars[activeLetter];
+        v.min = parseFloat(document.getElementById('vMin').value);
+        v.max = parseFloat(document.getElementById('vMax').value);
+        v.step = parseFloat(document.getElementById('vStep').value);
+        
+        config.fixedTarget.enabled = document.getElementById('fixedTargetEnable').checked;
+        config.fixedTarget.x = parseFloat(document.getElementById('fTargetX').value);
+        config.fixedTarget.y = parseFloat(document.getElementById('fTargetY').value);
+        
+        if (config.fixedTarget.enabled) {
+            view.target.x = config.fixedTarget.x;
+            view.target.y = config.fixedTarget.y;
+        }
+
+        toggleSConfig();
+        handleSliderChange(document.getElementById('mainSlider').value);
+        render(2);
+    }
+
+    function drawUIOverlay() {
+        const w = canvas.width, h = canvas.height, z = view.zoom;
+        
+        // Maske Çizimi
+        if (config.box.enabled && config.box.style !== 'blackout') {
+            ctx.strokeStyle = "rgba(255,255,255,0.8)"; 
+            ctx.lineWidth = 2;
+            if (config.box.style === 'dashed') ctx.setLineDash([8, 6]);
+            else ctx.setLineDash([]);
+            
+            const b = config.box;
+            if (b.type === 'rect') {
+                const rx = (b.x1 - view.x) * z + w / 2;
+                const ry = -(b.y2 - view.y) * z + h / 2;
+                const rw = (b.x2 - b.x1) * z;
+                const rh = (b.y2 - b.y1) * z;
+                ctx.strokeRect(rx, ry, rw, rh);
+            } else if (b.type === 'circle') {
+                ctx.beginPath(); 
+                ctx.arc((0-view.x)*z+w/2, (0-view.y)*z+h/2, Math.abs(b.x1)*z, 0, Math.PI*2); 
+                ctx.stroke();
+            } else if (b.type === 'diamond') {
+                const sz = Math.abs(b.x1)*z, cx=(0-view.x)*z+w/2, cy=(0-view.y)*z+h/2;
+                ctx.beginPath(); ctx.moveTo(cx, cy-sz); ctx.lineTo(cx+sz, cy); ctx.lineTo(cx, cy+sz); ctx.lineTo(cx-sz, cy); ctx.closePath(); ctx.stroke();
+            }
+            ctx.setLineDash([]);
+        }
+
+        // Hedef Noktası (🎯)
+        if (view.isTargetMode || config.fixedTarget.enabled) {
+            const tx = (view.target.x - view.x) * z + w / 2;
+            const ty = -(view.target.y - view.y) * z + h / 2;
+            
+            ctx.shadowBlur = 10; ctx.shadowColor = "rgba(0,0,0,0.5)";
+            ctx.beginPath(); ctx.arc(tx, ty, 7, 0, Math.PI*2);
+            ctx.fillStyle = "white"; ctx.fill();
+            ctx.strokeStyle = "black"; ctx.lineWidth = 1.5; ctx.stroke();
+            
+            // Sabit kilit göstergesi
+            if (config.fixedTarget.enabled) {
+                ctx.beginPath(); ctx.arc(tx, ty, 12, 0, Math.PI*2);
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.4)"; ctx.setLineDash([2, 2]); ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    function updateHUD() {
+        const now = performance.now();
+        document.getElementById('fpsDisplay').innerText = Math.round(1000 / (now - lastFrameTime));
+        lastFrameTime = now;
+        document.getElementById('valS').innerText = config.vars.s.val.toFixed(2);
+        document.getElementById('valP').innerText = config.vars.p.val.toFixed(2);
+        document.getElementById('valD').innerText = config.vars.d.val.toFixed(2);
+        document.getElementById('valF').innerText = config.vars.f.val.toFixed(2);
+        document.getElementById('eqDisplay').innerText = "f(x,y,s,p,d,f) = " + config.eq;
+    }
+
+    function startMoving() {
+        if (view.isMasterLocked) return;
+        view.isMoving = true; clearTimeout(renderTimer);
+        render(12);
+        renderTimer = setTimeout(() => { view.isMoving = false; render(2); }, 150);
+    }
+
+    function toggleMenu() { const s = document.getElementById('settings'); s.style.display = s.style.display === 'block' ? 'none' : 'block'; }
+    function toggleTargetMode() {
+        if (view.isMasterLocked || config.fixedTarget.enabled) return;
+        view.isTargetMode = !view.isTargetMode;
+        document.getElementById('targetBtn').classList.toggle('active', view.isTargetMode);
+        render(2);
+    }
+    function toggleMasterLock() {
+        view.isMasterLocked = !view.isMasterLocked;
+        const btn = document.getElementById('masterLockBtn');
+        btn.classList.toggle('locked', view.isMasterLocked);
+        btn.innerText = view.isMasterLocked ? "🔓" : "🔒";
+        render(2);
+    }
+
+    function applySettings() {
+        try {
+            config.eq = document.getElementById('eqInput').value; 
+            compiledEq = math.compile(config.eq);
+            const keys = ['i3', 'i2', 'i1', 'h0', 'h1', 'h2', 'h3'];
+            keys.forEach(k => {
+                config.params[k].val = parseFloat(document.getElementById(k).value);
+                config.params[k].en = document.getElementById('en_' + k).checked;
+            });
+            config.box.enabled = document.getElementById('boxEnable').checked;
+            config.box.type = document.getElementById('maskType').value;
+            config.box.style = document.getElementById('maskStyle').value;
+            config.box.x1 = parseFloat(document.getElementById('bx1').value);
+            config.box.x2 = parseFloat(document.getElementById('bx2').value);
+            config.box.y1 = parseFloat(document.getElementById('by1').value);
+            config.box.y2 = parseFloat(document.getElementById('by2').value);
+            config.colorOrigin.x = parseFloat(document.getElementById('origX').value);
+            config.colorOrigin.y = parseFloat(document.getElementById('origY').value);
+            toggleMenu(); render(2);
+        } catch(e) { alert("Hata: " + e.message); }
+    }
+
+    let isDown = false, lastMouse = { x: 0, y: 0 }, initialPinchDist = null;
+    function handleInput(ex, ey) {
+        if (view.isMasterLocked || !isDown) return;
+        if (view.isTargetMode && !config.fixedTarget.enabled) {
+            view.target.x = (ex - canvas.width/2)/view.zoom + view.x;
+            view.target.y = -(ey - canvas.height/2)/view.zoom + view.y;
+            render(2);
+        } else {
+            view.x -= (ex - lastMouse.x)/view.zoom; view.y += (ey - lastMouse.y)/view.zoom;
+            lastMouse = { x:ex, y:ey }; startMoving();
+        }
+    }
+    canvas.addEventListener('mousedown', e => { isDown=true; lastMouse={x:e.clientX, y:e.clientY}; handleInput(e.clientX, e.clientY); });
+    window.addEventListener('mouseup', () => isDown=false);
+    window.addEventListener('mousemove', e => handleInput(e.clientX, e.clientY));
+    canvas.addEventListener('touchstart', e => {
+        if (e.touches.length===1) { isDown=true; lastMouse={x:e.touches[0].clientX, y:e.touches[0].clientY}; handleInput(e.touches[0].clientX, e.touches[0].clientY); }
+        else if (e.touches.length===2) initialPinchDist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+    });
+    canvas.addEventListener('touchmove', e => {
+        if (e.touches.length===1) handleInput(e.touches[0].clientX, e.touches[0].clientY);
+        else if (e.touches.length===2 && initialPinchDist) {
+            const d = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+            view.zoom *= (d/initialPinchDist); initialPinchDist=d; startMoving();
+        }
+        e.preventDefault();
+    }, {passive:false});
+    window.addEventListener('touchend', () => { isDown=false; initialPinchDist=null; });
+    function manualZoom(f) { if (!view.isMasterLocked && !view.isTargetMode) { view.zoom *= f; startMoving(); } }
+    canvas.addEventListener('wheel', e => { manualZoom(e.deltaY > 0 ? 0.8 : 1.25); e.preventDefault(); }, {passive:false});
+
+    window.addEventListener('resize', () => { canvas.width=window.innerWidth; canvas.height=window.innerHeight; render(2); });
+    canvas.width=window.innerWidth; canvas.height=window.innerHeight;
+    render(2);
+</script>
+</body>
+</html>
+
