@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profesyonel Araç Gider Analizi</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.5s ease;
+        }
+
+        /* Tema Renkleri */
+        body.light-mode { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        body.dark-mode { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); }
+
+        .container {
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(15px);
+            transition: all 0.5s ease;
+        }
+
+        /* Light Mode - Beyaz Orta Panel */
+        body.light-mode .container { background: #ffffff; color: #333; }
+        body.dark-mode .container { background: rgba(30, 30, 50, 0.95); color: #e0e6ed; }
+
+        .header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 30px;
+            position: relative;
+            height: 40px;
+        }
+
+        h1 {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0;
+            padding-right: 155px;
+        }
+
+        /* Header Butonları */
+        .header-btn {
+            position: absolute;
+            width: 35px; height: 35px;
+            border-radius: 50%; border: none;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; color: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .header-btn:hover { transform: scale(1.15); z-index: 10; }
+
+        .theme-toggle { right: 125px; }
+        .depreciation-toggle { right: 85px; background: linear-gradient(135deg, #e53e3e, #c53030); }
+        .extra-cost-toggle { right: 45px; background: linear-gradient(135deg, #f6ad55, #ed8936); }
+        .salary-toggle { right: 0; background: linear-gradient(135deg, #28a745, #20c997); }
+
+        body.light-mode .theme-toggle { background: #4a5568; }
+        body.dark-mode .theme-toggle { background: #cbd5e0; color: #333; }
+
+        /* Form Elemanları */
+        .input-section { display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px; }
+        .input-group { display: flex; flex-direction: column; }
+        .input-group label {
+            font-size: 13px; font-weight: 600; margin-bottom: 8px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .input-group input {
+            padding: 12px; border: 2px solid #e1e8ed; border-radius: 12px;
+            font-size: 16px; transition: all 0.3s ease;
+        }
+        body.dark-mode .input-group input { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); color: white; }
+        body.light-mode .input-group input { background: #f7fafc; }
+
+        /* Grid Butonlar */
+        .buttons-section { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
+        .preset-btn {
+            padding: 10px 2px; border: none; border-radius: 12px;
+            font-size: 11px; font-weight: 700; cursor: pointer; color: white;
+            transition: all 0.3s;
+        }
+        body.light-mode .preset-btn { background: #667eea; }
+        body.dark-mode .preset-btn { background: #4a5568; }
+        .preset-btn:hover { filter: brightness(1.2); transform: translateY(-2px); }
+        .preset-btn.clear-btn { background: #e53e3e; }
+
+        .calculate-btn {
+            width: 100%; padding: 15px; border: none; border-radius: 12px;
+            font-size: 16px; font-weight: 700; cursor: pointer; color: white;
+            transition: all 0.3s;
+        }
+        body.light-mode .calculate-btn { background: linear-gradient(135deg, #48bb78, #38a169); }
+        body.dark-mode .calculate-btn { background: linear-gradient(135deg, #e53e3e, #c53030); }
+
+        .result {
+            padding: 20px; border-radius: 15px; text-align: center;
+            font-size: 15px; font-weight: 600; color: white;
+            opacity: 0; transform: translateY(20px); transition: all 0.5s ease;
+            margin-top: 20px; line-height: 1.6;
+            background: linear-gradient(135deg, #2d3748, #1a202c);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .result.show { opacity: 1; transform: translateY(0); }
+
+        /* Badges */
+        .status-badges { display: flex; gap: 4px; }
+        .badge { font-size: 9px; padding: 2px 5px; border-radius: 6px; color: white; display: none; }
+        .badge.salary { background: #28a745; }
+        .badge.extra { background: #f6ad55; }
+        .badge.depr { background: #e53e3e; }
+
+        /* Popup */
+        .popup-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7); z-index: 1000;
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; visibility: hidden; transition: all 0.3s;
+            backdrop-filter: blur(5px);
+        }
+        .popup-overlay.show { opacity: 1; visibility: visible; }
+        .popup {
+            background: white; width: 92%; max-width: 440px; padding: 25px;
+            border-radius: 20px; transition: all 0.3s;
+            max-height: 90vh; overflow-y: auto;
+        }
+        body.dark-mode .popup { background: #1a1a2e; color: white; border: 1px solid rgba(255,255,255,0.1); }
+        .popup-header { display: flex; justify-content: space-between; margin-bottom: 15px; align-items: center; }
+        .popup h3 { font-size: 18px; }
+        .close-btn { background: none; border: none; font-size: 28px; cursor: pointer; color: #e53e3e; }
+
+        .popup-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        .popup label { display: block; font-size: 12px; margin-bottom: 5px; font-weight: 600; opacity: 0.9; }
+        .popup input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px; }
+        body.dark-mode .popup input { background: rgba(255,255,255,0.05); border-color: #333; color: white; }
+        
+        .popup-btn-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 15px; }
+        .p-btn { padding: 8px 2px; border: none; border-radius: 8px; font-size: 10px; font-weight: bold; cursor: pointer; color: white; }
+        
+        .action-btn { width: 100%; padding: 14px; border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    </style>
+</head>
+<body class="light-mode">
+
+    <div class="container">
+        <div class="header">
+            <h1>⛽ Yol Gideri</h1>
+            <button class="header-btn theme-toggle" onclick="toggleTheme()">🌙</button>
+            <button class="header-btn depreciation-toggle" onclick="openPopup('depr')">📉</button>
+            <button class="header-btn extra-cost-toggle" onclick="openPopup('extra')">🛠️</button>
+            <button class="header-btn salary-toggle" onclick="openPopup('salary')">💼</button>
+        </div>
+
+        <div class="input-section">
+            <div class="input-group">
+                <label>Tüketim (L/100km)</label>
+                <input type="number" id="fuelConsumption" placeholder="6.0" step="0.1">
+            </div>
+            <div class="buttons-section">
+                <button class="preset-btn" onclick="setVal('fuelConsumption', 3)">3L</button>
+                <button class="preset-btn" onclick="setVal('fuelConsumption', 4)">4L</button>
+                <button class="preset-btn" onclick="setVal('fuelConsumption', 5)">5L</button>
+                <button class="preset-btn" onclick="setVal('fuelConsumption', 6)">6L</button>
+                <button class="preset-btn" onclick="setVal('fuelConsumption', 7)">7L</button>
+                <button class="preset-btn" onclick="setVal('fuelConsumption', 8)">8L</button>
+                <button class="preset-btn" onclick="setVal('fuelConsumption', 10)">10L</button>
+                <button class="preset-btn clear-btn" onclick="resetAll()">Temizle</button>
+            </div>
+
+            <div class="input-group">
+                <label>Yakıt (TL/L)</label>
+                <input type="number" id="fuelPrice" value="55">
+            </div>
+
+            <div class="input-group">
+                <label>
+                    Mesafe (km)
+                    <div class="status-badges">
+                        <span id="badge-salary" class="badge salary">Maaş ✅</span>
+                        <span id="badge-extra" class="badge extra">Gider ✅</span>
+                        <span id="badge-depr" class="badge depr">Değer ✅</span>
+                    </div>
+                </label>
+                <input type="number" id="distance" placeholder="Örn: 20">
+            </div>
+        </div>
+
+        <button class="calculate-btn" onclick="calculateTotal()">💰 Hesapla</button>
+        <div class="result" id="result"></div>
+    </div>
+
+    <!-- MAAŞ POPUP -->
+    <div class="popup-overlay" id="popup-salary">
+        <div class="popup">
+            <div class="popup-header"><h3>💼 Maaş Bilgisi</h3><button class="close-btn" onclick="closePopup('salary')">×</button></div>
+            <div class="popup-row">
+                <div><label>Maaş (TL)</label><input type="number" id="monthlySalary"></div>
+                <div><label>Haftalık Saat</label><input type="number" id="weeklyHours" value="45"></div>
+            </div>
+            <div class="popup-btn-grid">
+                <button class="p-btn" style="background:#28a745" onclick="setAsgari()">Asgari</button>
+                <button class="p-btn" style="background:#28a745" onclick="addVal('monthlySalary', 5000)">+5k</button>
+                <button class="p-btn" style="background:#28a745" onclick="addVal('monthlySalary', 10000)">+10k</button>
+                <button class="p-btn" style="background:#4a5568" onclick="setVal('monthlySalary', '')">C</button>
+            </div>
+            <div class="popup-row">
+                <div><label>Hız (km/s)</label><input type="number" id="averageSpeed" value="70"></div>
+                <div><label>Hız Seç</label>
+                    <div style="display:flex; gap:2px">
+                        <button class="p-btn" style="background:#4a5568; flex:1" onclick="setVal('averageSpeed', 50)">50</button>
+                        <button class="p-btn" style="background:#4a5568; flex:1" onclick="setVal('averageSpeed', 90)">90</button>
+                    </div>
+                </div>
+            </div>
+            <button class="action-btn" style="background:#28a745" onclick="activateSalary()">✅ Hesaba Dahil Et</button>
+        </div>
+    </div>
+
+    <!-- EK GİDER POPUP (SARI) -->
+    <div class="popup-overlay" id="popup-extra">
+        <div class="popup">
+            <div class="popup-header"><h3>🛠️ Bakım & Gider</h3><button class="close-btn" onclick="closePopup('extra')">×</button></div>
+            <div class="popup-row">
+                <div><label>Yıllık Gider (TL)</label><input type="number" id="annualExtraCost"></div>
+                <div><label>Km/Yıl</label><input type="number" id="annualDistance" oninput="syncKm(this.value)"></div>
+            </div>
+            <div class="popup-btn-grid">
+                <button class="p-btn" style="background:#ed8936" onclick="setVal('annualExtraCost', 15000)">15k</button>
+                <button class="p-btn" style="background:#ed8936" onclick="setVal('annualExtraCost', 30000)">30k</button>
+                <button class="p-btn" style="background:#ed8936" onclick="setVal('annualDistance', 10000); syncKm(10000)">10k km</button>
+                <button class="p-btn" style="background:#ed8936" onclick="setVal('annualDistance', 20000); syncKm(20000)">20k km</button>
+            </div>
+            <button class="action-btn" style="background:#ed8936" onclick="activateExtra()">✅ Hesaba Dahil Et</button>
+        </div>
+    </div>
+
+    <!-- AMORTİSMAN POPUP (KIRMIZI) -->
+    <div class="popup-overlay" id="popup-depr">
+        <div class="popup">
+            <div class="popup-header"><h3>📉 Değer Kaybı</h3><button class="close-btn" onclick="closePopup('depr')">×</button></div>
+            <div class="popup-row">
+                <div><label>Alım Yılı</label><input type="number" id="buyYear" value="2022"></div>
+                <div><label>Ömür (Yıl)</label><input type="number" id="useDuration" value="5"></div>
+            </div>
+            <div class="popup-btn-grid">
+                <button class="p-btn" style="background:#e53e3e" onclick="setVal('buyYear', 2019)">2019</button>
+                <button class="p-btn" style="background:#e53e3e" onclick="setVal('buyYear', 2021)">2021</button>
+                <button class="p-btn" style="background:#e53e3e" onclick="setVal('useDuration', 3)">3 Yıl</button>
+                <button class="p-btn" style="background:#e53e3e" onclick="setVal('useDuration', 10)">10 Yıl</button>
+            </div>
+            <div class="popup-row">
+                <div><label>Alış TL</label><input type="number" id="buyPrice"></div>
+                <div><label>Geri Satış %</label><input type="number" id="resalePercent" value="90"></div>
+            </div>
+            <div class="popup-btn-grid">
+                <button class="p-btn" style="background:#e53e3e" onclick="setVal('buyPrice', 50000)">50k</button>
+                <button class="p-btn" style="background:#e53e3e" onclick="setVal('buyPrice', 150000)">150k</button>
+                <button class="p-btn" style="background:#e53e3e" onclick="setVal('resalePercent', 80)">%80</button>
+                <button class="p-btn" style="background:#e53e3e" onclick="setVal('resalePercent', 100)">%100</button>
+            </div>
+            <div>
+                <label>Yıllık KM (Sarı ile Senkron)</label>
+                <input type="number" id="deprAnnualKm" oninput="syncKm(this.value)">
+            </div>
+            <button class="action-btn" style="background:#e53e3e" onclick="activateDepr()">✅ Hesaba Dahil Et</button>
+        </div>
+    </div>
+
+    <script>
+        // Veriler
+        const usdRates = { 2017:3.65, 2018:4.81, 2019:5.67, 2020:7.01, 2021:8.89, 2022:16.57, 2023:23.0, 2024:31.0, 2025:35.5, 2026:40.0 };
+        const sunTimes = { 1:{sr:7.5,ss:17.5}, 2:{sr:7.0,ss:18.5}, 3:{sr:6.5,ss:19.0}, 4:{sr:6.0,ss:19.5}, 5:{sr:5.5,ss:20.0}, 6:{sr:5.0,ss:20.5}, 7:{sr:5.0,ss:20.5}, 8:{sr:5.5,ss:20.0}, 9:{sr:6.0,ss:19.0}, 10:{sr:6.5,ss:18.0}, 11:{sr:7.0,ss:17.0}, 12:{sr:7.5,ss:17.0} };
+        
+        let isManualTheme = false;
+        let globalKm = 10000;
+        let state = {
+            salary: { active:false, hourly:0, speed:70 },
+            extra: { active:false, costPerKm:0 },
+            depr: { active:false, costPerKm:0 }
+        };
+
+        // Fonksiyonlar
+        function setVal(id, v) { document.getElementById(id).value = v; }
+        function addVal(id, v) { 
+            const el = document.getElementById(id); 
+            el.value = (parseFloat(el.value)||0) + v; 
+        }
+
+        // KM Senkronizasyonu
+        function syncKm(val) {
+            globalKm = parseFloat(val) || 0;
+            document.getElementById('annualDistance').value = globalKm;
+            document.getElementById('deprAnnualKm').value = globalKm;
+        }
+
+        function toggleTheme() {
+            isManualTheme = true;
+            document.body.classList.toggle('dark-mode');
+            document.body.classList.toggle('light-mode');
+            document.querySelector('.theme-toggle').textContent = document.body.classList.contains('light-mode') ? '🌙' : '☀️';
+        }
+
+        function checkAutoTheme() {
+            if(isManualTheme) return;
+            const now = new Date();
+            const h = now.getHours() + now.getMinutes()/60;
+            const {sr, ss} = sunTimes[now.getMonth()+1];
+            if(h >= sr && h < ss) {
+                document.body.className = 'light-mode';
+                document.querySelector('.theme-toggle').textContent = '🌙';
+            } else {
+                document.body.className = 'dark-mode';
+                document.querySelector('.theme-toggle').textContent = '☀️';
+            }
+        }
+
+        function openPopup(id) { document.getElementById('popup-'+id).classList.add('show'); }
+        function closePopup(id) { document.getElementById('popup-'+id).classList.remove('show'); }
+
+        // Aktivasyonlar
+        function setAsgari() { setVal('monthlySalary', 22500); setVal('weeklyHours', 45); }
+        
+        function activateSalary() {
+            const m = parseFloat(document.getElementById('monthlySalary').value);
+            const h = parseFloat(document.getElementById('weeklyHours').value);
+            if(!m || !h) return;
+            state.salary.hourly = m / (h * 4.33);
+            state.salary.speed = parseFloat(document.getElementById('averageSpeed').value) || 70;
+            state.salary.active = true;
+            document.getElementById('badge-salary').style.display = 'block';
+            closePopup('salary');
+        }
+
+        function activateExtra() {
+            const cost = parseFloat(document.getElementById('annualExtraCost').value);
+            if(!cost || !globalKm) return alert("Gider ve KM bilgisi şart.");
+            state.extra.costPerKm = cost / globalKm;
+            state.extra.active = true;
+            document.getElementById('badge-extra').style.display = 'block';
+            closePopup('extra');
+        }
+
+        function activateDepr() {
+            const y = parseInt(document.getElementById('buyYear').value);
+            const p = parseFloat(document.getElementById('buyPrice').value);
+            const d = parseFloat(document.getElementById('useDuration').value);
+            const pct = parseFloat(document.getElementById('resalePercent').value);
+            if(!p || !globalKm) return alert("Alış fiyatı ve KM bilgisi şart.");
+
+            const oldRate = usdRates[y] || 10;
+            const currentRate = usdRates[2025];
+            const realBuyTry = (p / oldRate) * currentRate;
+            const resaleTry = realBuyTry * (pct/100);
+            const lossPerYear = (realBuyTry - resaleTry) / d;
+
+            state.depr.costPerKm = lossPerYear / globalKm;
+            state.depr.active = true;
+            document.getElementById('badge-depr').style.display = 'block';
+            closePopup('depr');
+        }
+
+        function resetAll() {
+            setVal('fuelConsumption', ''); setVal('distance', '');
+            ['salary','extra','depr'].forEach(k => {
+                state[k].active = false;
+                document.getElementById('badge-'+k).style.display = 'none';
+            });
+            document.getElementById('result').classList.remove('show');
+        }
+
+        function calculateTotal() {
+            const d = parseFloat(document.getElementById('distance').value);
+            const c = parseFloat(document.getElementById('fuelConsumption').value);
+            const p = parseFloat(document.getElementById('fuelPrice').value);
+            if(!d || !c) return alert("Mesafe ve tüketim giriniz.");
+
+            const fuel = (d * c / 100) * p;
+            const extra = state.extra.active ? state.extra.costPerKm * d : 0;
+            const depr = state.depr.active ? state.depr.costPerKm * d : 0;
+            const total = fuel + extra + depr;
+
+            let html = `<div style="font-size:22px">TOPLAM: ${total.toFixed(2)} TL</div>`;
+            html += `<div style="font-size:12px; margin-top:5px; opacity:0.8">`;
+            html += `⛽ ${fuel.toFixed(1)}₺ | 🛠️ ${extra.toFixed(1)}₺ | 📉 ${depr.toFixed(1)}₺`;
+            html += `</div>`;
+
+            if(state.salary.active) {
+                const workH = total / state.salary.hourly;
+                const driveM = (d / state.salary.speed) * 60;
+                html += `<hr style="margin:10px 0; opacity:0.2">`;
+                html += `<div style="font-size:14px">Çalışman gereken süre: <b>${Math.floor(workH)}sa ${Math.round((workH%1)*60)}dk</b></div>`;
+                html += `<div style="font-size:11px; opacity:0.7">Sürüş süresi: ${Math.round(driveM)} dakika</div>`;
+            }
+
+            const res = document.getElementById('result');
+            res.innerHTML = html;
+            res.classList.add('show');
+        }
+
+        // Init
+        checkAutoTheme();
+        setInterval(checkAutoTheme, 60000);
+        document.querySelectorAll('.popup-overlay').forEach(ov => {
+            ov.onclick = (e) => { if(e.target === ov) ov.classList.remove('show'); }
+        });
+    </script>
+</body>
+</html>
+
