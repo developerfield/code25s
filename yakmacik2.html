@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gelişmiş Araç Maliyet Analizi</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.5s ease;
+        }
+
+        /* Tema Renkleri */
+        body.light-mode { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        body.dark-mode { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); }
+
+        .container {
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            transition: all 0.5s ease;
+        }
+
+        body.light-mode .container { background: rgba(255, 255, 255, 0.95); }
+        body.dark-mode .container { background: rgba(30, 30, 50, 0.95); }
+
+        .header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 30px;
+            position: relative;
+            height: 40px;
+        }
+
+        h1 {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0;
+            padding-right: 155px;
+            transition: color 0.5s ease;
+        }
+        body.light-mode h1 { color: #333; }
+        body.dark-mode h1 { color: #e0e6ed; }
+
+        /* Butonlar */
+        .header-btn {
+            position: absolute;
+            width: 35px; height: 35px;
+            border-radius: 50%; border: none;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; color: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .header-btn:hover { transform: scale(1.1); }
+
+        .theme-toggle { right: 125px; }
+        .depreciation-toggle { right: 85px; background: linear-gradient(135deg, #e53e3e, #c53030); }
+        .extra-cost-toggle { right: 45px; background: linear-gradient(135deg, #f6ad55, #ed8936); }
+        .salary-toggle { right: 0; background: linear-gradient(135deg, #28a745, #20c997); }
+
+        body.light-mode .theme-toggle { background: linear-gradient(135deg, #667eea, #764ba2); }
+        body.dark-mode .theme-toggle { background: linear-gradient(135deg, #4a5568, #2d3748); }
+
+        /* Form Elemanları */
+        .input-section { display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px; }
+        .input-group { display: flex; flex-direction: column; }
+        .input-group label {
+            font-size: 13px; font-weight: 500; margin-bottom: 8px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        body.light-mode .input-group label { color: #555; }
+        body.dark-mode .input-group label { color: #b0b7c3; }
+
+        .input-group input {
+            padding: 12px; border: 2px solid #e1e8ed; border-radius: 12px;
+            font-size: 16px; transition: all 0.3s ease;
+        }
+        body.dark-mode .input-group input { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); color: white; }
+
+        .buttons-section { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
+        .preset-btn {
+            padding: 10px 4px; border: none; border-radius: 12px;
+            font-size: 12px; font-weight: 600; cursor: pointer; color: white;
+            transition: all 0.3s;
+        }
+        body.light-mode .preset-btn { background: linear-gradient(135deg, #667eea, #764ba2); }
+        body.dark-mode .preset-btn { background: linear-gradient(135deg, #4a5568, #2d3748); }
+        .preset-btn.clear-btn { background: #718096; }
+
+        .calculate-btn {
+            width: 100%; padding: 15px; border: none; border-radius: 12px;
+            font-size: 16px; font-weight: 600; cursor: pointer; color: white;
+            transition: all 0.3s;
+        }
+        body.light-mode .calculate-btn { background: linear-gradient(135deg, #ff6b6b, #ee5a52); }
+        body.dark-mode .calculate-btn { background: linear-gradient(135deg, #e53e3e, #c53030); }
+
+        .result {
+            padding: 20px; border-radius: 15px; text-align: center;
+            font-size: 15px; font-weight: 600; color: white;
+            opacity: 0; transform: translateY(20px); transition: all 0.5s ease;
+            margin-top: 20px; line-height: 1.6; background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+        .result.show { opacity: 1; transform: translateY(0); }
+
+        /* Badges */
+        .status-badges { display: flex; gap: 4px; }
+        .badge { font-size: 9px; padding: 2px 5px; border-radius: 6px; color: white; display: none; }
+        .badge.salary { background: #28a745; }
+        .badge.extra { background: #f6ad55; }
+        .badge.depr { background: #e53e3e; }
+
+        /* Popup */
+        .popup-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6); z-index: 1000;
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; visibility: hidden; transition: all 0.3s;
+            backdrop-filter: blur(5px);
+        }
+        .popup-overlay.show { opacity: 1; visibility: visible; }
+        .popup {
+            background: white; width: 92%; max-width: 420px; padding: 25px;
+            border-radius: 20px; transition: all 0.3s;
+        }
+        body.dark-mode .popup { background: #1e1e32; color: white; border: 1px solid rgba(255,255,255,0.1); }
+        .popup-header { display: flex; justify-content: space-between; margin-bottom: 20px; align-items: center; }
+        .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #ff6b6b; }
+        .popup-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }
+        .popup-full { margin-bottom: 15px; }
+        .popup label { display: block; font-size: 12px; margin-bottom: 5px; opacity: 0.8; }
+        .popup input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; }
+        body.dark-mode .popup input { background: rgba(255,255,255,0.1); border-color: #444; color: white; }
+        .action-btn { width: 100%; padding: 12px; border: none; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body class="light-mode">
+
+    <div class="container">
+        <div class="header">
+            <h1>⛽ Yol Maliyeti</h1>
+            <button class="header-btn theme-toggle" onclick="toggleTheme()">🌙</button>
+            <button class="header-btn depreciation-toggle" onclick="openPopup('depr')">📉</button>
+            <button class="header-btn extra-cost-toggle" onclick="openPopup('extra')">🛠️</button>
+            <button class="header-btn salary-toggle" onclick="openPopup('salary')">💼</button>
+        </div>
+
+        <div class="input-section">
+            <div class="input-group">
+                <label>Motor Yakıt Tüketimi (L/100km)</label>
+                <input type="number" id="fuelConsumption" placeholder="6.0">
+            </div>
+            <div class="buttons-section">
+                <button class="preset-btn" onclick="setVal('fuelConsumption', 2)">2L</button>
+                <button class="preset-btn" onclick="setVal('fuelConsumption', 3)">3L</button>
+                <button class="preset-btn" onclick="setVal('fuelConsumption', 4)">4L</button>
+                <button class="preset-btn" onclick="setVal('fuelConsumption', 5)">5L</button>
+                <button class="preset-btn" onclick="setVal('fuelConsumption', 6)">6L</button>
+                <button class="preset-btn" onclick="setVal('fuelConsumption', 7)">7L</button>
+                <button class="preset-btn" onclick="setVal('fuelConsumption', 8)">8L</button>
+                <button class="preset-btn clear-btn" onclick="resetAll()">Temizle</button>
+            </div>
+
+            <div class="input-group">
+                <label>Yakıt Fiyatı (TL/L)</label>
+                <input type="number" id="fuelPrice" value="55">
+            </div>
+
+            <div class="input-group">
+                <label>
+                    Gidilecek Mesafe (km)
+                    <div class="status-badges">
+                        <span id="badge-salary" class="badge salary">Maaş Aktif</span>
+                        <span id="badge-extra" class="badge extra">Gider Aktif</span>
+                        <span id="badge-depr" class="badge depr">Amortisman Aktif</span>
+                    </div>
+                </label>
+                <input type="number" id="distance" placeholder="15">
+            </div>
+        </div>
+
+        <button class="calculate-btn" onclick="calculateTotal()">💰 Toplamı Hesapla</button>
+        <div class="result" id="result"></div>
+    </div>
+
+    <!-- MAAŞ POPUP -->
+    <div class="popup-overlay" id="popup-salary">
+        <div class="popup">
+            <div class="popup-header"><h3>💼 Maaş Analizi</h3><button class="close-btn" onclick="closePopup('salary')">×</button></div>
+            <div class="popup-row">
+                <div><label>Aylık Maaş (TL)</label><input type="number" id="monthlySalary"></div>
+                <div><label>Haftalık Saat</label><input type="number" id="weeklyHours"></div>
+            </div>
+            <div class="popup-full"><label>Ortalama Hız (km/s)</label><input type="number" id="averageSpeed" value="70"></div>
+            <div class="popup-row">
+                <button class="preset-btn" style="background:#28a745" onclick="setAsgari()">Asgari Ücret</button>
+                <button class="preset-btn" style="background:#718096" onclick="resetState('salary')">Sıfırla</button>
+            </div>
+            <button class="action-btn" style="background:#28a745" onclick="activateSalary()">✅ Hesaba Dahil Et</button>
+        </div>
+    </div>
+
+    <!-- EK GİDER POPUP (SARI) -->
+    <div class="popup-overlay" id="popup-extra">
+        <div class="popup">
+            <div class="popup-header"><h3>🛠️ Yıllık Bakım & Gider</h3><button class="close-btn" onclick="closePopup('extra')">×</button></div>
+            <div class="popup-full"><label>Yıllık Toplam Gider (TL)</label><input type="number" id="annualExtraCost" placeholder="20000"></div>
+            <div class="popup-full"><label>Yıllık Tahmini KM (Sarı Buton)</label><input type="number" id="annualDistance" placeholder="10000"></div>
+            <div class="popup-row">
+                <button class="preset-btn" style="background:#ed8936" onclick="setVal('annualDistance', 10000)">10bin KM</button>
+                <button class="preset-btn" style="background:#718096" onclick="resetState('extra')">Sıfırla</button>
+            </div>
+            <button class="action-btn" style="background:#ed8936" onclick="activateExtra()">✅ Hesaba Dahil Et</button>
+        </div>
+    </div>
+
+    <!-- AMORTİSMAN POPUP (KIRMIZI) -->
+    <div class="popup-overlay" id="popup-depr">
+        <div class="popup">
+            <div class="popup-header"><h3>📉 Değer Kaybı (Kur Bazlı)</h3><button class="close-btn" onclick="closePopup('depr')">×</button></div>
+            <div class="popup-row">
+                <div><label>Alım Yılı</label><input type="number" id="buyYear" value="2022"></div>
+                <div><label>Kullanım (Yıl)</label><input type="number" id="useDuration" value="5"></div>
+            </div>
+            <div class="popup-row">
+                <div><label>Alış Fiyatı (TL)</label><input type="number" id="buyPrice" placeholder="50000"></div>
+                <div><label>Satış Oranı (%)</label><input type="number" id="resalePercent" value="90"></div>
+            </div>
+            <div class="popup-row" style="grid-template-columns: repeat(3, 1fr);">
+                <button class="preset-btn" style="background:#e53e3e" onclick="setQuickYear(3)">3 Yıl Önce</button>
+                <button class="preset-btn" style="background:#e53e3e" onclick="setQuickYear(5)">5 Yıl Önce</button>
+                <button class="preset-btn" style="background:#718096" onclick="resetState('depr')">Sıfırla</button>
+            </div>
+            <p style="font-size:10px; margin-top:10px; opacity:0.7">Not: Yıllık KM verisi "Sarı Buton"daki değerden alınır.</p>
+            <button class="action-btn" style="background:#e53e3e; margin-top:10px;" onclick="activateDepr()">✅ Hesaba Dahil Et</button>
+        </div>
+    </div>
+
+    <script>
+        const usdRates = { 2018: 4.81, 2019: 5.67, 2020: 7.01, 2021: 8.89, 2022: 16.57, 2023: 23.00, 2024: 31.0, 2025: 35.5, 2026: 40.0 };
+        const currentYear = new Date().getFullYear();
+        const sunTimes = { 1:{sr:7.5,ss:17.5}, 2:{sr:7.0,ss:18.5}, 3:{sr:6.5,ss:19.0}, 4:{sr:6.0,ss:19.5}, 5:{sr:5.5,ss:20.0}, 6:{sr:5.0,ss:20.5}, 7:{sr:5.0,ss:20.5}, 8:{sr:5.5,ss:20.0}, 9:{sr:6.0,ss:19.0}, 10:{sr:6.5,ss:18.0}, 11:{sr:7.0,ss:17.0}, 12:{sr:7.5,ss:17.0} };
+        
+        let isManualTheme = false;
+        let state = { 
+            salary: { active: false, hourly: 0, speed: 70 },
+            extra: { active: false, costPerKm: 0, annualKm: 0 },
+            depr: { active: false, costPerKm: 0 }
+        };
+
+        // TEMA SİSTEMİ (Orijinal Kodun Mantığı)
+        function checkTheme() {
+            if (isManualTheme) return;
+            const now = new Date();
+            const hour = now.getHours() + now.getMinutes()/60;
+            const month = now.getMonth() + 1;
+            const { sr, ss } = sunTimes[month];
+            document.body.className = (hour >= sr && hour < ss) ? 'light-mode' : 'dark-mode';
+            document.querySelector('.theme-toggle').textContent = document.body.classList.contains('light-mode') ? '🌙' : '☀️';
+        }
+        function toggleTheme() {
+            isManualTheme = true;
+            document.body.classList.toggle('dark-mode');
+            document.body.classList.toggle('light-mode');
+            document.querySelector('.theme-toggle').textContent = document.body.classList.contains('light-mode') ? '🌙' : '☀️';
+        }
+
+        // YARDIMCILAR
+        function setVal(id, val) { document.getElementById(id).value = val; }
+        function openPopup(id) { document.getElementById('popup-'+id).classList.add('show'); }
+        function closePopup(id) { document.getElementById('popup-'+id).classList.remove('show'); }
+
+        function setAsgari() { setVal('monthlySalary', 22500); setVal('weeklyHours', 45); }
+        function setQuickYear(back) { setVal('buyYear', currentYear - back); }
+
+        // AKTİVASYONLAR
+        function activateSalary() {
+            const m = parseFloat(document.getElementById('monthlySalary').value);
+            const h = parseFloat(document.getElementById('weeklyHours').value);
+            if(!m || !h) return alert("Bilgileri girin");
+            state.salary.hourly = m / (h * 4.33);
+            state.salary.speed = parseFloat(document.getElementById('averageSpeed').value) || 70;
+            state.salary.active = true;
+            document.getElementById('badge-salary').style.display = 'block';
+            closePopup('salary');
+        }
+
+        function activateExtra() {
+            const cost = parseFloat(document.getElementById('annualExtraCost').value);
+            const km = parseFloat(document.getElementById('annualDistance').value);
+            if(!cost || !km) return alert("Bilgileri girin");
+            state.extra.annualKm = km;
+            state.extra.costPerKm = cost / km;
+            state.extra.active = true;
+            document.getElementById('badge-extra').style.display = 'block';
+            closePopup('extra');
+        }
+
+        function activateDepr() {
+            const year = parseInt(document.getElementById('buyYear').value);
+            const price = parseFloat(document.getElementById('buyPrice').value);
+            const dur = parseFloat(document.getElementById('useDuration').value);
+            const pct = parseFloat(document.getElementById('resalePercent').value);
+            const annKm = state.extra.annualKm || parseFloat(document.getElementById('annualDistance').value);
+
+            if(!price || !annKm) return alert("Önce 'Sarı Buton'dan yıllık KM girilmeli ve fiyat yazılmalı!");
+
+            const oldRate = usdRates[year] || 15;
+            const currentRate = usdRates[2025];
+            const todayValueTry = (price / oldRate) * currentRate;
+            const resaleVal = todayValueTry * (pct/100);
+            const totalLoss = todayValueTry - resaleVal;
+            
+            state.depr.costPerKm = (totalLoss / dur) / annKm;
+            state.depr.active = true;
+            document.getElementById('badge-depr').style.display = 'block';
+            closePopup('depr');
+        }
+
+        function resetState(type) {
+            state[type].active = false;
+            document.getElementById('badge-'+type).style.display = 'none';
+            closePopup(type);
+        }
+
+        function resetAll() {
+            ['fuelConsumption', 'distance', 'monthlySalary', 'annualExtraCost', 'buyPrice'].forEach(id => setVal(id, ''));
+            ['salary', 'extra', 'depr'].forEach(t => resetState(t));
+            document.getElementById('result').classList.remove('show');
+        }
+
+        // HESAPLA
+        function calculateTotal() {
+            const d = parseFloat(document.getElementById('distance').value);
+            const c = parseFloat(document.getElementById('fuelConsumption').value);
+            const p = parseFloat(document.getElementById('fuelPrice').value);
+            if(!d || !c) return alert("Mesafe ve tüketim girin");
+
+            const fuel = (d * c / 100) * p;
+            const extra = state.extra.active ? (state.extra.costPerKm * d) : 0;
+            const depr = state.depr.active ? (state.depr.costPerKm * d) : 0;
+            const total = fuel + extra + depr;
+
+            let res = `<div>TOPLAM: ${total.toFixed(2)} TL</div>`;
+            res += `<div style="font-size:12px; opacity:0.8">⛽ Yakıt: ${fuel.toFixed(1)}₺ | 🛠️ Bakım: ${extra.toFixed(1)}₺ | 📉 Kayıp: ${depr.toFixed(1)}₺</div>`;
+
+            if(state.salary.active) {
+                const h = total / state.salary.hourly;
+                const trav = (d / state.salary.speed) * 60;
+                res += `<hr style="margin:8px 0; opacity:0.3">`;
+                res += `<div style="font-size:13px">Bu yol için <b>${Math.floor(h)} sa ${Math.round((h%1)*60)} dk</b> çalışmalısın.</div>`;
+                res += `<div style="font-size:11px">Sürüş süresi tahminen: ${Math.round(trav)} dakika.</div>`;
+            }
+
+            const div = document.getElementById('result');
+            div.innerHTML = res;
+            div.classList.add('show');
+        }
+
+        // Başlat
+        checkTheme();
+        setInterval(checkTheme, 60000);
+        document.querySelectorAll('.popup-overlay').forEach(ov => ov.onclick = (e) => { if(e.target==ov) ov.classList.remove('show'); });
+    </script>
+</body>
+</html>
+
