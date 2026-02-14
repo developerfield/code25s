@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Minimal Alan Görselleştirici</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body, html { width: 100%; height: 100%; overflow: hidden; background: #000; touch-action: none; }
+canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+const CONFIG_JSON = { "graph1": { "eq": "100 * sign(y) * (abs(y/(4*x))^s) / (1 + abs((y/(4*x))^(s-1) - 1))", "eqA": "100 * sign(y) * (abs(y/(4*x))^s) / (1 + abs((y/(4*x))^(s-1) - 1))", "eqB": "100 * sign(y) * (abs(y / (4*x + 0.000001))^s) / (1 + abs(y / (4*x + 0.000001) - 1))", "eqC": "100 * (y * abs(y)^(s-1)) / (abs(4*x + 0.000001)^s) * (1 / (1 + abs(p * (y / (4*x + 0.000001) - 1))))", "colorOrigin": { "x": 0, "y": 0 }, "vars": { "s": { "val": 1.62, "min": 1.62, "max": 1.62, "step": 0.001, "enabled": false }, "p": { "val": 3, "min": 0, "max": 10, "step": 0.1, "enabled": false }, "d": { "val": 2.19, "min": 0, "max": 3, "step": 0.001, "enabled": false }, "f": { "val": 1.5, "min": 0, "max": 10, "step": 0.1, "enabled": false } }, "paramsLeft": { "i3": { "val": 0, "en": true, "marker": true, "color": [0, 0, 0] }, "i2": { "val": 52, "en": true, "marker": true, "color": [130, 0, 0] }, "i1": { "val": 68, "en": true, "marker": true, "color": [255, 255, 0] }, "h0": { "val": 84, "en": true, "marker": true, "color": [0, 255, 0] }, "h1": { "val": 100, "en": true, "marker": true, "color": [0, 0, 255] }, "h2": { "val": 100, "en": true, "marker": false, "color": [150, 0, 255] }, "h3": { "val": 200, "en": true, "marker": false, "color": [0, 0, 0] } }, "paramsRight": { "i3": { "val": -1, "en": false, "marker": false, "color": [0, 0, 0] }, "i2": { "val": 0, "en": false, "marker": false, "color": [130, 0, 0] }, "i1": { "val": 0.5, "en": false, "marker": false, "color": [255, 255, 0] }, "h0": { "val": 1, "en": false, "marker": false, "color": [0, 255, 0] }, "h1": { "val": 1.5, "en": false, "marker": false, "color": [0, 0, 255] }, "h2": { "val": 2, "en": false, "marker": false, "color": [150, 0, 255] }, "h3": { "val": 2.5, "en": false, "marker": false, "color": [0, 0, 0] } }, "box": { "enabled": true, "type": "rect", "style": "grid", "x1": 2, "x2": 5, "y1": 7, "y2": 13 }, "fixedTarget": { "enabled": true, "x": 2.9, "y": 8.33 } }, "graph2": { "eq": "sin(sqrt(x^2 + y^2) * s) * cos(atan2(y,x) * p * 3)", "eqA": "x*s + y*p", "eqB": "sqrt(x^2 + y^2)", "eqC": "atan2(y, x)", "colorOrigin": { "x": 0, "y": 0 }, "vars": { "s": { "val": 2, "min": 0, "max": 10, "step": 0.1, "enabled": true }, "p": { "val": 3, "min": 0, "max": 10, "step": 0.1, "enabled": true }, "d": { "val": 1, "min": 0, "max": 10, "step": 0.1, "enabled": true }, "f": { "val": 1.5, "min": 0, "max": 10, "step": 0.1, "enabled": true } }, "paramsLeft": { "i3": { "val": -2, "en": false, "marker": false, "color": [0, 0, 0] }, "i2": { "val": -1, "en": true, "marker": false, "color": [130, 0, 0] }, "i1": { "val": -0.3, "en": true, "marker": false, "color": [255, 255, 0] }, "h0": { "val": 0, "en": true, "marker": true, "color": [0, 255, 0] }, "h1": { "val": 0.4, "en": true, "marker": false, "color": [0, 0, 255] }, "h2": { "val": 0.8, "en": true, "marker": false, "color": [150, 0, 255] }, "h3": { "val": 1.2, "en": false, "marker": false, "color": [0, 0, 0] } }, "paramsRight": { "i3": { "val": -1, "en": false, "marker": false, "color": [0, 0, 0] }, "i2": { "val": 0, "en": false, "marker": false, "color": [130, 0, 0] }, "i1": { "val": 0.5, "en": false, "marker": false, "color": [255, 255, 0] }, "h0": { "val": 1, "en": false, "marker": false, "color": [0, 255, 0] }, "h1": { "val": 1.5, "en": false, "marker": false, "color": [0, 0, 255] }, "h2": { "val": 2, "en": false, "marker": false, "color": [150, 0, 255] }, "h3": { "val": 2.5, "en": false, "marker": false, "color": [0, 0, 0] } }, "box": { "enabled": false, "type": "rect", "style": "grid", "x1": -3, "x2": 3, "y1": -3, "y2": 3 }, "fixedTarget": { "enabled": false, "x": 0, "y": 0 } }, "currentGraph": 1, "view": { "x": 1.96637103628892, "y": 8.50154286410903, "zoom": 142.543203717601, "isMoving": false, "isTargetMode": false, "isMasterLocked": false, "target": { "x": 2.8986, "y": 8.3178 } }, "sliderAssignments": [ "s", "s", "d", "f" ], "activeDenklemLetter": "a", "varSliderCount": 1, "colorMode": "left" };
+const firebaseConfig = { apiKey: "AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc", authDomain: "paralayici.firebaseapp.com", projectId: "paralayici", storageBucket: "paralayici.firebasestorage.app", messagingSenderId: "980843550614", appId: "1:980843550614:web:93dd5bda4ddc377b20efb7" };
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true, willReadFrequently: false });
+let view = CONFIG_JSON.view || { x: 0, y: 0, zoom: 40 };
+let config, compiledEq, compiledEqA, compiledEqB, compiledEqC;
+let activeDenklemLetter = CONFIG_JSON.activeDenklemLetter || 'E';
+let colorMode = CONFIG_JSON.colorMode || 'left';
+let db, TARGET_POINTS = [];
+let offscreenCanvas, offscreenCtx;
+let needsFullRender = true;
+let isDown = false, lastMouse = { x: 0, y: 0 }, touchDistance = 0;
+try { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); } catch (e) { console.error("Firebase error:", e); }
+function sign(x) { if (x > 0) return 1; if (x < 0) return -1; return 0; }
+async function loadTargetPoints() {
+if (!db) return;
+try {
+const snapshot = await db.collection("cumulative_daily_data").orderBy("date", "asc").get();
+if (snapshot.empty) return;
+const allData = [];
+snapshot.forEach(doc => allData.push(doc.data()));
+const firstDate = new Date(allData[0].date);
+const today = new Date();
+const dateMap = new Map();
+allData.forEach(item => dateMap.set(item.date, item.value));
+TARGET_POINTS = [];
+let Tp = 0, Bg = 0, currentDate = new Date(firstDate), dayIndex = 0;
+while (currentDate <= today) {
+const dateStr = currentDate.toISOString().split('T')[0];
+const Tg = dayIndex + 1;
+const value = dateMap.get(dateStr);
+if (value !== undefined) { Tp += value; } else { Bg++; }
+const xValue = (990 + Tg) / 365;
+const yValue = (2843 + 4 * (Tp + (Tg - Bg)) + (Bg * 0.5)) / 365;
+TARGET_POINTS.push({ x: xValue, y: yValue, date: dateStr });
+currentDate.setDate(currentDate.getDate() + 1);
+dayIndex++;
+}
+needsFullRender = true;
+render();
+} catch(e) { console.error("Data load error:", e); }
+}
+function init() {
+const graphNum = CONFIG_JSON.currentGraph || 1;
+config = CONFIG_JSON['graph' + graphNum];
+if (!config) { console.error('Graph not found!'); return; }
+try {
+compiledEq = math.compile(config.eq);
+compiledEqA = math.compile(config.eqA);
+compiledEqB = math.compile(config.eqB);
+compiledEqC = math.compile(config.eqC);
+} catch(e) {
+console.error('Equation error:', e);
+compiledEq = math.compile('0');
+compiledEqA = math.compile('0');
+compiledEqB = math.compile('0');
+compiledEqC = math.compile('0');
+}
+resizeCanvas();
+render();
+loadTargetPoints();
+}
+function getCompiledDenklem() {
+if (activeDenklemLetter === 'E') return compiledEq;
+if (activeDenklemLetter === 'a') return compiledEqA;
+if (activeDenklemLetter === 'b') return compiledEqB;
+if (activeDenklemLetter === 'c') return compiledEqC;
+return compiledEq;
+}
+function resizeCanvas() {
+const dpr = window.devicePixelRatio || 1;
+canvas.width = window.innerWidth * dpr;
+canvas.height = window.innerHeight * dpr;
+canvas.style.width = window.innerWidth + 'px';
+canvas.style.height = window.innerHeight + 'px';
+ctx.scale(dpr, dpr);
+offscreenCanvas = document.createElement('canvas');
+offscreenCanvas.width = canvas.width;
+offscreenCanvas.height = canvas.height;
+offscreenCtx = offscreenCanvas.getContext('2d', { alpha: false });
+offscreenCtx.scale(dpr, dpr);
+needsFullRender = true;
+}
+function interpolate(c1, c2, t) { return [Math.floor(c1[0] + (c2[0] - c1[0]) * t), Math.floor(c1[1] + (c2[1] - c1[1]) * t), Math.floor(c1[2] + (c2[2] - c1[2]) * t)]; }
+function getRGB(val) {
+const p = colorMode === 'left' ? config.paramsLeft : config.paramsRight;
+const keys = ['i3', 'i2', 'i1', 'h0', 'h1', 'h2', 'h3'];
+for (let j = 0; j < keys.length - 1; j++) {
+const k1 = keys[j], k2 = keys[j + 1];
+if (p[k1].en && p[k2].en && val >= p[k1].val && val <= p[k2].val) {
+const t = (val - p[k1].val) / (p[k2].val - p[k1].val);
+return interpolate(p[k1].color, p[k2].color, t);
+}
+}
+return [0, 0, 0];
+}
+function renderBackground() {
+const w = canvas.width / (window.devicePixelRatio || 1);
+const h = canvas.height / (window.devicePixelRatio || 1);
+const z = view.zoom;
+const step = 3;
+const scope = { s: config.vars.s.val, p: config.vars.p.val, d: config.vars.d.val, f: config.vars.f.val };
+try { scope.a = compiledEqA.evaluate(scope); scope.b = compiledEqB.evaluate(scope); scope.c = compiledEqC.evaluate(scope); } catch(e) { scope.a = 0; scope.b = 0; scope.c = 0; }
+const currentCompiled = getCompiledDenklem();
+const imageData = offscreenCtx.createImageData(w, h);
+const data = imageData.data;
+for (let px = 0; px < w; px += step) {
+for (let py = 0; py < h; py += step) {
+const wx = (px - w / 2) / z + view.x;
+const wy = -(py - h / 2) / z + view.y;
+try {
+scope.x = wx - config.colorOrigin.x;
+scope.y = wy - config.colorOrigin.y;
+const val = currentCompiled.evaluate(scope);
+const [r, g, b] = getRGB(val);
+for (let sx = 0; sx < step && px + sx < w; sx++) {
+for (let sy = 0; sy < step && py + sy < h; sy++) {
+const idx = ((py + sy) * w + (px + sx)) * 4;
+data[idx] = r; data[idx + 1] = g; data[idx + 2] = b; data[idx + 3] = 255;
+}
+}
+} catch(e) {
+for (let sx = 0; sx < step && px + sx < w; sx++) {
+for (let sy = 0; sy < step && py + sy < h; sy++) {
+const idx = ((py + sy) * w + (px + sx)) * 4;
+data[idx + 3] = 255;
+}
+}
+}
+}
+}
+offscreenCtx.putImageData(imageData, 0, 0);
+}
+function render() {
+const w = canvas.width / (window.devicePixelRatio || 1);
+const h = canvas.height / (window.devicePixelRatio || 1);
+if (needsFullRender) { renderBackground(); needsFullRender = false; }
+ctx.drawImage(offscreenCanvas, 0, 0);
+drawGrid();
+drawContours();
+drawTargetPoints();
+}
+function drawTargetPoints() {
+if (!TARGET_POINTS || TARGET_POINTS.length === 0) return;
+const w = canvas.width / (window.devicePixelRatio || 1);
+const h = canvas.height / (window.devicePixelRatio || 1);
+const z = view.zoom;
+ctx.shadowBlur = 15;
+ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
+ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+ctx.lineWidth = 3;
+ctx.lineCap = "round";
+ctx.lineJoin = "round";
+ctx.beginPath();
+for (let i = 0; i < TARGET_POINTS.length; i++) {
+const p = TARGET_POINTS[i];
+const sx = (p.x - view.x) * z + w / 2;
+const sy = -(p.y - view.y) * z + h / 2;
+if (i === 0) { ctx.moveTo(sx, sy); } else { ctx.lineTo(sx, sy); }
+}
+ctx.stroke();
+ctx.shadowBlur = 0;
+}
+function drawGrid() {
+const w = canvas.width / (window.devicePixelRatio || 1);
+const h = canvas.height / (window.devicePixelRatio || 1);
+const z = view.zoom;
+const originX = (0 - view.x) * z + w / 2;
+const originY = -(0 - view.y) * z + h / 2;
+const minWorldX = -w / (2 * z) + view.x;
+const maxWorldX = w / (2 * z) + view.x;
+const minWorldY = -h / (2 * z) + view.y;
+const maxWorldY = h / (2 * z) + view.y;
+ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+ctx.lineWidth = 1;
+const startX = Math.floor(minWorldX);
+const endX = Math.ceil(maxWorldX);
+for (let x = startX; x <= endX; x++) {
+const sx = (x - view.x) * z + w / 2;
+ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, h); ctx.stroke();
+}
+const startY = Math.floor(minWorldY);
+const endY = Math.ceil(maxWorldY);
+for (let y = startY; y <= endY; y++) {
+const sy = -(y - view.y) * z + h / 2;
+ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(w, sy); ctx.stroke();
+}
+ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+ctx.lineWidth = 2;
+const startX3 = Math.floor(minWorldX / 3) * 3;
+const endX3 = Math.ceil(maxWorldX / 3) * 3;
+for (let x = startX3; x <= endX3; x += 3) {
+const sx = (x - view.x) * z + w / 2;
+ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, h); ctx.stroke();
+}
+const startY6 = Math.floor(minWorldY / 6) * 6;
+const endY6 = Math.ceil(maxWorldY / 6) * 6;
+for (let y = startY6; y <= endY6; y += 6) {
+const sy = -(y - view.y) * z + h / 2;
+ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(w, sy); ctx.stroke();
+}
+ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+ctx.lineWidth = 2;
+ctx.beginPath(); ctx.moveTo(originX, 0); ctx.lineTo(originX, h); ctx.stroke();
+ctx.beginPath(); ctx.moveTo(0, originY); ctx.lineTo(w, originY); ctx.stroke();
+ctx.beginPath(); ctx.arc(originX, originY, 4, 0, Math.PI * 2); ctx.fillStyle = "rgba(255, 255, 0, 0.8)"; ctx.fill(); ctx.strokeStyle = "rgba(255, 255, 255, 0.9)"; ctx.lineWidth = 2; ctx.stroke();
+}
+function drawContours() {
+const w = canvas.width / (window.devicePixelRatio || 1);
+const h = canvas.height / (window.devicePixelRatio || 1);
+const z = view.zoom;
+const p = colorMode === 'left' ? config.paramsLeft : config.paramsRight;
+const keys = ['i3', 'i2', 'i1', 'h0', 'h1', 'h2', 'h3'];
+const scope = { s: config.vars.s.val, p: config.vars.p.val, d: config.vars.d.val, f: config.vars.f.val };
+try { scope.a = compiledEqA.evaluate(scope); scope.b = compiledEqB.evaluate(scope); scope.c = compiledEqC.evaluate(scope); } catch(e) { scope.a = 0; scope.b = 0; scope.c = 0; }
+const currentCompiled = getCompiledDenklem();
+keys.forEach(k => {
+if (p[k].marker && p[k].en) {
+const targetVal = p[k].val;
+ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+ctx.lineWidth = 2;
+const gridRes = 100;
+const stepX = w / gridRes;
+const stepY = h / gridRes;
+for (let i = 0; i < gridRes; i++) {
+for (let j = 0; j < gridRes; j++) {
+const px1 = i * stepX, py1 = j * stepY, px2 = (i + 1) * stepX, py2 = (j + 1) * stepY;
+const corners = [[px1, py1], [px2, py1], [px2, py2], [px1, py2]];
+const values = corners.map(([px, py]) => {
+const wx = (px - w/2) / z + view.x;
+const wy = -(py - h/2) / z + view.y;
+scope.x = wx - config.colorOrigin.x;
+scope.y = wy - config.colorOrigin.y;
+try { return currentCompiled.evaluate(scope); } catch(e) { return 0; }
+});
+const minVal = Math.min(...values);
+const maxVal = Math.max(...values);
+if (targetVal >= minVal && targetVal <= maxVal && maxVal - minVal > 0.01) {
+const edges = [];
+for (let e = 0; e < 4; e++) {
+const v1 = values[e], v2 = values[(e + 1) % 4];
+if ((v1 - targetVal) * (v2 - targetVal) < 0) {
+const t = (targetVal - v1) / (v2 - v1);
+const p1 = corners[e], p2 = corners[(e + 1) % 4];
+edges.push([p1[0] + t * (p2[0] - p1[0]), p1[1] + t * (p2[1] - p1[1])]);
+}
+}
+if (edges.length >= 2) { ctx.beginPath(); ctx.moveTo(edges[0][0], edges[0][1]); ctx.lineTo(edges[1][0], edges[1][1]); ctx.stroke(); }
+}
+}
+}
+}
+});
+}
+function handleMove(ex, ey) {
+if (!isDown) return;
+view.x -= (ex - lastMouse.x) / view.zoom;
+view.y += (ey - lastMouse.y) / view.zoom;
+lastMouse = { x: ex, y: ey };
+render();
+}
+canvas.addEventListener('mousedown', e => { isDown = true; lastMouse = { x: e.clientX, y: e.clientY }; });
+window.addEventListener('mouseup', () => { if (isDown) { isDown = false; needsFullRender = true; render(); } });
+window.addEventListener('mousemove', e => { handleMove(e.clientX, e.clientY); });
+canvas.addEventListener('touchstart', e => {
+if (e.touches.length === 1) { isDown = true; lastMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }
+else if (e.touches.length === 2) { isDown = false; const dx = e.touches[0].clientX - e.touches[1].clientX; const dy = e.touches[0].clientY - e.touches[1].clientY; touchDistance = Math.hypot(dx, dy); }
+e.preventDefault();
+}, { passive: false });
+canvas.addEventListener('touchmove', e => {
+if (e.touches.length === 1) { handleMove(e.touches[0].clientX, e.touches[0].clientY); }
+else if (e.touches.length === 2) { const dx = e.touches[0].clientX - e.touches[1].clientX; const dy = e.touches[0].clientY - e.touches[1].clientY; const dist = Math.hypot(dx, dy); if (touchDistance > 0) { const scale = dist / touchDistance; view.zoom *= scale; render(); } touchDistance = dist; }
+e.preventDefault();
+}, { passive: false });
+window.addEventListener('touchend', () => { if (isDown || touchDistance > 0) { isDown = false; touchDistance = 0; needsFullRender = true; render(); } });
+canvas.addEventListener('wheel', e => { const scale = e.deltaY > 0 ? 0.9 : 1.1; view.zoom *= scale; needsFullRender = true; render(); e.preventDefault(); }, { passive: false });
+window.addEventListener('resize', () => { resizeCanvas(); render(); });
+init();
+</script>
+</body>
+</html>
