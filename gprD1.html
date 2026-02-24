@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Veri Görüntüleyici</title>
+
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 30px;
+            background: #f4f7f9;
+        }
+        h2 {
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+        .box {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            word-break: break-all;
+            font-size: 15px;
+            line-height: 1.8;
+            color: #333;
+        }
+        #status {
+            color: #888;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <p id="status">Veriler yükleniyor...</p>
+
+    <h2>Ham Değerler</h2>
+    <div class="box" id="raw-values">—</div>
+
+    <h2>Kümülatif Değerler</h2>
+    <div class="box" id="cumulative-values">—</div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",
+            authDomain: "paralayici.firebaseapp.com",
+            projectId: "paralayici",
+            storageBucket: "paralayici.firebasestorage.app",
+            messagingSenderId: "980843550614",
+            appId: "1:980843550614:web:93dd5bda4ddc377b20efb7"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        db.collection("cumulative_daily_data")
+            .orderBy("date", "asc")
+            .get()
+            .then(snapshot => {
+                if (snapshot.empty) {
+                    document.getElementById('status').textContent = "Veri bulunamadı.";
+                    return;
+                }
+
+                const rawValues = [];
+                const cumulativeValues = [];
+                let sum = 0;
+
+                snapshot.forEach(doc => {
+                    const val = doc.data().value;
+                    rawValues.push(val);
+                    sum += val;
+                    cumulativeValues.push(parseFloat(sum.toFixed(4)));
+                });
+
+                document.getElementById('raw-values').textContent = rawValues.join(", ");
+                document.getElementById('cumulative-values').textContent = cumulativeValues.join(", ");
+                document.getElementById('status').textContent = `${rawValues.length} kayıt yüklendi.`;
+            })
+            .catch(err => {
+                document.getElementById('status').textContent = "Hata: " + err.message;
+            });
+    </script>
+
+</body>
+</html>
