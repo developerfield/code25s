@@ -3,355 +3,236 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modern App Arayüzü</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Gaussian Process Tahminleyici</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
-        /* --- Temel Ayarlar ve Renkler --- */
-        :root {
-            --primary-color: #4F46E5; /* İndigo */
-            --primary-hover: #4338CA;
-            --bg-color: #F3F4F6; /* Açık gri arkaplan */
-            --sidebar-bg: #111827; /* Koyu lacivert/siyah */
-            --card-bg: #FFFFFF;
-            --text-main: #1F2937;
-            --text-muted: #6B7280;
-            --border-color: #E5E7EB;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Poppins', sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        /* --- Yan Menü (Sidebar) --- */
-        .sidebar {
-            width: 260px;
-            background-color: var(--sidebar-bg);
-            color: white;
-            display: flex;
-            flex-direction: column;
-            transition: all 0.3s;
-        }
-
-        .logo {
-            padding: 24px;
-            font-size: 24px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .logo i {
-            color: var(--primary-color);
-        }
-
-        .nav-menu {
-            padding: 20px 0;
-            flex: 1;
-        }
-
-        .nav-item {
-            padding: 15px 24px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            color: #9CA3AF;
-            text-decoration: none;
-            transition: 0.3s;
-            font-weight: 500;
-        }
-
-        .nav-item:hover, .nav-item.active {
-            background-color: rgba(255,255,255,0.05);
-            color: white;
-            border-left: 4px solid var(--primary-color);
-        }
-
-        /* --- Ana İçerik Alanı --- */
-        .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-        }
-
-        /* --- Üst Çubuk (Header) --- */
-        .topbar {
-            background-color: var(--card-bg);
-            padding: 20px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            z-index: 10;
-        }
-
-        .search-bar {
-            display: flex;
-            align-items: center;
-            background-color: var(--bg-color);
-            padding: 10px 20px;
-            border-radius: 30px;
-            width: 300px;
-        }
-
-        .search-bar input {
-            border: none;
-            background: transparent;
-            outline: none;
-            margin-left: 10px;
-            width: 100%;
-            color: var(--text-main);
-        }
-
-        .user-profile {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .user-profile img {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-
-        /* --- Pano (Dashboard) İçeriği --- */
-        .dashboard {
-            padding: 30px;
-        }
-
-        .page-title {
-            font-size: 24px;
-            font-weight: 600;
-            margin-bottom: 24px;
-        }
-
-        /* İstatistik Kartları */
-        .cards-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 24px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
-            background-color: var(--card-bg);
-            padding: 24px;
-            border-radius: 16px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            transition: transform 0.3s;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .stat-info h4 {
-            color: var(--text-muted);
-            font-size: 14px;
-            font-weight: 500;
-            margin-bottom: 8px;
-        }
-
-        .stat-info h2 {
-            font-size: 28px;
-            color: var(--text-main);
-        }
-
-        .stat-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-        }
-
-        .icon-blue { background-color: #DBEAFE; color: #2563EB; }
-        .icon-green { background-color: #D1FAE5; color: #059669; }
-        .icon-purple { background-color: #EDE9FE; color: #7C3AED; }
-        .icon-orange { background-color: #FFEDD5; color: #EA580C; }
-
-        /* Son Aktiviteler Tablosu */
-        .recent-section {
-            background-color: var(--card-bg);
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
-        }
-
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .btn {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: 0.3s;
-        }
-
-        .btn:hover {
-            background-color: var(--primary-hover);
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            text-align: left;
-            padding: 16px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        th {
-            color: var(--text-muted);
-            font-weight: 500;
-            font-size: 14px;
-        }
-
-        .status {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .status.completed { background-color: #D1FAE5; color: #059669; }
-        .status.pending { background-color: #FEF3C7; color: #D97706; }
-
+        body { font-family: monospace; padding: 20px; max-width: 800px; margin: auto; background-color: #fafafa; color: #333; }
+        .container { background: #fff; padding: 20px; border: 1px solid #ccc; }
+        h2 { margin-top: 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"] { width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid #999; box-sizing: border-box; font-family: monospace;}
+        .sliders { display: flex; gap: 20px; margin-bottom: 15px; }
+        .sliders div { flex: 1; }
+        button { padding: 10px 15px; background: #333; color: #fff; border: none; cursor: pointer; font-family: monospace; font-size: 14px;}
+        button:hover { background: #555; }
+        #result-box { margin-top: 20px; padding: 15px; background: #eef; border: 1px solid #bcf; display: none; }
+        canvas { margin-top: 20px; background: #fff; border: 1px solid #eee; }
     </style>
 </head>
 <body>
 
-    <aside class="sidebar">
-        <div class="logo">
-            <i class="fa-solid fa-layer-group"></i> NexusApp
-        </div>
-        <nav class="nav-menu">
-            <a href="#" class="nav-item active"><i class="fa-solid fa-house"></i> Gösterge Paneli</a>
-            <a href="#" class="nav-item"><i class="fa-solid fa-chart-pie"></i> Analitik</a>
-            <a href="#" class="nav-item"><i class="fa-solid fa-users"></i> Kullanıcılar</a>
-            <a href="#" class="nav-item"><i class="fa-solid fa-folder"></i> Projeler</a>
-            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Ayarlar</a>
-        </nav>
-    </aside>
+<div class="container">
+    <h2>Gaussian Process Regression (GPR)</h2>
+    
+    <label>Y Değerleri (Sıralı verilerinizi virgülle ayırarak girin):</label>
+    <input type="text" id="dataInput" value="2.1, 2.9, 3.8, 5.1, 5.8, 7.2, 8.5">
 
-    <main class="main-content">
+    <div class="sliders">
+        <div>
+            <label>Uzunluk Ölçeği (Length Scale - l): <span id="l_val">2.0</span></label>
+            <input type="range" id="param_l" min="0.1" max="10" step="0.1" value="2.0" oninput="document.getElementById('l_val').innerText=this.value">
+        </div>
+        <div>
+            <label>Gürültü Varyansı (Noise - &sigma;_n): <span id="n_val">0.1</span></label>
+            <input type="range" id="param_n" min="0.01" max="2" step="0.01" value="0.1" oninput="document.getElementById('n_val').innerText=this.value">
+        </div>
+    </div>
+
+    <button onclick="runGPR()">Hesapla ve Tahmin Et</button>
+
+    <div id="result-box">
+        <strong>Sonraki 3 Tahmin:</strong>
+        <ul id="predictionsList"></ul>
+    </div>
+
+    <canvas id="gprChart"></canvas>
+</div>
+
+<script>
+    let chartInstance = null;
+
+    // RBF Kernel Fonksiyonu
+    function rbfKernel(x1, x2, l, sigma_f) {
+        let distSq = Math.pow(x1 - x2, 2);
+        return Math.pow(sigma_f, 2) * Math.exp(-distSq / (2 * Math.pow(l, 2)));
+    }
+
+    // Covariance Matrisi Oluşturucu
+    function buildCovarianceMatrix(X1, X2, l, sigma_f) {
+        let K = [];
+        for(let i=0; i<X1.length; i++) {
+            let row = [];
+            for(let j=0; j<X2.length; j++) {
+                row.push(rbfKernel(X1[i], X2[j], l, sigma_f));
+            }
+            K.push(row);
+        }
+        return K;
+    }
+
+    function runGPR() {
+        // Girdileri Al
+        let rawData = document.getElementById('dataInput').value;
+        let y = rawData.split(',').map(Number).filter(n => !isNaN(n));
         
-        <header class="topbar">
-            <div class="search-bar">
-                <i class="fa-solid fa-magnifying-glass" style="color: #9CA3AF;"></i>
-                <input type="text" placeholder="Uygulama içinde ara...">
-            </div>
-            <div class="user-profile">
-                <i class="fa-regular fa-bell" style="font-size: 20px; cursor: pointer;"></i>
-                <img src="https://ui-avatars.com/api/?name=Admin+User&background=4F46E5&color=fff" alt="Profil">
-            </div>
-        </header>
+        if (y.length < 2) {
+            alert("Lütfen en az 2 geçerli sayı girin.");
+            return;
+        }
 
-        <div class="dashboard">
-            <h2 class="page-title">Genel Bakış</h2>
+        // X değerlerini oluştur (1, 2, 3...)
+        let X = Array.from({length: y.length}, (_, i) => i + 1);
 
-            <div class="cards-grid">
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <h4>Toplam Ziyaretçi</h4>
-                        <h2>24,592</h2>
-                    </div>
-                    <div class="stat-icon icon-blue"><i class="fa-solid fa-eye"></i></div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <h4>Yeni Kullanıcılar</h4>
-                        <h2>1,245</h2>
-                    </div>
-                    <div class="stat-icon icon-green"><i class="fa-solid fa-user-plus"></i></div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <h4>Aylık Gelir</h4>
-                        <h2>$12,400</h2>
-                    </div>
-                    <div class="stat-icon icon-purple"><i class="fa-solid fa-wallet"></i></div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <h4>Bekleyen Görevler</h4>
-                        <h2>38</h2>
-                    </div>
-                    <div class="stat-icon icon-orange"><i class="fa-solid fa-clock"></i></div>
-                </div>
-            </div>
+        // Parametreleri Al
+        let l = parseFloat(document.getElementById('param_l').value);
+        let sigma_n = parseFloat(document.getElementById('param_n').value);
+        
+        // Sinyal varyansını (sigma_f) verinin standart sapmasına göre yaklaşık belirle
+        let y_mean = y.reduce((a,b) => a+b, 0) / y.length;
+        let y_var = y.reduce((a,b) => a + Math.pow(b - y_mean, 2), 0) / y.length;
+        let sigma_f = Math.sqrt(y_var) || 1.0;
 
-            <div class="recent-section">
-                <div class="section-header">
-                    <h3>Son İşlemler</h3>
-                    <button class="btn" onclick="alert('Yeni rapor oluşturuluyor...')">Rapor Al</button>
-                </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Proje Adı</th>
-                            <th>Müşteri</th>
-                            <th>Tarih</th>
-                            <th>Durum</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><strong>Web Sitesi Yenileme</strong></td>
-                            <td>Tech Corp</td>
-                            <td>24 Şubat 2026</td>
-                            <td><span class="status completed">Tamamlandı</span></td>
-                        </tr>
-                        <tr>
-                            <td><strong>Mobil Uygulama Arayüzü</strong></td>
-                            <td>Creative Studio</td>
-                            <td>22 Şubat 2026</td>
-                            <td><span class="status pending">Devam Ediyor</span></td>
-                        </tr>
-                        <tr>
-                            <td><strong>SEO Optimizasyonu</strong></td>
-                            <td>Global Store</td>
-                            <td>20 Şubat 2026</td>
-                            <td><span class="status completed">Tamamlandı</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+        // X_star (Test Noktaları) - Grafikte eğriyi çizmek ve geleceği tahmin etmek için
+        // Eğri için sık noktalar (0.1 adımla), tahmin için tam sayılar
+        let X_star = [];
+        let last_x = X[X.length - 1];
+        for (let i = 1; i <= last_x + 3; i += 0.2) {
+            X_star.push(parseFloat(i.toFixed(1)));
+        }
+        // Sonraki 3 tam sayı adımını kesinlikle ekle
+        [last_x + 1, last_x + 2, last_x + 3].forEach(val => {
+            if(!X_star.includes(val)) X_star.push(val);
+        });
+        X_star.sort((a,b) => a-b);
 
-        </div>
-    </main>
+        try {
+            // Matris İşlemleri (math.js kullanarak)
+            let K = buildCovarianceMatrix(X, X, l, sigma_f);
+            
+            // Gürültüyü köşegene ekle
+            for(let i=0; i<K.length; i++) K[i][i] += Math.pow(sigma_n, 2);
+
+            let K_inv = math.inv(K);
+            let K_star = buildCovarianceMatrix(X_star, X, l, sigma_f);
+            let K_star_star = buildCovarianceMatrix(X_star, X_star, l, sigma_f);
+
+            // mu_star = K_star * K_inv * y
+            let K_star_x_K_inv = math.multiply(K_star, K_inv);
+            let mu_star = math.multiply(K_star_x_K_inv, y);
+
+            // cov_star = K_star_star - (K_star * K_inv * K_star^T)
+            let K_star_T = math.transpose(K_star);
+            let term2 = math.multiply(K_star_x_K_inv, K_star_T);
+            let cov_star = math.subtract(K_star_star, term2);
+
+            // Varyans ve Güven Aralıkları (95% CI = 1.96 * std_dev)
+            let upper_bound = [];
+            let lower_bound = [];
+            for(let i=0; i<X_star.length; i++) {
+                let variance = Math.max(0, cov_star[i][i]); // Negatif olmasını önle
+                let std_dev = Math.sqrt(variance);
+                upper_bound.push(mu_star[i] + 1.96 * std_dev);
+                lower_bound.push(mu_star[i] - 1.96 * std_dev);
+            }
+
+            // --- Tahminleri Ekrana Yazdır ---
+            let predictionsHtml = "";
+            for (let i = 1; i <= 3; i++) {
+                let targetX = last_x + i;
+                let index = X_star.indexOf(targetX);
+                if (index !== -1) {
+                    predictionsHtml += `<li>Adım ${targetX}: <strong>${mu_star[index].toFixed(2)}</strong> (Aralık: ${lower_bound[index].toFixed(2)} - ${upper_bound[index].toFixed(2)})</li>`;
+                }
+            }
+            document.getElementById('predictionsList').innerHTML = predictionsHtml;
+            document.getElementById('result-box').style.display = "block";
+
+            // --- Grafiği Çiz (Chart.js) ---
+            drawChart(X, y, X_star, mu_star, upper_bound, lower_bound);
+
+        } catch (error) {
+            console.error(error);
+            alert("Hesaplama sırasında bir hata oluştu. Verilerinizde çok ani sıçramalar varsa parametreleri (Özellikle Gürültü Varyansını) artırmayı deneyin.");
+        }
+    }
+
+    function drawChart(X, y, X_star, mu_star, upper, lower) {
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+
+        const ctx = document.getElementById('gprChart').getContext('2d');
+        
+        // Gerçek Veri Noktaları
+        let scatterData = X.map((x_val, i) => ({x: x_val, y: y[i]}));
+
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: X_star,
+                datasets: [
+                    {
+                        label: 'Eğitim Verisi',
+                        data: scatterData,
+                        type: 'scatter',
+                        backgroundColor: 'black',
+                        borderColor: 'black',
+                        pointRadius: 5
+                    },
+                    {
+                        label: 'Tahmin Edilen Ortalama (GP Mean)',
+                        data: mu_star,
+                        borderColor: 'blue',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Üst Güven Sınırı',
+                        data: upper,
+                        borderColor: 'rgba(0, 0, 255, 0.2)',
+                        backgroundColor: 'transparent',
+                        borderWidth: 1,
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Alt Güven Sınırı',
+                        data: lower,
+                        borderColor: 'rgba(0, 0, 255, 0.2)',
+                        backgroundColor: 'rgba(0, 0, 255, 0.1)', // İki çizgi arasını doldurmak için
+                        fill: '-1', 
+                        borderWidth: 1,
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: {
+                    x: { type: 'linear', title: { display: true, text: 'Zaman / Adım' } },
+                    y: { title: { display: true, text: 'Değer' } }
+                },
+                plugins: {
+                    tooltip: { enabled: true }
+                }
+            }
+        });
+    }
+
+    // Sayfa yüklendiğinde varsayılan veriyle çalıştır
+    window.onload = runGPR;
+</script>
 
 </body>
 </html>
