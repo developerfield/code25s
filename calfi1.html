@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalman Filtresi Analizi</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        h2, h3 { color: #2c3e50; }
+        .control-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #eef2f5;
+            border-radius: 8px;
+        }
+        input[type="text"], input[type="number"] {
+            padding: 8px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: calc(100% - 20px);
+            max-width: 300px;
+        }
+        button {
+            padding: 9px 15px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover { background-color: #2980b9; }
+        .inline-inputs input {
+            width: 100px;
+        }
+        canvas {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Kalman Filtresi Veri Analizi</h2>
+    
+    <div class="control-group">
+        <h3>1. Veri Setini Girin</h3>
+        <p>Verilerinizi aralarına virgül koyarak girin (Örn: 1, 1.23, 4, 3.3). Her bir değer sırasıyla x=0, 1, 2... olacak şekilde işlenecektir.</p>
+        <input type="text" id="dataInput" value="1, 2.2, 2.8, 4.1, 3.9, 5.5, 6.1, 5.8, 7.2" placeholder="1, 1.23, 4, 3.3...">
+        <button onclick="processData()">Grafiği Oluştur</button>
+    </div>
+
+    <div class="control-group inline-inputs">
+        <h3>2. Özel Nokta Ekle</h3>
+        <p>Grafik üzerinde istediğiniz bir X koordinatına spesifik bir Y değeri ekleyebilirsiniz.</p>
+        <label>X Değeri: </label>
+        <input type="number" id="customX" step="any" placeholder="Örn: 4.5">
+        <label>Y Değeri: </label>
+        <input type="number" id="customY" step="any" placeholder="Örn: 5.2">
+        <button onclick="addCustomPoint()" style="background-color: #e67e22;">Nokta Ekle</button>
+    </div>
+
+    <div>
+        <canvas id="myChart"></canvas>
+    </div>
+</div>
+
+<script>
+    // Basit 1D Kalman Filtresi Sınıfı
+    class KalmanFilter {
+        constructor(R = 1, Q = 0.1) {
+            this.R = R; // Ölçüm Gürültüsü (Ne kadar güvenilmez)
+            this.Q = Q; // Süreç Gürültüsü (Sistem ne kadar hızlı değişiyor)
+            this.P = 1; // Hata Kovaryansı
+            this.X = null; // Tahmin edilen durum
+            this.K = 0; // Kalman Kazancı
+        }
+
+        filter(measurement) {
+            if (this.X === null) {
+                this.X = measurement;
+            } else {
+                // Tahmin (Predict)
+                this.P = this.P + this.Q;
+                
+                // Güncelleme (Update)
+                this.K = this.P / (this.P + this.R);
+                this.X = this.X + this.K * (measurement - this.X);
+                this.P = (1 - this.K) * this.P;
+            }
+            return this.X;
+        }
+    }
+
+    let chartInstance = null;
+    let customPoints = [];
+
+    function processData() {
+        const inputRaw = document.getElementById('dataInput').value;
+        const stringArray = inputRaw.split(',');
+        
+        let originalData = [];
+        let kalmanData = [];
+        let forecastData = [];
+        
+        const kf = new KalmanFilter(2, 0.2); // R ve Q değerleri verinin düzgünlüğünü ayarlar
+
+        let lastX = 0;
+        let lastKalmanVal = 0;
+
+        // Veriyi parse et ve filtrele
+        stringArray.forEach((val, index) => {
+            const num = parseFloat(val.trim());
+            if (!isNaN(num)) {
+                originalData.push({ x: index, y: num });
+                lastKalmanVal = kf.filter(num);
+                kalmanData.push({ x: index, y: lastKalmanVal });
+                lastX = index;
+            }
+        });
+
+        // Gelecek tahminleri (Sonraki olası noktalar / Trend)
+        // Basit 1D filtrede son değeri ve gürültüyü baz alır.
+        for (let i = 1; i <= 3; i++) {
+            forecastData.push({ x: lastX + i, y: lastKalmanVal });
+        }
+
+        drawChart(originalData, kalmanData, forecastData);
+    }
+
+    function addCustomPoint() {
+        const xVal = parseFloat(document.getElementById('customX').value);
+        const yVal = parseFloat(document.getElementById('customY').value);
+
+        if (!isNaN(xVal) && !isNaN(yVal)) {
+            customPoints.push({ x: xVal, y: yVal });
+            if (chartInstance) {
+                chartInstance.data.datasets[3].data = customPoints;
+                chartInstance.update();
+            } else {
+                alert("Lütfen önce veri setini işleyip grafiği oluşturun.");
+            }
+        } else {
+            alert("Lütfen geçerli X ve Y değerleri girin.");
+        }
+    }
+
+    function drawChart(original, kalman, forecast) {
+        const ctx = document.getElementById('myChart').getContext('2d');
+        
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [
+                    {
+                        label: 'Orijinal Veri Seti',
+                        data: original,
+                        borderColor: '#95a5a6',
+                        backgroundColor: '#95a5a6',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Kalman Filtresi (Trend/Düzeltilmiş)',
+                        data: kalman,
+                        borderColor: '#2ecc71',
+                        backgroundColor: '#2ecc71',
+                        borderWidth: 3,
+                        fill: false,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Gelecek Tahmini',
+                        data: forecast,
+                        borderColor: '#e74c3c',
+                        backgroundColor: '#e74c3c',
+                        borderWidth: 2,
+                        borderDash: [5, 5], // Kesik çizgi
+                        fill: false,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Eklenen Özel Noktalar',
+                        data: customPoints,
+                        type: 'scatter',
+                        backgroundColor: '#8e44ad',
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        title: {
+                            display: true,
+                            text: 'X Ekseni (Zaman / Sıra)'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Y Ekseni (Değerler)'
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `X: ${context.parsed.x}, Y: ${context.parsed.y.toFixed(2)}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Sayfa açıldığında varsayılan verilerle grafiği çiz
+    window.onload = () => {
+        processData();
+    };
+</script>
+
+</body>
+</html>
