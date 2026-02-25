@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gelişmiş Veri Analizi: Kalman & Gaussian Process</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #f0f2f5; color: #333; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); }
+        h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        .grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .panel { padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef; }
+        label { font-weight: bold; font-size: 0.9em; display: block; margin-top: 10px; color: #555; }
+        input[type="text"], input[type="number"], select { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .btn { display: inline-block; padding: 10px 15px; margin-top: 15px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; text-align: center; }
+        .btn:hover { background-color: #2980b9; }
+        .btn-warning { background-color: #e67e22; }
+        .btn-warning:hover { background-color: #d35400; }
+        canvas { margin-top: 30px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Analiz Motoru: Kalman & Gaussian Process</h2>
+    
+    <div class="panel" style="margin-bottom: 20px;">
+        <label>1. Veri Setini Girin (Y değerleri, araya virgül koyarak)</label>
+        <input type="text" id="dataInput" value="1, 1.5, 1.2, 3.4, 4.0, 3.8, 5.5, 6.2, 5.9, 7.5" placeholder="Örn: 1, 1.5, 2.3...">
+    </div>
+
+    <div class="grid-layout">
+        <div class="panel">
+            <label>2. Algoritma Seçimi</label>
+            <select id="algoSelect" onchange="toggleParams()">
+                <option value="gp">Gaussian Process (RBF Kernel) - Dağılımlı</option>
+                <option value="kalman">Kalman Filtresi (1D)</option>
+            </select>
+
+            <div id="gpParams">
+                <label>Length Scale (l): Dalga genişliği (Düzgünlük)</label>
+                <input type="number" id="gpLength" step="0.1" value="1.5">
+                
+                <label>Signal Variance (σf²): Dikey dalgalanma gücü</label>
+                <input type="number" id="gpVariance" step="0.1" value="5.0">
+                
+                <label>Noise Variance (σn²): Verideki gürültü miktarı</label>
+                <input type="number" id="gpNoise" step="0.01" value="0.1">
+            </div>
+
+            <div id="kalmanParams" class="hidden">
+                <label>Ölçüm Gürültüsü (R)</label>
+                <input type="number" id="kalmanR" step="0.1" value="2.0">
+                <label>Süreç Gürültüsü (Q)</label>
+                <input type="number" id="kalmanQ" step="0.01" value="0.1">
+            </div>
+
+            <button class="btn" onclick="processData()">Analizi Çalıştır & Çiz</button>
+        </div>
+
+        <div class="panel">
+            <label>3. İstenilen X ve Y Konumuna Nokta Ekle</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div><label>X Değeri</label><input type="number" id="customX" step="any" placeholder="X Coord"></div>
+                <div><label>Y Değeri</label><input type="number" id="customY" step="any" placeholder="Y Coord"></div>
+            </div>
+            <button class="btn btn-warning" onclick="addCustomPoint()">Özel Nokta Ekle</button>
+        </div>
+    </div>
+
+    <canvas id="myChart"></canvas>
+</div>
+
+<script>
+    let chartInstance = null;
+    let customPoints = [];
+
+    function toggleParams() {
+        const algo = document.getElementById('algoSelect').value;
+        if (algo === 'gp') {
+            document.getElementById('gpParams').style.display = 'block';
+            document.getElementById('kalmanParams').style.display = 'none';
+        } else {
+            document.getElementById('gpParams').style.display = 'none';
+            document.getElementById('kalmanParams').style.display = 'block';
+        }
+    }
+
+    // Basit 1D Kalman Filtresi
+    class KalmanFilter {
+        constructor(R, Q) {
+            this.R = R; this.Q = Q; this.P = 1; this.X = null; this.K = 0;
+        }
+        filter(measurement) {
+            if (this.X === null) this.X = measurement;
+            else {
+                this.P = this.P + this.Q;
+                this.K = this.P / (this.P + this.R);
+                this.X = this.X + this.K * (measurement - this.X);
+                this.P = (1 - this.K) * this.P;
+            }
+            return this.X;
+        }
+    }
+
+    // RBF Kernel Fonksiyonu
+    function rbfKernel(x1, x2, l, sigmaF2) {
+        return sigmaF2 * Math.exp(-Math.pow(x1 - x2, 2) / (2 * Math.pow(l, 2)));
+    }
+
+    function processData() {
+        const inputRaw = document.getElementById('dataInput').value;
+        const stringArray = inputRaw.split(',');
+        const algo = document.getElementById('algoSelect').value;
+
+        let X_train = [];
+        let Y_train = [];
+        
+        stringArray.forEach((val, index) => {
+            const num = parseFloat(val.trim());
+            if (!isNaN(num)) {
+                X_train.push(index);
+                Y_train.push(num);
+            }
+        });
+
+        if (X_train.length === 0) return alert("Geçerli veri girin!");
+
+        if (algo === 'kalman') {
+            runKalman(X_train, Y_train);
+        } else {
+            runGaussianProcess(X_train, Y_train);
+        }
+    }
+
+    function runKalman(X, Y) {
+        const R = parseFloat(document.getElementById('kalmanR').value);
+        const Q = parseFloat(document.getElementById('kalmanQ').value);
+        const kf = new KalmanFilter(R, Q);
+        
+        let original = [], kalmanData = [];
+        let lastKalman = 0, lastX = 0;
+
+        for(let i=0; i<X.length; i++) {
+            original.push({x: X[i], y: Y[i]});
+            lastKalman = kf.filter(Y[i]);
+            kalmanData.push({x: X[i], y: lastKalman});
+            lastX = X[i];
+        }
+
+        let forecast = [];
+        for(let i=1; i<=3; i++) forecast.push({x: lastX + i, y: lastKalman});
+
+        drawChart(original, kalmanData, null, null, forecast, "Kalman Filtresi");
+    }
+
+    function runGaussianProcess(X, Y) {
+        const l = parseFloat(document.getElementById('gpLength').value);
+        const sigmaF2 = parseFloat(document.getElementById('gpVariance').value);
+        const sigmaN2 = parseFloat(document.getElementById('gpNoise').value);
+
+        const n = X.length;
+        
+        // K(X, X) Matrisi oluşturma
+        let K = [];
+        for (let i = 0; i < n; i++) {
+            K[i] = [];
+            for (let j = 0; j < n; j++) {
+                K[i][j] = rbfKernel(X[i], X[j], l, sigmaF2);
+                if (i === j) K[i][j] += sigmaN2; // Diyagonale gürültü ekle
+            }
+        }
+
+        // Matrisin tersini alma (math.js ile)
+        let K_inv;
+        try {
+            K_inv = math.inv(K);
+        } catch(e) {
+            return alert("Matris tersine çevrilemedi. Parametreleri değiştirin (Gürültüyü artırın).");
+        }
+
+        // Test noktaları (X_test): Daha sıkı bir grid oluştur (Smooth line ve ara boşluklar için)
+        let X_test = [];
+        let minX = Math.min(...X) - 1;
+        let maxX = Math.max(...X) + 3; // Geleceğe doğru 3 birim
+        for (let x = minX; x <= maxX; x += 0.2) {
+            X_test.push(x);
+        }
+
+        let gpMean = [];
+        let gpUpper = [];
+        let gpLower = [];
+        let original = [];
+
+        for(let i=0; i<n; i++) original.push({x: X[i], y: Y[i]});
+
+        // Test noktaları için Mean ve Variance hesapla
+        for (let i = 0; i < X_test.length; i++) {
+            let x_star = X_test[i];
+            
+            // K(X_star, X)
+            let K_star = [];
+            for (let j = 0; j < n; j++) {
+                K_star.push(rbfKernel(x_star, X[j], l, sigmaF2));
+            }
+
+            // K(X_star, X_star)
+            let K_star_star = rbfKernel(x_star, x_star, l, sigmaF2);
+
+            // Mean = K_star * K_inv * Y
+            let K_inv_Y = math.multiply(K_inv, Y);
+            let mean = math.dot(K_star, K_inv_Y);
+
+            // Variance = K_star_star - K_star * K_inv * K_star^T
+            let K_star_K_inv = math.multiply(K_star, K_inv);
+            let variance = K_star_star - math.dot(K_star_K_inv, K_star);
+            
+            if(variance < 0) variance = 0; // Floating point hatalarını önle
+            let std_dev = Math.sqrt(variance);
+
+            gpMean.push({x: x_star, y: mean});
+            // %95 Güven aralığı (1.96 * std_dev)
+            gpUpper.push({x: x_star, y: mean + 1.96 * std_dev});
+            gpLower.push({x: x_star, y: mean - 1.96 * std_dev});
+        }
+
+        drawChart(original, gpMean, gpUpper, gpLower, null, "Gaussian Process Regresyonu");
+    }
+
+    function addCustomPoint() {
+        const xVal = parseFloat(document.getElementById('customX').value);
+        const yVal = parseFloat(document.getElementById('customY').value);
+
+        if (!isNaN(xVal) && !isNaN(yVal)) {
+            customPoints.push({ x: xVal, y: yVal });
+            if (chartInstance) {
+                // Özel noktalar veri setindeki son sıradaki dataset'e aittir
+                const targetDatasetIndex = chartInstance.data.datasets.findIndex(ds => ds.label === 'Özel Noktalar');
+                if(targetDatasetIndex !== -1) {
+                    chartInstance.data.datasets[targetDatasetIndex].data = customPoints;
+                    chartInstance.update();
+                }
+            } else {
+                alert("Önce analizi çalıştırın.");
+            }
+        }
+    }
+
+    function drawChart(original, mainLine, gpUpper, gpLower, forecast, titleStr) {
+        const ctx = document.getElementById('myChart').getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+
+        let datasets = [];
+
+        // Güven Aralığı (Gaussian Process için)
+        if (gpUpper && gpLower) {
+            datasets.push({
+                label: 'Üst Güven Aralığı (+1.96σ)',
+                data: gpUpper,
+                borderColor: 'rgba(52, 152, 219, 0)',
+                backgroundColor: 'rgba(52, 152, 219, 0.2)', // Gölgeli alan
+                fill: '+1', // Alt sınıra kadar doldur
+                pointRadius: 0,
+                tension: 0.4
+            });
+            datasets.push({
+                label: 'Alt Güven Aralığı (-1.96σ)',
+                data: gpLower,
+                borderColor: 'rgba(52, 152, 219, 0)',
+                backgroundColor: 'transparent',
+                fill: false,
+                pointRadius: 0,
+                tension: 0.4
+            });
+        }
+
+        // Tahmin Çizgisi (Mean Line)
+        datasets.push({
+            label: titleStr + ' (Tahmin)',
+            data: mainLine,
+            borderColor: '#2ecc71',
+            backgroundColor: '#2ecc71',
+            borderWidth: 3,
+            fill: false,
+            pointRadius: (context) => context.dataset.data.length > 20 ? 0 : 3,
+            tension: 0.4
+        });
+
+        // Kalman Gelecek Tahmini (Sadece Kalman seçiliyse)
+        if (forecast) {
+            datasets.push({
+                label: 'Gelecek Tahmini (Trend)',
+                data: forecast,
+                borderColor: '#e74c3c',
+                borderDash: [5, 5],
+                fill: false,
+                tension: 0.1
+            });
+        }
+
+        // Orijinal Veri Noktaları
+        datasets.push({
+            label: 'Orijinal Veriler',
+            data: original,
+            type: 'scatter',
+            backgroundColor: '#34495e',
+            pointRadius: 6
+        });
+
+        // Eklenen Özel Noktalar
+        datasets.push({
+            label: 'Özel Noktalar',
+            data: customPoints,
+            type: 'scatter',
+            backgroundColor: '#8e44ad',
+            pointRadius: 8,
+            pointHoverRadius: 10
+        });
+
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: { datasets: datasets },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    x: { type: 'linear', title: { display: true, text: 'X (Zaman / Mesafe)' } },
+                    y: { title: { display: true, text: 'Y Değeri' } }
+                },
+                plugins: {
+                    title: { display: true, text: titleStr + ' Sonuçları' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': Y=' + context.parsed.y.toFixed(2);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Başlangıçta çalıştır
+    window.onload = () => { toggleParams(); processData(); };
+</script>
+</body>
+</html>
