@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GP + Kalman Engine</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
+<style>
+body{font-family:sans-serif;background:#f3f3f3;margin:20px}
+.box{max-width:1000px;margin:auto;background:white;padding:20px;border-radius:10px}
+input,select,button{width:100%;margin-top:8px;padding:6px}
+canvas{margin-top:20px}
+</style>
+</head>
+<body>
+<div class="box">
+<input id="dataInput" value="1,1.5,1.2,3.4,4,3.8,5.5,6.2,5.9,7.5">
+<select id="algo">
+<option value="gp">Gaussian Process</option>
+<option value="kalman">Kalman</option>
+</select>
+<select id="kernel">
+<option value="rbf">RBF</option>
+<option value="m32">Matern 3/2</option>
+<option value="m52">Matern 5/2</option>
+</select>
+<input id="l" type="number" step="0.1" value="1.5">
+<input id="sf" type="number" step="0.1" value="5">
+<input id="sn" type="number" step="0.01" value="0.1">
+<button onclick="run()">Çalıştır</button>
+<button onclick="optimize()">Optimize Et</button>
+<input id="cx" placeholder="X">
+<input id="cy" placeholder="Y">
+<button onclick="addPoint()">Nokta Ekle</button>
+<canvas id="chart"></canvas>
+</div>
+
+<script>
+let chart,data=[],extra=[]
+
+class Kalman{
+constructor(R,Q){this.R=R;this.Q=Q;this.P=1;this.X=null}
+update(z){
+if(this.X===null)this.X=z
+else{
+this.P+=this.Q
+let K=this.P/(this.P+this.R)
+this.X+=K*(z-this.X)
+this.P=(1-K)*this.P
+}
+return this.X
+}
+}
+
+function kernelFunc(x1,x2,l,sf,type){
+let r=Math.abs(x1-x2)
+if(type==="rbf")return sf*Math.exp(-(r*r)/(2*l*l))
+if(type==="m32")return sf*(1+Math.sqrt(3)*r/l)*Math.exp(-Math.sqrt(3)*r/l)
+if(type==="m52")return sf*(1+Math.sqrt(5)*r/l+5*r*r/(3*l*l))*Math.exp(-Math.sqrt(5)*r/l)
+}
+
+function parseData(){
+data=[]
+let arr=document.getElementById("dataInput").value.split(",")
+arr.forEach((v,i)=>{
+let n=parseFloat(v)
+if(!isNaN(n))data.push({x:i,y:n})
+})
+data=data.concat(extra)
+}
+
+function run(){
+parseData()
+if(document.getElementById("algo").value==="kalman")runKalman()
+else runGP()
+}
+
+function runKalman(){
+let kf=new Kalman(2,0.1)
+let result=[]
+data.forEach(p=>result.push({x:p.x,y:kf.update(p.y)}))
+draw(result)
+}
+
+function runGP(){
+let l=parseFloat(lv()),sf=parseFloat(sfv()),sn=parseFloat(snv()),ker=kv()
+let X=data.map(p=>p.x),Y=data.map(p=>p.y)
+let n=X.length,K=[]
+for(let i=0;i<n;i++){
+K[i]=[]
+for(let j=0;j<n;j++){
+K[i][j]=kernelFunc(X[i],X[j],l,sf,ker)
+if(i===j)K[i][j]+=sn
+}
+}
+let Ki
+try{Ki=math.inv(K)}catch{alert("Matrix inverse error");return}
+let Xtest=[]
+let min=Math.min(...X)-1,max=Math.max(...X)+3
+for(let x=min;x<=max;x+=0.2)Xtest.push(x)
+let mean=[]
+Xtest.forEach(x=>{
+let Ks=X.map(xx=>kernelFunc(x,xx,l,sf,ker))
+let m=math.dot(Ks,math.multiply(Ki,Y))
+mean.push({x:x,y:m})
+})
+draw(mean)
+}
+
+function lml(l,sf,sn,ker){
+let X=data.map(p=>p.x),Y=data.map(p=>p.y)
+let n=X.length,K=[]
+for(let i=0;i<n;i++){
+K[i]=[]
+for(let j=0;j<n;j++){
+K[i][j]=kernelFunc(X[i],X[j],l,sf,ker)
+if(i===j)K[i][j]+=sn
+}
+}
+let Ki=math.inv(K)
+let a=math.multiply(Ki,Y)
+let term1=-0.5*math.dot(Y,a)
+let term2=-0.5*Math.log(Math.abs(math.det(K)))
+let term3=-n/2*Math.log(2*Math.PI)
+return term1+term2+term3
+}
+
+function optimize(){
+parseData()
+let best={val:-1e9}
+["rbf","m32","m52"].forEach(ker=>{
+for(let l=0.5;l<=4;l+=0.5)
+for(let sf=1;sf<=8;sf+=1)
+for(let sn=0.05;sn<=0.5;sn+=0.1){
+try{
+let v=lml(l,sf,sn,ker)
+if(v>best.val)best={val:v,ker,l,sf,sn}
+}catch{}
+}
+})
+document.getElementById("kernel").value=best.ker
+document.getElementById("l").value=best.l
+document.getElementById("sf").value=best.sf
+document.getElementById("sn").value=best.sn
+run()
+}
+
+function draw(pred){
+let ctx=document.getElementById("chart")
+if(chart)chart.destroy()
+chart=new Chart(ctx,{
+type:"line",
+data:{
+datasets:[
+{
+label:"Prediction",
+data:pred,
+borderColor:"green",
+tension:0.4,
+pointRadius:ctx=>{
+let scale=chart?.scales?.x
+if(!scale)return 3
+let range=scale.max-scale.min
+return range>data.length?0:3
+}
+},
+{
+label:"Data",
+data:data,
+type:"scatter",
+backgroundColor:"black",
+pointRadius:ctx=>{
+let scale=chart?.scales?.x
+if(!scale)return 5
+let range=scale.max-scale.min
+return range>data.length?0:5
+}
+}
+]
+},
+options:{
+responsive:true,
+plugins:{
+zoom:{
+pan:{enabled:true,mode:"x"},
+zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:"x"}
+}
+}
+}
+})
+}
+
+function addPoint(){
+let x=parseFloat(document.getElementById("cx").value)
+let y=parseFloat(document.getElementById("cy").value)
+if(!isNaN(x)&&!isNaN(y)){
+extra.push({x,y})
+run()
+}
+}
+
+function lv(){return document.getElementById("l").value}
+function sfv(){return document.getElementById("sf").value}
+function snv(){return document.getElementById("sn").value}
+function kv(){return document.getElementById("kernel").value}
+
+window.onload=run
+</script>
+</body>
+</html>
