@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPR Pro v3</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0c0c10;--surface:#13131a;--surface2:#1e1e2a;--border:#2a2a3a;--accent:#7c6af7;--accent2:#e97bff;--green:#3df5b0;--red:#ff6b6b;--yellow:#ffd166;--text:#e8e8f0;--text2:#8888aa;--fd:'Syne',sans-serif;--fm:'Space Mono',monospace;}
+body.light{--bg:#f0f0f8;--surface:#fff;--surface2:#eaeaf5;--border:#d0d0e8;--text:#1a1a2e;--text2:#5a5a80;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--fm);min-height:100vh;transition:background .3s,color .3s;}
+.header{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:200;}
+.logo{font-family:var(--fd);font-weight:800;font-size:1.2rem;letter-spacing:-.5px;}.logo span{color:var(--accent)}.logo small{color:var(--text2);font-size:.65rem;font-family:var(--fm);font-weight:400;display:block;}
+.hactions{display:flex;gap:8px;align-items:center;}
+.bico{background:var(--surface2);border:1px solid var(--border);color:var(--text);width:34px;height:34px;border-radius:7px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:background .2s,transform .15s;}
+.bico:hover{background:var(--accent);transform:scale(1.08);}
+.main{display:grid;grid-template-columns:310px 1fr;min-height:calc(100vh - 61px);}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:18px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:16px;}
+.slbl{font-size:.6rem;letter-spacing:2px;text-transform:uppercase;color:var(--text2);margin-bottom:8px;}
+.card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.card h3{font-family:var(--fd);font-size:.82rem;font-weight:600;margin-bottom:10px;color:var(--accent);}
+textarea{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--fm);font-size:.72rem;padding:8px;border-radius:6px;resize:vertical;min-height:72px;transition:border .2s;}
+textarea:focus{outline:none;border-color:var(--accent);}
+select{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--fm);font-size:.72rem;padding:7px 9px;border-radius:6px;cursor:pointer;margin-bottom:9px;}
+select:focus{outline:none;border-color:var(--accent);}
+.sg{margin-bottom:11px;}.sh{display:flex;justify-content:space-between;font-size:.7rem;color:var(--text2);margin-bottom:3px;}.sh span:last-child{color:var(--accent);font-weight:700;}
+input[type=range]{width:100%;accent-color:var(--accent);height:4px;cursor:pointer;}
+.brun{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:var(--fd);font-size:.88rem;font-weight:600;cursor:pointer;transition:opacity .2s,transform .15s;position:relative;overflow:hidden;}
+.brun:hover:not(:disabled){opacity:.9;transform:translateY(-1px)}.brun:disabled{opacity:.5;cursor:not-allowed}
+.bsm{padding:5px 11px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-family:var(--fm);font-size:.68rem;cursor:pointer;transition:background .2s;}
+.bsm:hover{background:var(--border);}
+.si{display:flex;align-items:center;gap:7px;margin-bottom:7px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:5px 9px;font-size:.7rem;}
+.sdot{width:9px;height:9px;border-radius:50%;flex-shrink:0}.snm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sdel{background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:0 2px}
+.content{padding:24px 28px;display:flex;flex-direction:column;gap:20px;}
+.srow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;position:relative;overflow:hidden;}
+.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);}
+.sc.gr::before{background:var(--green)}.sc.rd::before{background:var(--red)}.sc.yl::before{background:var(--yellow)}.sc.pu::before{background:var(--accent2)}
+.sv{font-family:var(--fd);font-size:1.4rem;font-weight:800;line-height:1;margin-bottom:3px}.slb{font-size:.6rem;color:var(--text2);letter-spacing:1px;text-transform:uppercase}
+.cc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;position:relative;}
+.ctbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.ctitle{font-family:var(--fd);font-size:.88rem;font-weight:600}.cacts{display:flex;gap:7px;}
+canvas{max-height:440px;}
+.pw{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;}
+.pw h3{font-family:var(--fd);font-size:.88rem;font-weight:600;margin-bottom:12px;}
+.pt{width:100%;border-collapse:collapse;font-size:.75rem;}.pt th{text-align:left;padding:7px 11px;color:var(--text2);font-size:.62rem;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);}
+.pt td{padding:9px 11px;border-bottom:1px solid var(--border);}.pt tr:last-child td{border-bottom:none}.pt tr:hover td{background:var(--surface2)}
+.cbw{width:90px;background:var(--border);border-radius:3px;height:5px;position:relative;}.cb{height:100%;border-radius:3px;background:var(--accent);}
+.lp{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;}
+.lp h3{font-family:var(--fd);font-size:.82rem;font-weight:600;margin-bottom:8px}
+.ll{font-size:.66rem;color:var(--text2);max-height:100px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;}
+.ln{display:flex;gap:9px}.ln .ts{color:var(--border);flex-shrink:0}.ln .msg.ok{color:var(--green)}.ln .msg.warn{color:var(--yellow)}.ln .msg.err{color:var(--red)}.ln .msg.info{color:var(--text2)}
+.kbd{display:inline-block;padding:2px 7px;background:var(--accent);color:#fff;border-radius:4px;font-size:.62rem;margin-left:5px}
+.lmld{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;font-size:.7rem;color:var(--text2);margin-top:7px}
+.lmld strong{color:var(--accent)}
+.lov{position:absolute;inset:0;background:rgba(12,12,16,.75);display:none;align-items:center;justify-content:center;border-radius:12px;z-index:10;}
+.spin{width:30px;height:30px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:fadeUp .35s ease both}.ad1{animation-delay:.05s}.ad2{animation-delay:.1s}.ad3{animation-delay:.15s}
+.irow{display:flex;gap:7px;align-items:center}
+input[type=file]{display:none}
+.flbl{flex:1;padding:6px 9px;background:var(--bg);border:1px dashed var(--border);border-radius:6px;font-size:.68rem;color:var(--text2);cursor:pointer;text-align:center;transition:border-color .2s}
+.flbl:hover{border-color:var(--accent);color:var(--accent)}
+.tog{width:34px;height:19px;background:var(--border);border-radius:10px;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;border:none}
+.tog.on{background:var(--accent)}.tog::after{content:'';position:absolute;width:13px;height:13px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform .2s}.tog.on::after{transform:translateX(15px)}
+.twrap{display:flex;align-items:center;gap:7px;font-size:.7rem;margin-top:6px}
+.xyadd{display:none;gap:7px;margin-top:8px;align-items:flex-end}
+.xyadd input{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--fm);font-size:.72rem;padding:7px 8px;border-radius:6px;width:100%}
+.xyadd input:focus{outline:none;border-color:var(--accent)}
+.xyadd label{font-size:.6rem;color:var(--text2);display:block;margin-bottom:3px}
+.dpt{display:flex;align-items:center;gap:4px;padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;font-size:.68rem;margin-bottom:4px}
+.dpt .dx{color:var(--accent);font-weight:700;min-width:28px}.dpt .dy{flex:1}.dpt .dact{display:flex;gap:4px;margin-left:auto}
+.dpt button{background:none;border:none;color:var(--text2);cursor:pointer;font-size:11px;padding:1px 3px}
+.dpt button:hover{color:var(--text)}
+.dplist{max-height:160px;overflow-y:auto;margin-top:8px}
+.fsoverlay{position:fixed;inset:0;background:var(--bg);z-index:1000;display:none;flex-direction:column;padding:16px}
+.fsoverlay.active{display:flex}
+.fstbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.fstbar .ctitle{font-size:1rem}
+#fsChart{flex:1;max-height:none!important;height:calc(100vh - 80px)!important}
+@media(max-width:900px){.main{grid-template-columns:1fr}.sidebar{border-right:none;border-bottom:1px solid var(--border)}.srow{grid-template-columns:repeat(2,1fr)}}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">GPR<span>Pro</span><small>v3 — Hibrit Ensemble Tahmin</small></div>
+  <div class="hactions">
+    <button class="bico" id="themeBtn" title="Tema">🌙</button>
+    <button class="bico" id="exportCsvBtn" title="CSV">⬇</button>
+    <button class="bico" id="exportPngBtn" title="PNG">📷</button>
+    <button class="bico" id="fsBtn" title="Tam Ekran">⛶</button>
+  </div>
+</div>
+<div class="fsoverlay" id="fsOverlay">
+  <div class="fstbar"><div class="ctitle">GPR Pro — Tam Ekran</div><button class="bsm" onclick="closeFullscreen()">✕ Kapat</button></div>
+  <canvas id="fsChart"></canvas>
+</div>
+<div class="main">
+<div class="sidebar">
+  <div class="card">
+    <h3>📊 Veri Noktaları</h3>
+    <div class="slbl">Y değerleri (virgülle)</div>
+    <textarea id="dataInput">2.1, 2.9, 3.8, 5.1, 5.8, 7.2, 8.5</textarea>
+    <div style="display:flex;gap:7px;margin-top:8px"><input type="text" id="seriesName" placeholder="Seri adı..." style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--fm);font-size:.7rem;padding:6px 7px;border-radius:6px"><button class="bsm" onclick="addSeries()">+ Seri</button></div>
+    <div style="display:flex;gap:7px;margin-top:8px"><button class="bsm" style="flex:1" onclick="toggleAddPoint()">+ Nokta Ekle</button><button class="bsm" style="flex:1" onclick="parseTextareaPoints()">↺ Yenile</button></div>
+    <div class="xyadd" id="xyAdd">
+      <div style="flex:1"><label>X Değeri</label><input type="number" id="addX" placeholder="x..." step="any"></div>
+      <div style="flex:1"><label>Y Değeri</label><input type="number" id="addY" placeholder="y..." step="any"></div>
+      <button class="bsm" onclick="addXYPoint()" style="height:32px">Ekle</button>
+    </div>
+    <div class="dplist" id="dpList"></div>
+  </div>
+  <div class="card"><h3>📈 Seriler</h3><div id="seriesList"></div></div>
+  <div class="card">
+    <h3>🔮 Kernel</h3>
+    <select id="kernelSelect" onchange="updateKernelInfo()"><option value="rbf">RBF</option><option value="matern">Matérn 3/2</option><option value="periodic">Periodic</option><option value="linear">Linear</option><option value="rq">Rational Quadratic</option></select>
+    <div id="kernelInfo" style="font-size:.66rem;color:var(--text2);padding:5px 7px;background:var(--bg);border-radius:5px;margin-bottom:9px"></div>
+    <div class="sg"><div class="sh"><span>Length Scale (ℓ)</span><span id="l_val">2.0</span></div><input type="range" id="param_l" min=".1" max="10" step=".1" value="2.0" oninput="document.getElementById('l_val').innerText=parseFloat(this.value).toFixed(1)"></div>
+    <div class="sg"><div class="sh"><span>Gürültü (σ_n)</span><span id="n_val">0.10</span></div><input type="range" id="param_n" min=".01" max="2" step=".01" value="0.1" oninput="document.getElementById('n_val').innerText=parseFloat(this.value).toFixed(2)"></div>
+    <div class="sg" id="periodSW" style="display:none"><div class="sh"><span>Periyot (p)</span><span id="p_val">3.0</span></div><input type="range" id="param_p" min=".5" max="10" step=".1" value="3.0" oninput="document.getElementById('p_val').innerText=parseFloat(this.value).toFixed(1)"></div>
+    <div class="sg" id="alphaSW" style="display:none"><div class="sh"><span>Alpha (α)</span><span id="a_val">1.0</span></div><input type="range" id="param_a" min=".1" max="5" step=".1" value="1.0" oninput="document.getElementById('a_val').innerText=parseFloat(this.value).toFixed(1)"></div>
+    <div class="lmld" id="lmlDisplay">LML: <strong>—</strong></div>
+  </div>
+  <div class="card">
+    <h3>🎯 Tahmin</h3>
+    <div class="sg"><div class="sh"><span>İleri Adım (N)</span><span id="steps_val">8</span></div><input type="range" id="param_steps" min="1" max="30" step="1" value="8" oninput="document.getElementById('steps_val').innerText=this.value"></div>
+    <div class="sg"><div class="sh"><span>Güven Aralığı (k·σ)</span><span id="ci_val">1.96</span></div><input type="range" id="param_ci" min="1" max="3" step=".01" value="1.96" oninput="document.getElementById('ci_val').innerText=parseFloat(this.value).toFixed(2)"></div>
+    <div class="slbl" style="margin-top:4px">Ensemble Ağırlıkları</div>
+    <div class="sg"><div class="sh"><span>GPR</span><span id="wgpr_val">0.50</span></div><input type="range" id="w_gpr" min="0" max="1" step=".05" value=".5" oninput="document.getElementById('wgpr_val').innerText=parseFloat(this.value).toFixed(2)"></div>
+    <div class="sg"><div class="sh"><span>AR(p)</span><span id="war_val">0.25</span></div><input type="range" id="w_ar" min="0" max="1" step=".05" value=".25" oninput="document.getElementById('war_val').innerText=parseFloat(this.value).toFixed(2)"></div>
+    <div class="sg"><div class="sh"><span>ETS</span><span id="wets_val">0.25</span></div><input type="range" id="w_ets" min="0" max="1" step=".05" value=".25" oninput="document.getElementById('wets_val').innerText=parseFloat(this.value).toFixed(2)"></div>
+    <div class="twrap"><button class="tog on" id="toggleCI" onclick="this.classList.toggle('on')"></button><span>Güven Bandı</span></div>
+    <div class="twrap"><button class="tog on" id="toggleSamples" onclick="this.classList.toggle('on')"></button><span>GP Örnekleri</span></div>
+    <div class="twrap"><button class="tog on" id="toggleEnsemble" onclick="this.classList.toggle('on')"></button><span>Ensemble Bileşenleri</span></div>
+  </div>
+  <div class="card">
+    <h3>⚙️ Optimizasyon</h3>
+    <button class="bsm" onclick="autoOptimize()" style="width:100%;padding:7px">🔍 Grid Search LML</button>
+    <div id="optResult" style="font-size:.66rem;color:var(--text2);margin-top:7px"></div>
+    <div class="slbl" style="margin-top:8px">CSV İçe Aktar</div>
+    <div class="irow"><label for="csvFile" class="flbl">📁 CSV seç</label><input type="file" id="csvFile" accept=".csv,.txt" onchange="importCSV(event)"></div>
+  </div>
+  <button class="brun" id="runBtn" onclick="runGPR()">▶ Hesapla &amp; Tahmin Et</button>
+</div>
+<div class="content">
+  <div class="srow anim">
+    <div class="sc"><div class="sv" id="stat-n">—</div><div class="slb">Veri Noktası</div></div>
+    <div class="sc gr"><div class="sv" id="stat-mean">—</div><div class="slb">Ortalama</div></div>
+    <div class="sc yl"><div class="sv" id="stat-std">—</div><div class="slb">Std Sapma</div></div>
+    <div class="sc rd"><div class="sv" id="stat-range">—</div><div class="slb">Aralık</div></div>
+    <div class="sc pu"><div class="sv" id="stat-trend">—</div><div class="slb">Trend</div></div>
+  </div>
+  <div class="cc anim ad1">
+    <div class="lov" id="loadingOverlay"><div class="spin"></div></div>
+    <div class="ctbar"><div class="ctitle">Gaussian Process Regression <span id="kernelBadge" class="kbd">RBF</span></div><div class="cacts"><button class="bsm" onclick="toggleGrid()">Grid</button><button class="bsm" onclick="openFullscreen()">⛶ Tam Ekran</button></div></div>
+    <canvas id="gprChart"></canvas>
+  </div>
+  <div class="pw anim ad2">
+    <h3>🔭 Ensemble Tahmin Tablosu</h3>
+    <table class="pt"><thead><tr><th>X</th><th>Seri</th><th>Ensemble μ</th><th>GPR μ</th><th>AR μ</th><th>ETS μ</th><th>Alt</th><th>Üst</th><th>Güven</th></tr></thead><tbody id="predTableBody"><tr><td colspan="9" style="color:var(--text2);font-size:.73rem;padding:14px">Henüz hesaplama yapılmadı…</td></tr></tbody></table>
+  </div>
+  <div class="lp anim ad3"><h3>🗒 Günlük</h3><div class="ll" id="logLines"></div></div>
+</div>
+</div>
+<script>
+let chartInstance=null,fsChartInstance=null,isDark=true,showGrid=true;
+const COLORS=['#7c6af7','#3df5b0','#e97bff','#ffd166','#ff6b6b','#4ecdc4'];
+let series=[],dataPoints=[];
+
+function log(msg,type='info'){const el=document.getElementById('logLines');const d=new Date();const ts=d.toTimeString().slice(0,8);const line=document.createElement('div');line.className='ln';line.innerHTML=`<span class="ts">${ts}</span><span class="msg ${type}">${msg}</span>`;el.prepend(line);while(el.children.length>50)el.removeChild(el.lastChild);}
+function parseTextareaPoints(){const raw=document.getElementById('dataInput').value;const ys=raw.split(',').map(Number).filter(n=>!isNaN(n));dataPoints=ys.map((y,i)=>({x:i+1,y}));renderDataPoints();}
+function renderDataPoints(){const el=document.getElementById('dpList');if(dataPoints.length===0){el.innerHTML='';return;}el.innerHTML=dataPoints.map((p,i)=>`<div class="dpt"><span class="dx">x=${p.x}</span><span class="dy">y=${p.y}</span><div class="dact"><button onclick="movePoint(${i},-1)">↑</button><button onclick="movePoint(${i},1)">↓</button><button onclick="deletePoint(${i})" style="color:var(--red)">✕</button></div></div>`).join('');}
+function movePoint(i,dir){const ni=i+dir;if(ni<0||ni>=dataPoints.length)return;[dataPoints[i],dataPoints[ni]]=[dataPoints[ni],dataPoints[i]];dataPoints=dataPoints.map((p,idx)=>({...p,x:idx+1}));renderDataPoints();}
+function deletePoint(i){dataPoints.splice(i,1);dataPoints=dataPoints.map((p,idx)=>({...p,x:idx+1}));renderDataPoints();log(`Nokta silindi, toplam: ${dataPoints.length}`,'warn');}
+function toggleAddPoint(){const el=document.getElementById('xyAdd');el.style.display=el.style.display==='flex'?'none':'flex';}
+function addXYPoint(){const xv=parseFloat(document.getElementById('addX').value);const yv=parseFloat(document.getElementById('addY').value);if(isNaN(xv)||isNaN(yv)){alert('Geçerli X ve Y girin');return;}dataPoints.push({x:xv,y:yv});dataPoints.sort((a,b)=>a.x-b.x);document.getElementById('addX').value='';document.getElementById('addY').value='';renderDataPoints();log(`Nokta eklendi: x=${xv}, y=${yv}`,'ok');}
+function getActiveData(){if(dataPoints.length>=2)return{X:dataPoints.map(p=>p.x),y:dataPoints.map(p=>p.y)};const raw=document.getElementById('dataInput').value;const ys=raw.split(',').map(Number).filter(n=>!isNaN(n));return{X:ys.map((_,i)=>i+1),y:ys};}
+function addSeries(){const{X,y}=getActiveData();if(y.length<2){alert('En az 2 nokta gerekli');return;}const name=document.getElementById('seriesName').value.trim()||`Seri ${series.length+1}`;series.push({name,X,y});document.getElementById('seriesName').value='';renderSeriesList();log(`Seri: "${name}" (${y.length} nokta)`,'ok');}
+function removeSeries(i){log(`Silindi: "${series[i].name}"`,'warn');series.splice(i,1);renderSeriesList();}
+function renderSeriesList(){const el=document.getElementById('seriesList');if(series.length===0){el.innerHTML='<div style="font-size:.68rem;color:var(--text2)">Seri eklenmedi.</div>';return;}el.innerHTML=series.map((s,i)=>`<div class="si"><div class="sdot" style="background:${COLORS[i%COLORS.length]}"></div><div class="snm">${s.name}</div><button class="sdel" onclick="removeSeries(${i})">✕</button></div>`).join('');}
+function importCSV(event){const file=event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(e){const lines=e.target.result.trim().split('\n');const nums=[];lines.forEach(line=>{const parts=line.split(/[,;\t]/);for(const p of parts){const n=parseFloat(p.replace(',','.'));if(!isNaN(n)){nums.push(n);break;}}});if(nums.length<2){alert('CSV okunamadı');return;}document.getElementById('dataInput').value=nums.join(', ');dataPoints=nums.map((y,i)=>({x:i+1,y}));renderDataPoints();log(`CSV: ${file.name} (${nums.length})`,'ok');};reader.readAsText(file);}
+function updateKernelInfo(){const k=document.getElementById('kernelSelect').value;const inf={rbf:'Düzgün, sonsuz türevlenebilir. Genel amaç.',matern:'2× türevlenebilir. Gerçek dünya gürültüsüne dayanıklı.',periodic:'Döngüsel/mevsimsel veriler.',linear:'Doğrusal trend.',rq:'Çok ölçekli RBF genellemesi.'};document.getElementById('kernelInfo').textContent=inf[k]||'';document.getElementById('periodSW').style.display=k==='periodic'?'block':'none';document.getElementById('alphaSW').style.display=k==='rq'?'block':'none';document.getElementById('kernelBadge').textContent=k.toUpperCase();}
+function rbfK(x1,x2,l,sf){const d=x1-x2;return sf*sf*Math.exp(-d*d/(2*l*l));}
+function maternK(x1,x2,l,sf){const r=Math.abs(x1-x2);const s=Math.sqrt(3)*r/l;return sf*sf*(1+s)*Math.exp(-s);}
+function periodicK(x1,x2,l,sf,p){const r=Math.abs(x1-x2);const sv=Math.sin(Math.PI*r/p);return sf*sf*Math.exp(-2*sv*sv/(l*l));}
+function linearK(x1,x2,l,sf){return sf*sf*(x1*x2+l*l);}
+function rqK(x1,x2,l,sf,a){const d=x1-x2;return sf*sf*Math.pow(1+d*d/(2*a*l*l),-a);}
+function kernelFn(x1,x2,l,sf,params){const k=document.getElementById('kernelSelect').value;if(k==='rbf')return rbfK(x1,x2,l,sf);if(k==='matern')return maternK(x1,x2,l,sf);if(k==='periodic')return periodicK(x1,x2,l,sf,params.p);if(k==='linear')return linearK(x1,x2,l,sf);if(k==='rq')return rqK(x1,x2,l,sf,params.alpha);return rbfK(x1,x2,l,sf);}
+function buildCov(X1,X2,l,sf,params){return X1.map(a=>X2.map(b=>kernelFn(a,b,l,sf,params)));}
+function logMarginalLikelihood(y,K){try{const n=y.length;const Ki=math.inv(K);const alpha=math.multiply(Ki,y);const fit=-0.5*math.dot(y,alpha);const eigs=math.eigs(K).values;const logdet=eigs.reduce((a,v)=>a+Math.log(Math.max(v,1e-12)),0);return fit-0.5*logdet-0.5*n*Math.log(2*Math.PI);}catch(e){return NaN;}}
+function arForecast(y,steps,order=3){const n=y.length;const p=Math.min(order,n-1);if(p<1)return Array(steps).fill(y[n-1]);const A=[],b=[];for(let i=p;i<n;i++){const row=[];for(let j=1;j<=p;j++)row.push(y[i-j]);A.push(row);b.push(y[i]);}try{const At=math.transpose(A);const coef=math.multiply(math.inv(math.multiply(At,A)),math.multiply(At,b));const hist=[...y];const preds=[];for(let s=0;s<steps;s++){const x=[];for(let j=0;j<p;j++)x.push(hist[hist.length-1-j]);preds.push(math.dot(coef,x));hist.push(preds[preds.length-1]);}return preds;}catch(e){return Array(steps).fill(y[n-1]);}}
+function etsForecast(y,steps){const n=y.length;let alpha=0.3,beta=0.1,level=y[0],trend=(y[n-1]-y[0])/(n-1)||0;for(let i=1;i<n;i++){const pl=level;level=alpha*y[i]+(1-alpha)*(level+trend);trend=beta*(level-pl)+(1-beta)*trend;}const preds=[];for(let s=1;s<=steps;s++)preds.push(level+trend*s);return preds;}
+function gprPredict(X,y,X_star,l,sn,sf,params){const K=buildCov(X,X,l,sf,params);for(let i=0;i<K.length;i++)K[i][i]+=sn*sn;const Ki=math.inv(K);const Ks=buildCov(X_star,X,l,sf,params);const Kss=buildCov(X_star,X_star,l,sf,params);const KsKi=math.multiply(Ks,Ki);return{mu:math.multiply(KsKi,y),cov:math.subtract(Kss,math.multiply(KsKi,math.transpose(Ks)))};}
+function computeStats(y){const n=y.length,mean=y.reduce((a,b)=>a+b,0)/n,std=Math.sqrt(y.reduce((a,b)=>a+Math.pow(b-mean,2),0)/n),X=y.map((_,i)=>i+1),xm=(n+1)/2,slope=X.reduce((a,x,i)=>a+(x-xm)*(y[i]-mean),0)/X.reduce((a,x)=>a+Math.pow(x-xm,2),0);return{n,mean,std,range:Math.max(...y)-Math.min(...y),slope};}
+function updateStats(y){const s=computeStats(y);document.getElementById('stat-n').textContent=s.n;document.getElementById('stat-mean').textContent=s.mean.toFixed(2);document.getElementById('stat-std').textContent=s.std.toFixed(2);document.getElementById('stat-range').textContent=s.range.toFixed(2);const se=document.getElementById('stat-trend');se.textContent=(s.slope>=0?'+':'')+s.slope.toFixed(3);se.className='sv '+(s.slope>=0?'up':'down');}
+function hexToRgba(hex,a){if(hex.startsWith('#')){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return `rgba(${r},${g},${b},${a})`;}return hex;}
+function runGPR(){const btn=document.getElementById('runBtn');btn.disabled=true;btn.textContent='⏳ Hesaplanıyor…';document.getElementById('loadingOverlay').style.display='flex';setTimeout(()=>{try{_runGPR();}catch(e){log('Hata: '+e.message,'err');console.error(e);}finally{btn.disabled=false;btn.textContent='▶ Hesapla & Tahmin Et';document.getElementById('loadingOverlay').style.display='none';}},60);}
+function _runGPR(){
+  const{X:mainX,y:mainY}=getActiveData();
+  if(mainY.length<3){alert('En az 3 veri noktası gerekli');return;}
+  const plotSeries=series.length>0?series:[{name:'Aktif Seri',X:mainX,y:mainY}];
+  const l=parseFloat(document.getElementById('param_l').value);
+  const sn=parseFloat(document.getElementById('param_n').value);
+  const steps=parseInt(document.getElementById('param_steps').value);
+  const ciK=parseFloat(document.getElementById('param_ci').value);
+  const showCI=document.getElementById('toggleCI').classList.contains('on');
+  const showSamplesOn=document.getElementById('toggleSamples').classList.contains('on');
+  const showEns=document.getElementById('toggleEnsemble').classList.contains('on');
+  const p=parseFloat(document.getElementById('param_p')?.value||3);
+  const alpha=parseFloat(document.getElementById('param_a')?.value||1);
+  const params={p,alpha};
+  const wG=parseFloat(document.getElementById('w_gpr').value);
+  const wA=parseFloat(document.getElementById('w_ar').value);
+  const wE=parseFloat(document.getElementById('w_ets').value);
+  const ws=wG+wA+wE||1;
+  const W={g:wG/ws,a:wA/ws,e:wE/ws};
+  updateStats(plotSeries[0].y);
+  const tableRows=[],chartDatasets=[];
+  let lmlTotal=0;
+  plotSeries.forEach((ser,si)=>{
+    const y=ser.y,X=ser.X||y.map((_,i)=>i+1),color=COLORS[si%COLORS.length],n=y.length,last_x=X[X.length-1];
+    const ym=y.reduce((a,b)=>a+b,0)/n,yv=y.reduce((a,b)=>a+Math.pow(b-ym,2),0)/n,sf=Math.sqrt(yv)||1;
+    const ss=(last_x-X[0])/(Math.max(n-1,1)*5)||0.2;
+    const X_obs=[];
+    for(let v=X[0];v<=last_x+0.01;v+=ss)X_obs.push(parseFloat(v.toFixed(3)));
+    const X_fut=Array.from({length:steps},(_,i)=>last_x+i+1);
+    const X_star=[...X_obs,...X_fut];
+    let gprMu=Array(X_star.length).fill(0),gprCov=null,lml=NaN;
+    try{const K=buildCov(X,X,l,sf,params);for(let i=0;i<K.length;i++)K[i][i]+=sn*sn;lml=logMarginalLikelihood(y,K);lmlTotal+=isNaN(lml)?0:lml;const res=gprPredict(X,y,X_star,l,sn,sf,params);gprMu=res.mu;gprCov=res.cov;}catch(e){log('[GPR] '+e.message,'err');}
+    const arO=Math.min(5,Math.floor(n/2));
+    const arF=arForecast(y,steps,arO);
+    const etsF=etsForecast(y,steps);
+    const gprF=X_fut.map((_,i)=>{const idx=X_star.indexOf(X_fut[i]);return idx>=0?gprMu[idx]:NaN;});
+    const ensF=X_fut.map((_,i)=>W.g*gprF[i]+W.a*arF[i]+W.e*etsF[i]);
+    const fCIu=[],fCIl=[];
+    X_fut.forEach((_,i)=>{const idx=X_star.indexOf(X_fut[i]);if(idx>=0&&gprCov){const sd=Math.sqrt(Math.max(0,gprCov[idx][idx]));fCIu.push(ensF[i]+ciK*sd);fCIl.push(ensF[i]-ciK*sd);}else{fCIu.push(ensF[i]*1.1);fCIl.push(ensF[i]*0.9);}});
+    const oU=[],oL=[];
+    X_obs.forEach((_,i)=>{if(gprCov){const sd=Math.sqrt(Math.max(0,gprCov[i][i]));oU.push(gprMu[i]+ciK*sd);oL.push(gprMu[i]-ciK*sd);}else{oU.push(gprMu[i]);oL.push(gprMu[i]);}});
+    chartDatasets.push({label:ser.name+' (Veri)',data:X.map((x,i)=>({x,y:y[i]})),type:'scatter',backgroundColor:color,borderColor:color,pointRadius:6,pointHoverRadius:8,order:1});
+    chartDatasets.push({label:ser.name+' GPR',data:X_obs.map((x,i)=>({x,y:gprMu[i]})),borderColor:color,backgroundColor:'transparent',borderWidth:2.5,pointRadius:0,tension:0.4,order:2});
+    if(showCI){chartDatasets.push({label:`${ser.name} CI+`,data:X_obs.map((x,i)=>({x,y:oU[i]})),borderColor:hexToRgba(color,.25),backgroundColor:'transparent',borderWidth:1,borderDash:[4,4],pointRadius:0,tension:0.4,order:3});chartDatasets.push({label:`_lo${si}`,data:X_obs.map((x,i)=>({x,y:oL[i]})),borderColor:hexToRgba(color,.12),backgroundColor:hexToRgba(color,.07),fill:'-1',borderWidth:1,borderDash:[4,4],pointRadius:0,tension:0.4,order:3});}
+    chartDatasets.push({label:ser.name+' Tahmin',data:X_fut.map((x,i)=>({x,y:ensF[i]})),type:'scatter',backgroundColor:hexToRgba(color,.9),borderColor:'#fff',pointRadius:7,pointHoverRadius:9,pointStyle:'triangle',borderWidth:2,order:0});
+    chartDatasets.push({label:ser.name+' Ens Çizgi',data:[{x:last_x,y:y[n-1]},...X_fut.map((x,i)=>({x,y:ensF[i]}))],borderColor:hexToRgba(color,.7),backgroundColor:'transparent',borderWidth:2,borderDash:[6,3],pointRadius:0,tension:0.3,order:1});
+    if(showCI){chartDatasets.push({label:`${ser.name} FCI+`,data:X_fut.map((x,i)=>({x,y:fCIu[i]})),borderColor:hexToRgba(color,.2),backgroundColor:'transparent',borderWidth:1,borderDash:[3,3],pointRadius:0,tension:0.3,order:3});chartDatasets.push({label:`_flo${si}`,data:X_fut.map((x,i)=>({x,y:fCIl[i]})),borderColor:hexToRgba(color,.1),backgroundColor:hexToRgba(color,.06),fill:'-1',borderWidth:1,borderDash:[3,3],pointRadius:0,tension:0.3,order:3});}
+    if(showEns){chartDatasets.push({label:ser.name+' AR',data:[{x:last_x,y:y[n-1]},...X_fut.map((x,i)=>({x,y:arF[i]}))],borderColor:hexToRgba('#ffd166',.6),backgroundColor:'transparent',borderWidth:1.2,borderDash:[2,4],pointRadius:3,tension:0.3,order:0});chartDatasets.push({label:ser.name+' ETS',data:[{x:last_x,y:y[n-1]},...X_fut.map((x,i)=>({x,y:etsF[i]}))],borderColor:hexToRgba('#3df5b0',.6),backgroundColor:'transparent',borderWidth:1.2,borderDash:[2,4],pointRadius:3,tension:0.3,order:0});}
+    if(showSamplesOn&&si===0&&gprCov){for(let s=0;s<3;s++){const samp=X_obs.map((_,i)=>{const v=Math.max(0,gprCov[i][i]);return gprMu[i]+Math.sqrt(v)*(Math.random()*2-1)*1.1;});chartDatasets.push({label:`_samp${s}`,data:X_obs.map((x,i)=>({x,y:samp[i]})),borderColor:hexToRgba(color,.2),backgroundColor:'transparent',borderWidth:1,pointRadius:0,tension:0.4,borderDash:[1,3],order:0});}}
+    X_fut.forEach((tx,i)=>{const mu=ensF[i],lo=fCIl[i],hi=fCIu[i],bw=hi-lo,conf=Math.max(0,Math.min(100,100*(1-bw/Math.max(Math.abs(mu)*4,1))));tableRows.push({tx,serName:ser.name,mu:mu.toFixed(3),gm:gprF[i].toFixed(3),am:arF[i].toFixed(3),em:etsF[i].toFixed(3),lo:lo.toFixed(3),hi:hi.toFixed(3),conf:conf.toFixed(0),color});});
+    log(`[${ser.name}] LML=${isNaN(lml)?'—':lml.toFixed(2)} W(g=${W.g.toFixed(2)},a=${W.a.toFixed(2)},e=${W.e.toFixed(2)})`,'ok');
+  });
+  document.getElementById('lmlDisplay').innerHTML=`LML: <strong>${lmlTotal.toFixed(4)}</strong>`;
+  drawChart(chartDatasets,plotSeries[0].X||plotSeries[0].y.map((_,i)=>i+1));
+  const tbody=document.getElementById('predTableBody');
+  if(tableRows.length===0){tbody.innerHTML='<tr><td colspan="9" style="color:var(--text2);padding:12px">Tahmin yok</td></tr>';return;}
+  tbody.innerHTML=tableRows.map(r=>`<tr><td><strong>${r.tx}</strong></td><td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${r.color};margin-right:5px"></span>${r.serName}</td><td><strong>${r.mu}</strong></td><td style="color:var(--accent)">${r.gm}</td><td style="color:var(--yellow)">${r.am}</td><td style="color:var(--green)">${r.em}</td><td style="color:var(--red)">${r.lo}</td><td style="color:var(--green)">${r.hi}</td><td><div class="cbw"><div class="cb" style="width:${r.conf}%;background:${r.color}"></div></div><span style="font-size:.62rem;color:var(--text2);margin-left:5px">${r.conf}%</span></td></tr>`).join('');
+  log(`${tableRows.length} tahmin satırı.`,'ok');
+}
+function buildChartConfig(datasets,X){
+  const lastX=Math.max(...X);
+  const ann={id:'ann',afterDraw(chart){const{ctx:c,chartArea:{top,bottom},scales:{x}}=chart;const xp=x.getPixelForValue(lastX);c.save();c.beginPath();c.moveTo(xp,top);c.lineTo(xp,bottom);c.strokeStyle='rgba(255,255,255,0.18)';c.lineWidth=1.5;c.setLineDash([5,4]);c.stroke();c.fillStyle='rgba(255,255,255,0.45)';c.font='9px Space Mono,monospace';c.fillText('▶ TAHMİN',xp+5,top+13);c.restore();}};
+  return{type:'line',data:{datasets},options:{responsive:true,maintainAspectRatio:true,animation:{duration:550,easing:'easeOutCubic'},interaction:{mode:'index',intersect:false},scales:{x:{type:'linear',grid:{color:showGrid?'rgba(255,255,255,0.04)':'transparent',display:showGrid},ticks:{color:'#8888aa',font:{family:'Space Mono,monospace',size:10}},title:{display:true,text:'X / Zaman',color:'#8888aa'}},y:{grid:{color:'rgba(255,255,255,0.04)',display:showGrid},ticks:{color:'#8888aa',font:{family:'Space Mono,monospace',size:10}},title:{display:true,text:'Değer',color:'#8888aa'}}},plugins:{legend:{labels:{color:'#e8e8f0',font:{family:'Space Mono,monospace',size:10},filter:item=>!item.text.startsWith('_')}},tooltip:{backgroundColor:'#1e1e2a',borderColor:'#2a2a3a',borderWidth:1,titleColor:'#e8e8f0',bodyColor:'#8888aa',callbacks:{label:item=>{if(item.dataset.label.startsWith('_'))return null;const v=item.raw?.y??item.raw;return `${item.dataset.label}: ${parseFloat(v).toFixed(4)}`;}}}}}},plugins:[ann]};}
+function drawChart(datasets,X){if(chartInstance)chartInstance.destroy();const ctx=document.getElementById('gprChart').getContext('2d');chartInstance=new Chart(ctx,buildChartConfig(datasets,X));}
+function openFullscreen(){if(!chartInstance){alert('Önce hesaplama yapın');return;}document.getElementById('fsOverlay').classList.add('active');const ctx=document.getElementById('fsChart').getContext('2d');if(fsChartInstance)fsChartInstance.destroy();fsChartInstance=new Chart(ctx,buildChartConfig(chartInstance.data.datasets,dataPoints.length?dataPoints.map(p=>p.x):[1]));}
+function closeFullscreen(){document.getElementById('fsOverlay').classList.remove('active');if(fsChartInstance){fsChartInstance.destroy();fsChartInstance=null;}}
+function autoOptimize(){const{X,y}=getActiveData();if(y.length<2){alert('Veri girin');return;}const p=parseFloat(document.getElementById('param_p')?.value||3),alpha=parseFloat(document.getElementById('param_a')?.value||1),params={p,alpha};const Ls=[0.3,0.5,1,1.5,2,3,5,7,10],Ns=[0.01,0.05,0.1,0.3,0.5,1];let bestLML=-Infinity,bestL=2,bestN=0.1;const ym=y.reduce((a,b)=>a+b,0)/y.length,yv=y.reduce((a,b)=>a+Math.pow(b-ym,2),0)/y.length,sf=Math.sqrt(yv)||1;for(const l of Ls)for(const sn of Ns){try{const K=buildCov(X,X,l,sf,params);for(let i=0;i<K.length;i++)K[i][i]+=sn*sn;const lml=logMarginalLikelihood(y,K);if(!isNaN(lml)&&lml>bestLML){bestLML=lml;bestL=l;bestN=sn;}}catch(e){}}document.getElementById('param_l').value=bestL;document.getElementById('l_val').textContent=bestL.toFixed(1);document.getElementById('param_n').value=bestN;document.getElementById('n_val').textContent=bestN.toFixed(2);const msg=`ℓ=${bestL}, σ_n=${bestN} → LML=${bestLML.toFixed(3)}`;document.getElementById('optResult').textContent=msg;log('Grid: '+msg,'ok');runGPR();}
+function toggleGrid(){showGrid=!showGrid;if(chartInstance)runGPR();}
+document.getElementById('themeBtn').onclick=function(){isDark=!isDark;document.body.classList.toggle('light',!isDark);this.textContent=isDark?'🌙':'☀️';};
+document.getElementById('exportCsvBtn').onclick=function(){const{X,y}=getActiveData();const rows=[['x','type','value']];X.forEach((x,i)=>rows.push([x,'observed',y[i]]));document.querySelectorAll('#predTableBody tr').forEach(tr=>{const tds=tr.querySelectorAll('td');if(tds.length>=3)rows.push([tds[0].textContent.trim(),'predicted',tds[2].textContent.trim()]);});const blob=new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='gpr_export.csv';a.click();log('CSV dışa aktarıldı','ok');};
+document.getElementById('exportPngBtn').onclick=function(){if(!chartInstance){alert('Önce hesaplama yapın');return;}const a=document.createElement('a');a.href=chartInstance.toBase64Image();a.download='gpr_chart.png';a.click();log('PNG dışa aktarıldı','ok');};
+document.getElementById('fsBtn').onclick=openFullscreen;
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeFullscreen();});
+updateKernelInfo();parseTextareaPoints();renderSeriesList();
+log('GPR Pro v3 — GPR + AR + ETS Ensemble','info');
+window.onload=()=>{setTimeout(runGPR,300);};
+</script>
+</body>
+</html>
