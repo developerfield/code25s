@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPR Pro — Gaussian Process Regression</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+:root {
+  --bg: #0c0c10;
+  --surface: #13131a;
+  --surface2: #1e1e2a;
+  --border: #2a2a3a;
+  --accent: #7c6af7;
+  --accent2: #e97bff;
+  --green: #3df5b0;
+  --red: #ff6b6b;
+  --yellow: #ffd166;
+  --text: #e8e8f0;
+  --text2: #8888aa;
+  --font-display: 'Syne', sans-serif;
+  --font-mono: 'Space Mono', monospace;
+}
+body.light {
+  --bg: #f0f0f8;
+  --surface: #fff;
+  --surface2: #eaeaf5;
+  --border: #d0d0e8;
+  --text: #1a1a2e;
+  --text2: #5a5a80;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* HEADER */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 32px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.3rem;
+  letter-spacing: -0.5px;
+}
+.logo span { color: var(--accent); }
+.logo small { color: var(--text2); font-size: 0.7rem; font-family: var(--font-mono); font-weight: 400; display: block; }
+.header-actions { display: flex; gap: 10px; align-items: center; }
+.btn-icon {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s, transform 0.15s;
+}
+.btn-icon:hover { background: var(--accent); transform: scale(1.08); }
+
+/* MAIN LAYOUT */
+.main {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  min-height: calc(100vh - 65px);
+}
+
+/* SIDEBAR */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 24px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.section-label {
+  font-size: 0.65rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text2);
+  margin-bottom: 10px;
+}
+.card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+.card h3 {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--accent);
+}
+
+/* INPUTS */
+textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 10px;
+  border-radius: 6px;
+  resize: vertical;
+  min-height: 80px;
+  transition: border 0.2s;
+}
+textarea:focus { outline: none; border-color: var(--accent); }
+
+select {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+select:focus { outline: none; border-color: var(--accent); }
+
+.slider-group { margin-bottom: 12px; }
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--text2);
+  margin-bottom: 4px;
+}
+.slider-header span:last-child {
+  color: var(--accent);
+  font-weight: 700;
+}
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+  height: 4px;
+  cursor: pointer;
+}
+
+/* BUTTONS */
+.btn-run {
+  width: 100%;
+  padding: 12px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.btn-run:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+.btn-run:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-run::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.4s;
+}
+.btn-run.loading::after { transform: translateX(100%); }
+
+.btn-small {
+  padding: 6px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-small:hover { background: var(--border); }
+
+/* SERIES MANAGER */
+.series-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.72rem;
+}
+.series-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.series-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.series-del {
+  background: none;
+  border: none;
+  color: var(--red);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+}
+
+/* CONTENT AREA */
+.content {
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* STATS ROW */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent);
+}
+.stat-card.green::before { background: var(--green); }
+.stat-card.red::before { background: var(--red); }
+.stat-card.yellow::before { background: var(--yellow); }
+.stat-card.purple::before { background: var(--accent2); }
+.stat-val {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.stat-label {
+  font-size: 0.62rem;
+  color: var(--text2);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.stat-trend {
+  font-size: 0.68rem;
+  margin-top: 4px;
+}
+.up { color: var(--green); }
+.down { color: var(--red); }
+
+/* CHART AREA */
+.chart-container {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  position: relative;
+}
+.chart-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.chart-title {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.chart-actions { display: flex; gap: 8px; }
+canvas { max-height: 420px; }
+
+/* PREDICTIONS TABLE */
+.predictions-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+.predictions-wrap h3 {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+.pred-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+.pred-table th {
+  text-align: left;
+  padding: 8px 12px;
+  color: var(--text2);
+  font-size: 0.65rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+.pred-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.pred-table tr:last-child td { border-bottom: none; }
+.pred-table tr:hover td { background: var(--surface2); }
+.conf-bar-wrap {
+  width: 100px;
+  background: var(--border);
+  border-radius: 3px;
+  height: 6px;
+  position: relative;
+}
+.conf-bar {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+}
+
+/* LOG PANEL */
+.log-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+.log-panel h3 { font-family: var(--font-display); font-size: 0.85rem; font-weight: 600; margin-bottom: 10px; }
+.log-lines {
+  font-size: 0.68rem;
+  color: var(--text2);
+  max-height: 120px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.log-line { display: flex; gap: 10px; }
+.log-line .ts { color: var(--border); flex-shrink: 0; }
+.log-line .msg.ok { color: var(--green); }
+.log-line .msg.warn { color: var(--yellow); }
+.log-line .msg.err { color: var(--red); }
+.log-line .msg.info { color: var(--text2); }
+
+/* KERNEL INFO */
+.kernel-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  margin-left: 6px;
+}
+
+/* LML DISPLAY */
+.lml-display {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 0.72rem;
+  color: var(--text2);
+  margin-top: 8px;
+}
+.lml-display strong { color: var(--accent); }
+
+/* LOADING OVERLAY */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(12,12,16,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  z-index: 10;
+  display: none;
+}
+.spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ANIMATE IN */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.anim { animation: fadeUp 0.4s ease both; }
+.anim-delay-1 { animation-delay: 0.05s; }
+.anim-delay-2 { animation-delay: 0.1s; }
+.anim-delay-3 { animation-delay: 0.15s; }
+
+/* CSV IMPORT */
+.import-row { display: flex; gap: 8px; align-items: center; }
+.import-row input[type="file"] { display: none; }
+.file-label {
+  flex: 1;
+  padding: 7px 10px;
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  font-size: 0.7rem;
+  color: var(--text2);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+.file-label:hover { border-color: var(--accent); color: var(--accent); }
+
+/* TOGGLE */
+.toggle-wrap { display: flex; align-items: center; gap: 8px; font-size: 0.72rem; }
+.toggle {
+  width: 36px; height: 20px;
+  background: var(--border);
+  border-radius: 10px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+  border: none;
+}
+.toggle.on { background: var(--accent); }
+.toggle::after {
+  content: '';
+  position: absolute;
+  width: 14px; height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  top: 3px; left: 3px;
+  transition: transform 0.2s;
+}
+.toggle.on::after { transform: translateX(16px); }
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .main { grid-template-columns: 1fr; }
+  .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  .stats-row { grid-template-columns: repeat(2,1fr); }
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">
+    GPR<span>Pro</span>
+    <small>Gaussian Process Regression — Advanced</small>
+  </div>
+  <div class="header-actions">
+    <button class="btn-icon" id="themeBtn" title="Tema değiştir">🌙</button>
+    <button class="btn-icon" id="exportCsvBtn" title="CSV Dışa Aktar">⬇</button>
+    <button class="btn-icon" id="exportPngBtn" title="Grafik PNG">📷</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- DATA INPUT -->
+    <div class="card">
+      <h3>📊 Veri Girişi</h3>
+      <div class="section-label">Aktif Seri (virgülle ayrılmış Y değerleri)</div>
+      <textarea id="dataInput">2.1, 2.9, 3.8, 5.1, 5.8, 7.2, 8.5</textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;margin-bottom:4px;">
+        <input type="text" id="seriesName" placeholder="Seri adı..." style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:0.72rem;padding:6px 8px;border-radius:6px;">
+        <button class="btn-small" onclick="addSeries()">+ Ekle</button>
+      </div>
+      <div class="section-label" style="margin-top:8px;">CSV İçe Aktar</div>
+      <div class="import-row">
+        <label for="csvFile" class="file-label">📁 CSV dosyası seç</label>
+        <input type="file" id="csvFile" accept=".csv,.txt" onchange="importCSV(event)">
+      </div>
+    </div>
+
+    <!-- SERIES LIST -->
+    <div class="card" id="seriesCard">
+      <h3>📈 Seriler</h3>
+      <div id="seriesList"></div>
+    </div>
+
+    <!-- KERNEL -->
+    <div class="card">
+      <h3>🔮 Kernel Seçimi</h3>
+      <div class="section-label">Kernel Fonksiyonu</div>
+      <select id="kernelSelect" onchange="updateKernelInfo()">
+        <option value="rbf">RBF (Radial Basis Function)</option>
+        <option value="matern">Matérn 3/2</option>
+        <option value="periodic">Periodic (Periyodik)</option>
+        <option value="linear">Linear (Doğrusal)</option>
+        <option value="rq">Rational Quadratic</option>
+      </select>
+      <div id="kernelInfo" style="font-size:0.68rem;color:var(--text2);padding:6px 8px;background:var(--bg);border-radius:5px;margin-bottom:10px;"></div>
+
+      <!-- SLIDERS -->
+      <div class="slider-group">
+        <div class="slider-header"><span>Length Scale (ℓ)</span><span id="l_val">2.0</span></div>
+        <input type="range" id="param_l" min="0.1" max="10" step="0.1" value="2.0" oninput="document.getElementById('l_val').innerText=parseFloat(this.value).toFixed(1)">
+      </div>
+      <div class="slider-group">
+        <div class="slider-header"><span>Gürültü (σ_n)</span><span id="n_val">0.1</span></div>
+        <input type="range" id="param_n" min="0.01" max="2" step="0.01" value="0.1" oninput="document.getElementById('n_val').innerText=parseFloat(this.value).toFixed(2)">
+      </div>
+      <div class="slider-group" id="periodSliderWrap" style="display:none;">
+        <div class="slider-header"><span>Periyot (p)</span><span id="p_val">3.0</span></div>
+        <input type="range" id="param_p" min="0.5" max="10" step="0.1" value="3.0" oninput="document.getElementById('p_val').innerText=parseFloat(this.value).toFixed(1)">
+      </div>
+      <div class="slider-group" id="alphaSliderWrap" style="display:none;">
+        <div class="slider-header"><span>Alpha (α) [RQ]</span><span id="a_val">1.0</span></div>
+        <input type="range" id="param_a" min="0.1" max="5" step="0.1" value="1.0" oninput="document.getElementById('a_val').innerText=parseFloat(this.value).toFixed(1)">
+      </div>
+      <div class="lml-display" id="lmlDisplay">
+        Log-Marginal Likelihood: <strong>—</strong>
+      </div>
+    </div>
+
+    <!-- PREDICTION SETTINGS -->
+    <div class="card">
+      <h3>🎯 Tahmin Ayarları</h3>
+      <div class="slider-group">
+        <div class="slider-header"><span>İleri Tahmin Adımı</span><span id="steps_val">5</span></div>
+        <input type="range" id="param_steps" min="1" max="30" step="1" value="5" oninput="document.getElementById('steps_val').innerText=this.value">
+      </div>
+      <div class="slider-group">
+        <div class="slider-header"><span>Güven Aralığı Sigma (k)</span><span id="ci_val">1.96</span></div>
+        <input type="range" id="param_ci" min="1" max="3" step="0.01" value="1.96" oninput="document.getElementById('ci_val').innerText=parseFloat(this.value).toFixed(2)">
+      </div>
+      <div class="toggle-wrap" style="margin-top:6px;">
+        <button class="toggle on" id="toggleCI" onclick="this.classList.toggle('on')"></button>
+        <span>Güven Bandı Göster</span>
+      </div>
+      <div class="toggle-wrap" style="margin-top:8px;">
+        <button class="toggle on" id="toggleSamples" onclick="this.classList.toggle('on')"></button>
+        <span>GP Örnekleri Çiz</span>
+      </div>
+    </div>
+
+    <!-- AUTO OPTIMIZE -->
+    <div class="card">
+      <h3>⚙️ Otomatik Optimizasyon</h3>
+      <p style="font-size:0.68rem;color:var(--text2);margin-bottom:10px;">LML tabanlı grid search ile en iyi hiperparametreleri bul.</p>
+      <button class="btn-small" onclick="autoOptimize()" style="width:100%;padding:8px;">🔍 Grid Search Çalıştır</button>
+      <div id="optResult" style="font-size:0.68rem;color:var(--text2);margin-top:8px;"></div>
+    </div>
+
+    <button class="btn-run" id="runBtn" onclick="runGPR()">▶ Hesapla &amp; Tahmin Et</button>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- STATS -->
+    <div class="stats-row anim">
+      <div class="stat-card">
+        <div class="stat-val" id="stat-n">—</div>
+        <div class="stat-label">Veri Noktası</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-val" id="stat-mean">—</div>
+        <div class="stat-label">Ortalama</div>
+      </div>
+      <div class="stat-card yellow">
+        <div class="stat-val" id="stat-std">—</div>
+        <div class="stat-label">Std Sapma</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-val" id="stat-range">—</div>
+        <div class="stat-label">Aralık (Max-Min)</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-val" id="stat-trend">—</div>
+        <div class="stat-label">Trend Eğimi</div>
+      </div>
+    </div>
+
+    <!-- CHART -->
+    <div class="chart-container anim anim-delay-1">
+      <div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
+      <div class="chart-toolbar">
+        <div class="chart-title">Gaussian Process Regression</div>
+        <div class="chart-actions">
+          <button class="btn-small" onclick="toggleGrid()">Grid</button>
+          <button class="btn-small" onclick="togglePoints()">Noktalar</button>
+          <button class="btn-small" onclick="resetZoom()">Reset Zoom</button>
+        </div>
+      </div>
+      <canvas id="gprChart"></canvas>
+    </div>
+
+    <!-- PREDICTIONS -->
+    <div class="predictions-wrap anim anim-delay-2">
+      <h3>🔭 Tahmin Tablosu <span id="kernelBadge" class="kernel-badge">RBF</span></h3>
+      <table class="pred-table">
+        <thead>
+          <tr>
+            <th>Adım</th>
+            <th>Seri</th>
+            <th>Tahmin (μ)</th>
+            <th>Alt Sınır</th>
+            <th>Üst Sınır</th>
+            <th>Belirsizlik</th>
+            <th>Güven Bant Genişliği</th>
+          </tr>
+        </thead>
+        <tbody id="predTableBody">
+          <tr><td colspan="7" style="color:var(--text2);font-size:0.75rem;padding:16px;">Henüz hesaplama yapılmadı…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- LOG -->
+    <div class="log-panel anim anim-delay-3">
+      <h3>🗒 İşlem Günlüğü</h3>
+      <div class="log-lines" id="logLines"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ========================
+// STATE
+// ========================
+let chartInstance = null;
+let isDark = true;
+let showGrid = true;
+let showPoints = true;
+const COLORS = ['#7c6af7','#3df5b0','#e97bff','#ffd166','#ff6b6b','#4ecdc4'];
+let series = [];
+let activeSeriesIdx = 0;
+
+// ========================
+// LOG
+// ========================
+function log(msg, type='info'){
+  const el = document.getElementById('logLines');
+  const d = new Date();
+  const ts = d.toTimeString().slice(0,8);
+  const line = document.createElement('div');
+  line.className='log-line';
+  line.innerHTML=`<span class="ts">${ts}</span><span class="msg ${type}">${msg}</span>`;
+  el.prepend(line);
+  while(el.children.length > 40) el.removeChild(el.lastChild);
+}
+
+// ========================
+// KERNEL FUNCTIONS
+// ========================
+function rbfKernel(x1, x2, l, sf, params){
+  const d = x1-x2;
+  return sf*sf*Math.exp(-d*d/(2*l*l));
+}
+function maternKernel(x1, x2, l, sf, params){
+  const r = Math.abs(x1-x2);
+  const s = Math.sqrt(3)*r/l;
+  return sf*sf*(1+s)*Math.exp(-s);
+}
+function periodicKernel(x1, x2, l, sf, params){
+  const r = Math.abs(x1-x2);
+  const p = params.p || 3;
+  const sinVal = Math.sin(Math.PI*r/p);
+  return sf*sf*Math.exp(-2*sinVal*sinVal/(l*l));
+}
+function linearKernel(x1, x2, l, sf, params){
+  return sf*sf*(x1*x2 + l*l);
+}
+function rqKernel(x1, x2, l, sf, params){
+  const alpha = params.alpha || 1;
+  const d = x1-x2;
+  return sf*sf*Math.pow(1 + d*d/(2*alpha*l*l), -alpha);
+}
+function getKernel(){
+  const k = document.getElementById('kernelSelect').value;
+  return {rbf:rbfKernel, matern:maternKernel, periodic:periodicKernel, linear:linearKernel, rq:rqKernel}[k];
+}
+function buildCov(X1, X2, l, sf, params){
+  const kFn = getKernel();
+  return X1.map(a => X2.map(b => kFn(a,b,l,sf,params)));
+}
+
+// ========================
+// KERNEL INFO
+// ========================
+function updateKernelInfo(){
+  const k = document.getElementById('kernelSelect').value;
+  const infos = {
+    rbf: 'Sonsuz türevlenebilir, düzgün tahminler. Çoğu veri için ideal başlangıç noktası.',
+    matern: '2 kez türevlenebilir. Gerçek dünya verilerinde RBF\'den daha doğal görünür.',
+    periodic: 'Periyodik/döngüsel veri yapıları için. Periyot parametresi ile kontrol edin.',
+    linear: 'Lineer ilişkiler için. Basit trend modelleme.',
+    rq: 'Farklı uzunluk ölçeklerinin karışımı. RBF\'nin genelleştirilmiş hali.'
+  };
+  document.getElementById('kernelInfo').textContent = infos[k] || '';
+  document.getElementById('periodSliderWrap').style.display = k==='periodic' ? 'block' : 'none';
+  document.getElementById('alphaSliderWrap').style.display = k==='rq' ? 'block' : 'none';
+  document.getElementById('kernelBadge').textContent = k.toUpperCase();
+}
+
+// ========================
+// SERIES MANAGEMENT
+// ========================
+function renderSeriesList(){
+  const el = document.getElementById('seriesList');
+  if(series.length === 0){ el.innerHTML='<div style="font-size:0.7rem;color:var(--text2);">Seri eklenmedi. Aktif textarea veri kullanılır.</div>'; return; }
+  el.innerHTML = series.map((s,i) => `
+    <div class="series-item">
+      <div class="series-dot" style="background:${COLORS[i%COLORS.length]}"></div>
+      <div class="series-name">${s.name}</div>
+      <button class="series-del" onclick="removeSeries(${i})">✕</button>
+    </div>
+  `).join('');
+}
+function addSeries(){
+  const raw = document.getElementById('dataInput').value;
+  const name = document.getElementById('seriesName').value.trim() || `Seri ${series.length+1}`;
+  const y = raw.split(',').map(Number).filter(n=>!isNaN(n));
+  if(y.length<2){ alert('En az 2 veri noktası gerekli.'); return; }
+  series.push({name, y});
+  document.getElementById('seriesName').value='';
+  renderSeriesList();
+  log(`Seri eklendi: "${name}" (${y.length} nokta)`, 'ok');
+}
+function removeSeries(i){
+  log(`Seri silindi: "${series[i].name}"`, 'warn');
+  series.splice(i,1);
+  renderSeriesList();
+}
+
+// ========================
+// CSV IMPORT
+// ========================
+function importCSV(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const text = e.target.result;
+    // Try to parse first numeric column
+    const lines = text.trim().split('\n');
+    const nums = [];
+    lines.forEach(line => {
+      const parts = line.split(/[,;\t]/);
+      for(const p of parts){
+        const n = parseFloat(p.replace(',','.'));
+        if(!isNaN(n)){ nums.push(n); break; }
+      }
+    });
+    if(nums.length<2){ alert('CSV dosyasından sayı okunamadı.'); return; }
+    document.getElementById('dataInput').value = nums.join(', ');
+    log(`CSV içe aktarıldı: ${file.name} (${nums.length} satır)`, 'ok');
+  };
+  reader.readAsText(file);
+}
+
+// ========================
+// STATS
+// ========================
+function computeStats(y){
+  const n = y.length;
+  const mean = y.reduce((a,b)=>a+b,0)/n;
+  const std = Math.sqrt(y.reduce((a,b)=>a+Math.pow(b-mean,2),0)/n);
+  const min = Math.min(...y), max = Math.max(...y);
+  // Linear trend slope (least squares)
+  const X = Array.from({length:n},(_,i)=>i+1);
+  const xm = (n+1)/2;
+  const slope = X.reduce((a,x,i)=>a+(x-xm)*(y[i]-mean),0) / X.reduce((a,x)=>a+Math.pow(x-xm,2),0);
+  return {n, mean, std, range:max-min, slope};
+}
+function updateStats(y){
+  const s = computeStats(y);
+  document.getElementById('stat-n').textContent = s.n;
+  document.getElementById('stat-mean').textContent = s.mean.toFixed(2);
+  document.getElementById('stat-std').textContent = s.std.toFixed(2);
+  document.getElementById('stat-range').textContent = s.range.toFixed(2);
+  const slopeEl = document.getElementById('stat-trend');
+  slopeEl.textContent = (s.slope>=0?'+':'')+s.slope.toFixed(3);
+  slopeEl.className = 'stat-val ' + (s.slope>=0?'up':'down');
+}
+
+// ========================
+// LOG MARGINAL LIKELIHOOD
+// ========================
+function logMarginalLikelihood(y, K){
+  try {
+    const n = y.length;
+    const L = math.inv(K);
+    const alpha = math.multiply(L, y);
+    const fit = -0.5 * math.dot(y, alpha);
+    // log det approximation via trace
+    const eigs = math.eigs(K).values;
+    const logdet = eigs.reduce((a,v)=>a+Math.log(Math.max(v,1e-12)),0);
+    const lml = fit - 0.5*logdet - 0.5*n*Math.log(2*Math.PI);
+    return lml;
+  } catch(e){ return NaN; }
+}
+
+// ========================
+// GP SAMPLES (posterior)
+// ========================
+function sampleGP(mu, cov, nSamples){
+  const n = mu.length;
+  const samples = [];
+  for(let s=0; s<nSamples; s++){
+    const sample = [];
+    // Simple diagonal sampling (approx)
+    for(let i=0;i<n;i++){
+      const std = Math.sqrt(Math.max(0, cov[i][i]));
+      sample.push(mu[i] + std * (Math.random()*2-1) * 1.2);
+    }
+    samples.push(sample);
+  }
+  return samples;
+}
+
+// ========================
+// MAIN GPR
+// ========================
+function runGPR(){
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Hesaplanıyor…';
+  document.getElementById('loadingOverlay').style.display = 'flex';
+
+  setTimeout(()=>{
+    try { _runGPR(); }
+    catch(e){ log('Hata: '+e.message, 'err'); alert('Hata: '+e.message); }
+    finally {
+      btn.disabled = false;
+      btn.textContent = '▶ Hesapla & Tahmin Et';
+      document.getElementById('loadingOverlay').style.display = 'none';
+    }
+  }, 50);
+}
+
+function _runGPR(){
+  // Collect all series to plot
+  const mainRaw = document.getElementById('dataInput').value;
+  const mainY = mainRaw.split(',').map(Number).filter(n=>!isNaN(n));
+  if(mainY.length<2){ alert('En az 2 geçerli sayı girin.'); return; }
+
+  const allSeries = series.length > 0 ? series : [{name:'Seri 1', y:mainY}];
+  // If no added series, use main textarea
+  const plotSeries = series.length > 0 ? series : [{name:'Aktif Seri', y:mainY}];
+
+  const l = parseFloat(document.getElementById('param_l').value);
+  const sigma_n = parseFloat(document.getElementById('param_n').value);
+  const steps = parseInt(document.getElementById('param_steps').value);
+  const ciK = parseFloat(document.getElementById('param_ci').value);
+  const showCI = document.getElementById('toggleCI').classList.contains('on');
+  const showSamplesOn = document.getElementById('toggleSamples').classList.contains('on');
+  const p = parseFloat(document.getElementById('param_p')?.value || 3);
+  const alpha = parseFloat(document.getElementById('param_a')?.value || 1);
+  const params = {p, alpha};
+  const kName = document.getElementById('kernelSelect').value.toUpperCase();
+
+  updateStats(plotSeries[0].y);
+
+  const tableRows = [];
+  const chartDatasets = [];
+
+  let lmlTotal = 0;
+
+  plotSeries.forEach((ser, si) => {
+    const y = ser.y;
+    const color = COLORS[si % COLORS.length];
+    const X = Array.from({length:y.length},(_,i)=>i+1);
+
+    const y_mean = y.reduce((a,b)=>a+b,0)/y.length;
+    const y_var = y.reduce((a,b)=>a+Math.pow(b-y_mean,2),0)/y.length;
+    const sigma_f = Math.sqrt(y_var) || 1.0;
+
+    const last_x = X[X.length-1];
+    let X_star = [];
+    for(let i=0.5; i<=last_x+steps+0.5; i+=0.25) X_star.push(parseFloat(i.toFixed(2)));
+    for(let i=1;i<=steps;i++){ if(!X_star.includes(last_x+i)) X_star.push(last_x+i); }
+    X_star.sort((a,b)=>a-b);
+
+    const K = buildCov(X,X,l,sigma_f,params);
+    for(let i=0;i<K.length;i++) K[i][i]+=sigma_n*sigma_n;
+
+    const lml = logMarginalLikelihood(y,K);
+    lmlTotal += isNaN(lml)?0:lml;
+
+    const K_inv = math.inv(K);
+    const K_star = buildCov(X_star,X,l,sigma_f,params);
+    const K_ss = buildCov(X_star,X_star,l,sigma_f,params);
+    const Ks_Ki = math.multiply(K_star,K_inv);
+    const mu_star = math.multiply(Ks_Ki,y);
+    const cov_star = math.subtract(K_ss, math.multiply(Ks_Ki, math.transpose(K_star)));
+
+    const upper=[], lower=[], varArr=[];
+    for(let i=0;i<X_star.length;i++){
+      const v = Math.max(0,cov_star[i][i]);
+      const sd = Math.sqrt(v);
+      upper.push(mu_star[i]+ciK*sd);
+      lower.push(mu_star[i]-ciK*sd);
+      varArr.push(v);
+    }
+
+    // Scatter training data
+    chartDatasets.push({
+      label: ser.name + ' (Veri)',
+      data: X.map((x,i)=>({x,y:y[i]})),
+      type:'scatter',
+      backgroundColor: color,
+      borderColor: color,
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      order: 1
+    });
+
+    // GP Mean
+    chartDatasets.push({
+      label: ser.name + ' (GP Ortalama)',
+      data: X_star.map((x,i)=>({x,y:mu_star[i]})),
+      borderColor: color,
+      backgroundColor:'transparent',
+      borderWidth: 2.5,
+      pointRadius: 0,
+      tension: 0.4,
+      order: 2
+    });
+
+    // CI Band
+    if(showCI){
+      chartDatasets.push({
+        label: ser.name + ` CI (${(ciK*100/1.96).toFixed(0)}% ±${ciK}σ)`,
+        data: X_star.map((x,i)=>({x,y:upper[i]})),
+        borderColor: color.replace(')',',0.3)').replace('rgb','rgba'),
+        backgroundColor:'transparent',
+        borderWidth:1, borderDash:[4,4], pointRadius:0, tension:0.4, order:3
+      });
+      chartDatasets.push({
+        label: '_lower_'+si,
+        data: X_star.map((x,i)=>({x,y:lower[i]})),
+        borderColor: color.replace(')',',0.15)').replace('rgb','rgba'),
+        backgroundColor: hexToRgba(color,0.08),
+        fill:'-1', borderWidth:1, borderDash:[4,4], pointRadius:0, tension:0.4, order:3
+      });
+    }
+
+    // GP Samples
+    if(showSamplesOn && si===0){
+      const samples = sampleGP(mu_star, cov_star, 3);
+      samples.forEach((samp,si2) => {
+        chartDatasets.push({
+          label: `Örnek ${si2+1}`,
+          data: X_star.map((x,i)=>({x,y:samp[i]})),
+          borderColor: hexToRgba(color,0.3),
+          backgroundColor:'transparent',
+          borderWidth:1, pointRadius:0, tension:0.4, borderDash:[2,2], order:0
+        });
+      });
+    }
+
+    // Future prediction points
+    for(let step=1; step<=steps; step++){
+      const tx = last_x+step;
+      const idx = X_star.findIndex(v=>Math.abs(v-tx)<0.01);
+      if(idx<0) continue;
+      const mu = mu_star[idx];
+      const lo = lower[idx];
+      const hi = upper[idx];
+      const bandWidth = hi-lo;
+      const conf = Math.max(0, Math.min(100, 100*(1 - Math.sqrt(varArr[idx])/sigma_f)));
+      tableRows.push({
+        step: tx,
+        serName: ser.name,
+        mu: mu.toFixed(3),
+        lo: lo.toFixed(3),
+        hi: hi.toFixed(3),
+        bandWidth: bandWidth.toFixed(3),
+        conf: conf.toFixed(0),
+        color
+      });
+    }
+
+    log(`[${ser.name}] kernel=${kName}, l=${l}, σ_n=${sigma_n}, LML=${isNaN(lml)?'—':lml.toFixed(2)}`, 'ok');
+  });
+
+  // LML display
+  const lmlEl = document.getElementById('lmlDisplay');
+  lmlEl.innerHTML = `Log-Marginal Likelihood: <strong>${lmlTotal.toFixed(4)}</strong> <span style="color:var(--text2);font-size:0.65rem;">(yüksek = daha iyi uyum)</span>`;
+
+  // Draw chart
+  drawChart(chartDatasets, plotSeries[0].y.length);
+
+  // Fill table
+  const tbody = document.getElementById('predTableBody');
+  if(tableRows.length===0){ tbody.innerHTML='<tr><td colspan="7" style="color:var(--text2);padding:12px;">Tahmin noktası yok.</td></tr>'; return; }
+  tbody.innerHTML = tableRows.map(r=>`
+    <tr>
+      <td><strong>${r.step}</strong></td>
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${r.color};margin-right:6px;"></span>${r.serName}</td>
+      <td><strong>${r.mu}</strong></td>
+      <td style="color:var(--red)">${r.lo}</td>
+      <td style="color:var(--green)">${r.hi}</td>
+      <td>
+        <div class="conf-bar-wrap"><div class="conf-bar" style="width:${r.conf}%;background:${r.color}"></div></div>
+        <span style="font-size:0.65rem;color:var(--text2);margin-left:6px;">${r.conf}%</span>
+      </td>
+      <td style="color:var(--text2)">±${(parseFloat(r.hi)-parseFloat(r.mu)).toFixed(3)}</td>
+    </tr>
+  `).join('');
+
+  log(`Toplam ${tableRows.length} tahmin satırı oluşturuldu.`, 'ok');
+}
+
+// ========================
+// DRAW CHART
+// ========================
+function drawChart(datasets, nTrain){
+  if(chartInstance){ chartInstance.destroy(); }
+  const ctx = document.getElementById('gprChart').getContext('2d');
+
+  // Add vertical annotation line after last training point
+  const annotationPlugin = {
+    id:'trainLine',
+    afterDraw(chart){
+      const {ctx:c, chartArea:{top,bottom}, scales:{x}} = chart;
+      const xPx = x.getPixelForValue(nTrain);
+      c.save();
+      c.beginPath();
+      c.moveTo(xPx,top);
+      c.lineTo(xPx,bottom);
+      c.strokeStyle='rgba(255,255,255,0.15)';
+      c.lineWidth=1.5;
+      c.setLineDash([6,4]);
+      c.stroke();
+      c.fillStyle='rgba(255,255,255,0.4)';
+      c.font='10px Space Mono,monospace';
+      c.fillText('▶ TAHMİN',xPx+6,top+14);
+      c.restore();
+    }
+  };
+
+  chartInstance = new Chart(ctx, {
+    type:'line',
+    data:{ datasets },
+    options:{
+      responsive:true,
+      animation:{ duration: 600, easing:'easeOutCubic' },
+      interaction:{ mode:'index', intersect:false },
+      scales:{
+        x:{
+          type:'linear',
+          grid:{ color: showGrid ? 'rgba(255,255,255,0.05)':'transparent', display:showGrid },
+          ticks:{ color:'#8888aa', font:{family:'Space Mono,monospace',size:10} },
+          title:{ display:true, text:'Zaman / Adım', color:'#8888aa', font:{family:'Syne,sans-serif',size:11}}
+        },
+        y:{
+          grid:{ color:'rgba(255,255,255,0.05)', display:showGrid },
+          ticks:{ color:'#8888aa', font:{family:'Space Mono,monospace',size:10} },
+          title:{ display:true, text:'Değer', color:'#8888aa', font:{family:'Syne,sans-serif',size:11}}
+        }
+      },
+      plugins:{
+        legend:{
+          labels:{
+            color:'#e8e8f0',
+            font:{family:'Space Mono,monospace',size:10},
+            filter: item => !item.text.startsWith('_lower_')
+          }
+        },
+        tooltip:{
+          backgroundColor:'#1e1e2a',
+          borderColor:'#2a2a3a',
+          borderWidth:1,
+          titleColor:'#e8e8f0',
+          bodyColor:'#8888aa',
+          titleFont:{family:'Syne,sans-serif',size:12},
+          bodyFont:{family:'Space Mono,monospace',size:10},
+          callbacks:{
+            label: item => {
+              if(item.dataset.label.startsWith('_lower_')) return null;
+              return `${item.dataset.label}: ${parseFloat(item.raw.y||item.raw).toFixed(4)}`;
+            }
+          }
+        }
+      }
+    },
+    plugins:[annotationPlugin]
+  });
+}
+
+// ========================
+// AUTO OPTIMIZE (Grid Search)
+// ========================
+function autoOptimize(){
+  const raw = document.getElementById('dataInput').value;
+  const y = raw.split(',').map(Number).filter(n=>!isNaN(n));
+  if(y.length<2){ alert('Veri girin.'); return; }
+
+  const X = Array.from({length:y.length},(_,i)=>i+1);
+  const p = parseFloat(document.getElementById('param_p')?.value||3);
+  const alpha = parseFloat(document.getElementById('param_a')?.value||1);
+  const params = {p,alpha};
+
+  const Ls = [0.5,1,1.5,2,3,5,7,10];
+  const Ns = [0.01,0.05,0.1,0.3,0.5,1.0];
+
+  let bestLML = -Infinity, bestL = 2, bestN = 0.1;
+
+  const y_mean = y.reduce((a,b)=>a+b,0)/y.length;
+  const y_var = y.reduce((a,b)=>a+Math.pow(b-y_mean,2),0)/y.length;
+  const sigma_f = Math.sqrt(y_var)||1;
+
+  for(const l of Ls){
+    for(const sn of Ns){
+      try{
+        const K = buildCov(X,X,l,sigma_f,params);
+        for(let i=0;i<K.length;i++) K[i][i]+=sn*sn;
+        const lml = logMarginalLikelihood(y,K);
+        if(!isNaN(lml) && lml>bestLML){ bestLML=lml; bestL=l; bestN=sn; }
+      }catch(e){}
+    }
+  }
+
+  document.getElementById('param_l').value = bestL;
+  document.getElementById('l_val').textContent = bestL.toFixed(1);
+  document.getElementById('param_n').value = bestN;
+  document.getElementById('n_val').textContent = bestN.toFixed(2);
+
+  const msg = `En iyi: ℓ=${bestL}, σ_n=${bestN} → LML=${bestLML.toFixed(3)}`;
+  document.getElementById('optResult').textContent = msg;
+  log('Grid Search: '+msg, 'ok');
+  runGPR();
+}
+
+// ========================
+// HELPERS
+// ========================
+function hexToRgba(hex, alpha){
+  if(hex.startsWith('#')){
+    const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+  return hex;
+}
+function toggleGrid(){ showGrid=!showGrid; if(chartInstance) runGPR(); }
+function togglePoints(){ showPoints=!showPoints; if(chartInstance) runGPR(); }
+function resetZoom(){ if(chartInstance){ chartInstance.resetZoom&&chartInstance.resetZoom(); } }
+
+// THEME
+document.getElementById('themeBtn').onclick = function(){
+  isDark=!isDark;
+  document.body.classList.toggle('light',!isDark);
+  this.textContent = isDark?'🌙':'☀️';
+};
+
+// EXPORT CSV
+document.getElementById('exportCsvBtn').onclick = function(){
+  const raw = document.getElementById('dataInput').value;
+  const y = raw.split(',').map(Number).filter(n=>!isNaN(n));
+  const steps = parseInt(document.getElementById('param_steps').value);
+  const rows = [['step','type','value']];
+  y.forEach((v,i)=>rows.push([i+1,'observed',v]));
+  // Re-run silently and get predictions from table
+  const trs = document.querySelectorAll('#predTableBody tr');
+  trs.forEach(tr=>{
+    const tds = tr.querySelectorAll('td');
+    if(tds.length>=3) rows.push([tds[0].textContent.trim(),'predicted',tds[2].textContent.trim()]);
+  });
+  const csv = rows.map(r=>r.join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='gpr_export.csv'; a.click();
+  URL.revokeObjectURL(url);
+  log('CSV dışa aktarıldı.','ok');
+};
+
+// EXPORT PNG
+document.getElementById('exportPngBtn').onclick = function(){
+  if(!chartInstance){ alert('Önce hesaplama yapın.'); return; }
+  const a = document.createElement('a');
+  a.href = chartInstance.toBase64Image();
+  a.download = 'gpr_chart.png';
+  a.click();
+  log('PNG dışa aktarıldı.','ok');
+};
+
+// INIT
+updateKernelInfo();
+renderSeriesList();
+log('GPR Pro başlatıldı. Verilerinizi girin ve "Hesapla" butonuna basın.','info');
+window.onload = () => { setTimeout(runGPR, 300); };
+</script>
+</body>
+</html>
