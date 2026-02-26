@@ -208,7 +208,7 @@ textarea:focus{border-color:var(--ink);}
   <div class="ctrl">
     <label>Tahmin Adımı</label>
     <span class="v" id="vN">8</span>
-    <input type="range" id="rN" min="1" max="24" value="8"
+    <input type="range" id="rN" min="1" max="30" value="8"
       oninput="document.getElementById('vN').textContent=this.value">
   </div>
   <div class="ctrl">
@@ -228,15 +228,31 @@ textarea:focus{border-color:var(--ink);}
   <div class="ctrl">
     <label>Simülasyon</label>
     <span class="v" id="vMC">2000</span>
-    <input type="range" id="rMC" min="500" max="8000" step="500" value="2000"
+    <input type="range" id="rMC" min="500" max="100000" step="500" value="2000"
       oninput="document.getElementById('vMC').textContent=this.value">
   </div>
   <div class="ctrl">
     <label>Güven Bandı</label>
     <select id="bandConf">
+      <option value="-1">-%100</option>
+      <option value="0">%0</option>
+      <option value="0.1">%10</option>
+      <option value="0.2">%20</option>
+      <option value="0.3">%30</option>
+      <option value="0.4">%40</option>
+      <option value="0.5">%50</option>
+      <option value="0.6">%60</option>
+      <option value="0.75">%75</option>
       <option value="0.8">%80</option>
+      <option value="0.85">%85</option>
       <option value="0.9" selected>%90</option>
       <option value="0.95">%95</option>
+      <option value="0.96">%96</option>
+      <option value="0.97">%97</option>
+      <option value="0.98">%98</option>
+      <option value="0.99">%99</option>
+      <option value="0.999">%99.9</option>
+      <option value="0.9999">%99.99</option>
     </select>
   </div>
   <div style="flex:1"></div>
