@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seri Analiz & Tahmin</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&display=swap');
+
+:root{
+  --bg:#f4efe4; --paper:#faf6ed; --ink:#1c1710; --ink2:#3a3228; --ink3:#6e6050;
+  --rule:#d6c9b4; --red:#b83232; --blue:#1a5c8a; --green:#1f7a45;
+  --amber:#c07a00; --purple:#6b3fa0;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--ink);font-family:'Space Mono',monospace;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:repeating-linear-gradient(transparent,transparent 27px,rgba(180,158,130,.22) 27px,rgba(180,158,130,.22) 28px);}
+.wrap{position:relative;z-index:1;max-width:1320px;margin:0 auto;padding:28px 22px 80px;}
+
+/* HEADER */
+header{border-bottom:3px solid var(--ink);padding-bottom:18px;margin-bottom:30px;}
+.eyebrow{font-size:10px;letter-spacing:4px;color:var(--ink3);text-transform:uppercase;margin-bottom:4px;}
+h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(30px,5vw,62px);letter-spacing:3px;line-height:.95;}
+h1 em{color:var(--blue);font-style:normal;} h1 strong{color:var(--red);}
+.sub{margin-top:8px;font-size:11px;color:var(--ink3);line-height:1.85;max-width:620px;}
+
+/* PANELS */
+.entry-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:22px;}
+@media(max-width:800px){.entry-grid{grid-template-columns:1fr;}}
+.panel{background:var(--paper);border:2px solid var(--ink);padding:20px 20px 16px;position:relative;margin-top:14px;}
+.panel::before{content:attr(data-lbl);position:absolute;top:-12px;left:12px;
+  background:var(--paper);padding:0 8px;font-size:10px;letter-spacing:3px;
+  text-transform:uppercase;font-weight:700;border:2px solid var(--ink);}
+.panel.bl::before{color:var(--blue);border-color:var(--blue);}
+.panel.rd::before{color:var(--red);border-color:var(--red);}
+.hint{font-size:10px;color:var(--ink3);margin-top:7px;line-height:1.75;}
+.hint b{color:var(--blue);}
+
+textarea{width:100%;height:120px;background:transparent;border:1px solid var(--rule);
+  color:var(--ink);font-family:'Space Mono',monospace;font-size:12px;
+  padding:9px 10px;resize:vertical;outline:none;line-height:1.75;}
+textarea:focus{border-color:var(--ink);}
+
+#setInput{width:100%;background:transparent;border:1px solid var(--rule);
+  color:var(--ink);font-family:'Space Mono',monospace;font-size:13px;
+  padding:9px 10px;outline:none;margin-bottom:8px;}
+#setInput:focus{border-color:var(--blue);}
+#setPreview{display:flex;flex-wrap:wrap;gap:5px;min-height:26px;margin-bottom:6px;}
+.tag{background:rgba(26,92,138,.12);border:1px solid rgba(26,92,138,.4);
+  color:var(--blue);padding:3px 10px;font-size:11px;font-weight:700;}
+
+/* STAT BAR */
+.stat-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));
+  margin-bottom:22px;border:2px solid var(--ink);overflow:hidden;}
+.si{padding:10px 13px;background:var(--paper);border-right:1px solid var(--rule);}
+.si:last-child{border-right:none;}
+.si-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin-bottom:3px;}
+.si-val{font-size:17px;font-weight:700;color:var(--ink);}
+.si-val.ok{color:var(--green);} .si-val.warn{color:var(--amber);} .si-val.err{color:var(--red);}
+.si-sub{font-size:9px;color:var(--ink3);margin-top:2px;}
+
+/* CONTROLS */
+.ctrl-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+  margin-bottom:22px;padding:14px 18px;background:var(--paper);border:2px solid var(--ink);}
+.ctrl{display:flex;flex-direction:column;gap:4px;}
+.ctrl label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);}
+.ctrl .v{font-size:14px;font-weight:700;color:var(--ink);}
+.ctrl input[type=range]{-webkit-appearance:none;width:100px;height:3px;background:var(--rule);outline:none;cursor:pointer;}
+.ctrl input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;background:var(--ink);border-radius:50%;cursor:pointer;}
+.ctrl select{background:var(--paper);border:1px solid var(--rule);color:var(--ink);
+  padding:5px 8px;font-family:'Space Mono',monospace;font-size:11px;outline:none;cursor:pointer;}
+.btn{padding:9px 16px;background:var(--ink);color:var(--bg);border:2px solid var(--ink);
+  font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
+  cursor:pointer;transition:all .15s;white-space:nowrap;}
+.btn:hover{background:transparent;color:var(--ink);}
+.btn.g{background:var(--green);border-color:var(--green);}
+.btn.g:hover{background:transparent;color:var(--green);}
+.btn.r{background:var(--red);border-color:var(--red);}
+.btn.r:hover{background:transparent;color:var(--red);}
+.btn.p{background:var(--purple);border-color:var(--purple);}
+.btn.p:hover{background:transparent;color:var(--purple);}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+
+/* PROGRESS */
+.prog-wrap{display:none;background:var(--paper);border:2px solid var(--ink);padding:14px 18px;margin-bottom:18px;}
+.prog-lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin-bottom:6px;}
+.prog-outer{width:100%;height:5px;background:var(--rule);}
+.prog-inner{height:100%;background:var(--green);transition:width .08s linear;}
+.prog-txt{font-size:13px;font-weight:700;margin-top:5px;}
+
+/* RESULTS */
+.rc{background:var(--paper);border:2px solid var(--ink);padding:18px;margin-bottom:18px;}
+.rc-title{font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;
+  border-bottom:1px solid var(--rule);padding-bottom:7px;margin-bottom:12px;}
+.results-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+@media(max-width:700px){.results-grid{grid-template-columns:1fr;}}
+.fr{display:flex;justify-content:space-between;align-items:baseline;
+  padding:5px 0;border-bottom:1px dotted var(--rule);font-size:11px;}
+.fr:last-child{border-bottom:none;}
+.fr-l{color:var(--ink3);} .fr-r{font-weight:700;}
+.fr-r.ok{color:var(--green);} .fr-r.warn{color:var(--amber);} .fr-r.err{color:var(--red);}
+
+/* CHART */
+.chart-card{background:var(--paper);border:2px solid var(--ink);padding:18px 20px;margin-bottom:20px;}
+.chart-card.fullscreen{position:fixed!important;inset:0!important;z-index:9999!important;
+  margin:0!important;border:none!important;display:flex;flex-direction:column;
+  padding:16px 20px;background:var(--paper)!important;}
+.chart-card.fullscreen .chart-wrap{flex:1;height:auto!important;}
+.chart-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;}
+.chart-title-txt{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;}
+.chart-btns{display:flex;gap:5px;}
+.cc-btn{background:var(--paper);border:2px solid var(--ink);color:var(--ink);
+  font-size:14px;width:30px;height:30px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;padding:0;transition:all .12s;}
+.cc-btn:hover{background:var(--ink);color:var(--bg);}
+.leg-row{display:flex;gap:14px;flex-wrap:wrap;font-size:10px;margin-bottom:10px;align-items:center;}
+.leg{display:flex;align-items:center;gap:5px;}
+.ll{width:22px;height:3px;border-radius:1px;}
+.chart-wrap{position:relative;width:100%;height:360px;}
+.chart-wrap canvas{position:absolute;inset:0;width:100%!important;height:100%!important;}
+
+/* ══════════════════════════════════
+   2D PROBABILITY TABLE
+   ══════════════════════════════════ */
+.prob2d-outer{overflow-x:auto;margin-top:4px;}
+.prob2d{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;}
+.prob2d th{
+  padding:7px 10px;background:var(--ink);color:var(--bg);
+  font-size:9px;letter-spacing:2px;text-transform:uppercase;
+  border:1px solid var(--ink2);white-space:nowrap;text-align:center;}
+.prob2d th.rh{background:var(--ink2);}
+.prob2d td{
+  padding:6px 10px;border:1px solid var(--rule);
+  text-align:center;white-space:nowrap;font-size:12px;font-weight:700;
+  position:relative;}
+.prob2d tr:hover td{filter:brightness(.96);}
+.prob2d td.sh{/* step header */
+  background:var(--paper)!important;color:var(--ink3);
+  font-size:10px;letter-spacing:1px;text-align:left;border:1px solid var(--rule);}
+.prob2d td.best-col{/* highest in its column = most blue */}
+.prob2d td.best-row{/* highest in its row = green outer + amber inner border */
+  outline:3px solid var(--green);
+  outline-offset:-1px;
+  box-shadow:inset 0 0 0 5px var(--amber); /* amber inner ring */
+}
+.prob2d td.best-txt{color:var(--green);font-weight:700;}
+.prob2d td.sec-txt{color:var(--amber);font-weight:700;}
+
+/* table legend */
+.tbl-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:10px;align-items:center;}
+.tbl-leg-item{display:flex;align-items:center;gap:6px;}
+.tbl-box{width:16px;height:16px;border:1px solid var(--rule);}
+
+.info-box{background:var(--paper);border-left:4px solid var(--ink);
+  padding:16px 18px;font-size:11px;line-height:2;color:var(--ink2);}
+.info-box h4{font-size:13px;margin-bottom:8px;letter-spacing:1px;}
+.info-box .m-row{padding:4px 0;border-bottom:1px dotted var(--rule);}
+.info-box .m-row:last-child{border:none;}
+.info-box .m-name{color:var(--blue);font-weight:700;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="eyebrow">// Adım Kümesi · Seri Analiz · 2B Olasılık · LSTM</div>
+  <h1><em>SERİ</em> <strong>TAHMİN</strong></h1>
+  <p class="sub">İzin verilen değerleri yaz · Seriyi gir · 8 yöntem ile analiz · 2B ısı tablosu</p>
+</header>
+
+<!-- ══ 1. VERİ GİRİŞİ ══ -->
+<div class="entry-grid">
+  <div class="panel bl" data-lbl="adım kümesi (izin verilen değerler)">
+    <input id="setInput" placeholder="Örnek:  1, 2, 3   veya   3, 3.2, 3.4, 3.6"
+      oninput="parseSetInput()" autocomplete="off">
+    <div id="setPreview"></div>
+    <div class="hint">Virgülle ayırarak direkt gir. <b>Örnek: 1, 2, 3</b><br>
+    Veri serisi yalnızca bu değerlerden oluşmalıdır.</div>
+  </div>
+  <div class="panel rd" data-lbl="veri serisi (ham değerler)">
+    <textarea id="seriesInput"
+      placeholder="3,3,3.2,3.2,3.4,3.4,3.2,3,3,3.2,3.4,3.6,3.4,3.2&#10;&#10;Virgül, noktalı virgül veya yeni satır ile ayır."></textarea>
+    <div class="hint">Kümülatif değil, ham saat başı değerleri.</div>
+  </div>
+</div>
+
+<!-- ══ 2. İSTATİSTİK BAR ══ -->
+<div class="stat-bar" id="statBar">
+  <div class="si"><div class="si-lbl">Veri Uzunluğu</div><div class="si-val" id="stLen">—</div></div>
+  <div class="si"><div class="si-lbl">Küme Boyutu</div><div class="si-val" id="stSetN">—</div></div>
+  <div class="si"><div class="si-lbl">Geçersiz</div><div class="si-val" id="stBad">—</div></div>
+  <div class="si"><div class="si-lbl">Ortalama</div><div class="si-val" id="stMean">—</div></div>
+  <div class="si"><div class="si-lbl">Std Dev</div><div class="si-val" id="stStd">—</div></div>
+  <div class="si"><div class="si-lbl">ACF(1)</div><div class="si-val" id="stAcf">—</div></div>
+  <div class="si"><div class="si-lbl">Trend</div><div class="si-val" id="stTrend">—</div></div>
+  <div class="si"><div class="si-lbl">Entropi</div><div class="si-val" id="stEnt">—</div>
+    <div class="si-sub">belirsizlik (bit)</div></div>
+</div>
+
+<!-- ══ 3. ANALİZ SEÇENEKLERİ ══ -->
+<div class="ctrl-row">
+  <div class="ctrl">
+    <label>Tahmin Adımı</label>
+    <span class="v" id="vN">8</span>
+    <input type="range" id="rN" min="1" max="24" value="8"
+      oninput="document.getElementById('vN').textContent=this.value">
+  </div>
+  <div class="ctrl">
+    <label>Yöntem</label>
+    <select id="method">
+      <option value="mc">MC Markov Zinciri</option>
+      <option value="arima">ARIMA AR(p)</option>
+      <option value="holt">Holt Exp. Smoothing</option>
+      <option value="nbwin">Naive Bayes (Pencere)</option>
+      <option value="kalman">Kalman Filter</option>
+      <option value="gp">Gaussian Process (Matérn 5/2)</option>
+      <option value="particle">Particle Filter (SMC)</option>
+      <option value="lstm">LSTM (GRU + MC-Dropout)</option>
+      <option value="nhits">N-HiTS (Hiyerarşik Interpolasyon)</option>
+      <option value="combined" selected>Ensemble (9 Yöntem)</option>
+    </select>
+  </div>
+  <div class="ctrl">
+    <label>Simülasyon</label>
+    <span class="v" id="vMC">2000</span>
+    <input type="range" id="rMC" min="500" max="8000" step="500" value="2000"
+      oninput="document.getElementById('vMC').textContent=this.value">
+  </div>
+  <div class="ctrl">
+    <label>Güven Bandı</label>
+    <select id="bandConf">
+      <option value="0.8">%80</option>
+      <option value="0.9" selected>%90</option>
+      <option value="0.95">%95</option>
+    </select>
+  </div>
+  <div style="flex:1"></div>
+  <button class="btn g" onclick="runAnalysis()">▶ ANALİZ ET</button>
+  <button class="btn r" onclick="loadExample()">ÖRNEK</button>
+</div>
+
+<!-- PROGRESS -->
+<div class="prog-wrap" id="progWrap">
+  <div class="prog-lbl" id="progLbl">Başlatılıyor…</div>
+  <div class="prog-outer"><div class="prog-inner" id="progBar" style="width:0%"></div></div>
+  <div class="prog-txt" id="progTxt">0%</div>
+</div>
+
+<!-- ══ 4. 2B OLASILIK TABLOSU ══ -->
+<div class="rc" id="tableSection" style="display:none">
+  <div class="rc-title">2B OLASILIK TABLOSU
+    <span style="font-size:10px;font-family:'Space Mono',monospace;font-weight:400;color:var(--ink3);margin-left:8px;">
+      Satır = tahmin adımı · Sütun = olası değer · Hücre = gerçekleşme olasılığı %
+    </span>
+  </div>
+  <div class="prob2d-outer" id="prob2dWrap"></div>
+  <div class="tbl-legend" id="tblLegend"></div>
+</div>
+
+<!-- ══ 5. GRAFİK ══ -->
+<div class="chart-card" id="chartCard" style="display:none">
+  <div class="chart-top">
+    <div class="chart-title-txt">VERİ + TAHMİN</div>
+    <div class="chart-btns">
+      <button class="cc-btn" onclick="zoomIn()">＋</button>
+      <button class="cc-btn" onclick="zoomOut()">－</button>
+      <button class="cc-btn" onclick="resetZoom()">⊙</button>
+      <button class="cc-btn" id="fsBtn" onclick="toggleFS()">⛶</button>
+    </div>
+  </div>
+  <div class="leg-row">
+    <div class="leg"><div class="ll" style="background:var(--blue)"></div>Gözlem</div>
+    <div class="leg"><div class="ll" style="border-top:2px dashed var(--green);height:0"></div>Median</div>
+    <div class="leg"><div class="ll" style="height:10px;width:22px;background:rgba(31,122,69,.10);border:1px solid rgba(31,122,69,.3)"></div>Güven bandı</div>
+    <div class="leg"><div class="ll" style="background:rgba(184,50,50,.6)"></div>Geçersiz nokta</div>
+    <span style="font-size:9px;color:var(--ink3);margin-left:auto;">scroll/pinch zoom · sürükle pan · ESC tam ekran çıkış</span>
+  </div>
+  <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
+</div>
+
+<!-- ══ 6. ANALİZ BULGULARI + TAHMİN ÖZETİ ══ -->
+<div class="results-grid" id="summarySection" style="display:none">
+  <div class="rc">
+    <div class="rc-title">ANALİZ BULGULARI</div>
+    <div id="findings"></div>
+  </div>
+  <div class="rc">
+    <div class="rc-title">TAHMİN ÖZETİ</div>
+    <div id="predSummary"></div>
+  </div>
+</div>
+
+<!-- ══ 7. YÖNTEM AÇIKLAMALARI (EN ALTTA) ══ -->
+<div class="info-box" id="infoBox" style="display:none"></div>
+
+</div><!-- .wrap -->
+
+<!-- ══════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════ -->
+<script>
+'use strict';
+let allowedSet=[], seriesData=[], mainChart=null;
+
+// ── SET INPUT ──────────────────────────────────────
+function parseSetInput(){
+  const raw=document.getElementById('setInput').value;
+  allowedSet=[...new Set(
+    raw.split(/[,;\s]+/).map(v=>parseFloat(v)).filter(v=>!isNaN(v))
+  )].sort((a,b)=>a-b);
+  document.getElementById('setPreview').innerHTML=
+    allowedSet.map(v=>`<span class="tag">${v}</span>`).join('');
+  document.getElementById('stSetN').textContent=allowedSet.length||'—';
+}
+function parseSeries(){
+  return document.getElementById('seriesInput').value
+    .split(/[\n,;]+/).map(v=>parseFloat(v.trim())).filter(v=>!isNaN(v));
+}
+
+// ── MATH UTILS ─────────────────────────────────────
+const mean=a=>a.length?a.reduce((s,v)=>s+v,0)/a.length:0;
+function std(a){
+  if(a.length<2)return 0;
+  const m=mean(a);
+  return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/a.length);
+}
+function acf1(a){
+  const m=mean(a),n=a.length;
+  const num=a.slice(1).reduce((s,v,i)=>s+(v-m)*(a[i]-m),0);
+  const den=a.reduce((s,v)=>s+(v-m)**2,0);
+  return den<1e-12?0:num/den;
+}
+function pct(a,p){
+  const s=[...a].sort((x,y)=>x-y);
+  return s[Math.max(0,Math.min(s.length-1,Math.floor(p*(s.length-1))))];
+}
+function linTrend(a){
+  const n=a.length,xs=Array.from({length:n},(_,i)=>i);
+  const mx=mean(xs),my=mean(a);
+  const num=xs.reduce((s,x,i)=>s+(x-mx)*(a[i]-my),0);
+  const den=xs.reduce((s,x)=>s+(x-mx)**2,0);
+  return den<1e-12?0:num/den;
+}
+function entropy(data,set){
+  if(!set.length)return 0;
+  const cnt={};set.forEach(v=>{cnt[v]=0;});
+  data.forEach(v=>{const k=snapToSet(v,set);cnt[k]=(cnt[k]||0)+1;});
+  let h=0;
+  Object.values(cnt).forEach(c=>{const p=c/data.length;if(p>0)h-=p*Math.log2(p);});
+  return h;
+}
+function gaussRand(){
+  let u=0,v=0;
+  while(!u)u=Math.random();while(!v)v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+function snapToSet(v,set){
+  if(!set.length)return v;
+  return set.reduce((b,x)=>Math.abs(x-v)<Math.abs(b-v)?x:b,set[0]);
+}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function setP(p,lbl,txt){
+  document.getElementById('progBar').style.width=Math.min(100,p)+'%';
+  document.getElementById('progTxt').textContent=txt||Math.round(p)+'%';
+  if(lbl)document.getElementById('progLbl').textContent=lbl;
+}
+
+// ── TRANSITION MATRIX ──────────────────────────────
+function buildTrans(data,set){
+  const n=set.length;
+  if(!n)return null;
+  const idx=v=>set.findIndex(x=>Math.abs(x-v)<1e-9);
+  const T=Array.from({length:n},()=>Array(n).fill(0.1));
+  for(let i=1;i<data.length;i++){
+    const fi=idx(data[i-1]),ti=idx(data[i]);
+    if(fi>=0&&ti>=0)T[fi][ti]++;
+  }
+  return T.map(row=>{const s=row.reduce((a,b)=>a+b,0);return row.map(v=>v/s);});
+}
+
+// ── METHOD 1: MC MARKOV ────────────────────────────
+function mcPredict(data,steps,set,T){
+  if(!set.length){
+    const s=std(data),m=mean(data),a=acf1(data);
+    let last=data[data.length-1];
+    return Array.from({length:steps},()=>{
+      last=last*a+m*(1-Math.abs(a))+s*gaussRand()*(1-Math.abs(a));return last;});
+  }
+  const idx=v=>set.findIndex(x=>Math.abs(x-v)<1e-9);
+  let cur=idx(data[data.length-1]);if(cur<0)cur=Math.floor(set.length/2);
+  return Array.from({length:steps},()=>{
+    const row=T[cur],r=Math.random();let cum=0;
+    for(let j=0;j<set.length;j++){cum+=row[j];if(r<=cum){cur=j;break;}}
+    return set[cur];
+  });
+}
+
+// ── METHOD 2: AR(p) ────────────────────────────────
+function fitAR(data,p){
+  const n=data.length;if(n<=p||p<1)return[0];
+  const m=mean(data);
+  const c=Array.from({length:p+1},(_,k)=>{
+    let s=0;for(let i=k;i<n;i++)s+=(data[i]-m)*(data[i-k]-m);return s/(n-k);});
+  let phi=[c[1]/(c[0]||1e-10)];
+  let V=c[0]*(1-phi[0]**2);
+  for(let lag=2;lag<=p;lag++){
+    const num=c[lag]-phi.reduce((s,ph,j)=>s+ph*(c[lag-1-j]||0),0);
+    const kk=num/(V||1e-10);
+    const phi2=[...phi.map((ph,j)=>ph-kk*(phi[lag-2-j]||0))];
+    phi2.push(kk);phi=phi2;V*=(1-kk**2);
+    if(isNaN(V)||V<=0)break;
+  }
+  return phi;
+}
+function arPredict(data,phi,steps,nStd,set){
+  const m=mean(data);
+  let hist=[...data].map(v=>v-m);
+  return Array.from({length:steps},()=>{
+    let pred=phi.reduce((sum,ph,j)=>sum+ph*(hist[hist.length-1-j]||0),0)+m+nStd*gaussRand();
+    if(set.length)pred=snapToSet(pred,set);
+    hist.push(pred-m);return pred;
+  });
+}
+
+// ── METHOD 3: HOLT EXP. SMOOTHING ─────────────────
+function holtPredict(data,steps,set,nStd){
+  const alpha=0.3,beta=0.1;
+  let lv=data[0],tr=(data[data.length-1]-data[0])/(data.length-1||1);
+  for(let i=1;i<data.length;i++){
+    const lp=lv,tp=tr;
+    lv=alpha*data[i]+(1-alpha)*(lp+tp);
+    tr=beta*(lv-lp)+(1-beta)*tp;
+  }
+  return Array.from({length:steps},(_,s)=>{
+    let v=lv+tr*(s+1)+nStd*gaussRand();
+    if(set.length)v=snapToSet(v,set);return v;
+  });
+}
+
+// ── METHOD 4: NAIVE BAYES WINDOW ──────────────────
+function nbPredict(data,steps,set,win=3){
+  const es=set.length?set:[...new Set(data)].sort((a,b)=>a-b);
+  if(!es.length||data.length<win+1)return mcPredict(data,steps,es,buildTrans(data,es)||buildTrans(data,[...new Set(data)].sort((a,b)=>a-b)));
+  const idx=v=>es.findIndex(x=>Math.abs(x-v)<1e-9);
+  const key=w=>w.map(v=>Math.max(0,idx(v))).join('-');
+  const cnt={};
+  for(let i=win;i<data.length;i++){
+    const k=key(data.slice(i-win,i)),ni=idx(data[i]);
+    if(ni<0)continue;
+    if(!cnt[k])cnt[k]=Array(es.length).fill(0.05);
+    cnt[k][ni]++;
+  }
+  let w=[...data.slice(-win)];
+  return Array.from({length:steps},()=>{
+    const k=key(w);
+    const row=cnt[k]||Array(es.length).fill(1);
+    const total=row.reduce((a,b)=>a+b,0);
+    const r=Math.random()*total;let cum=0,chosen=0;
+    for(let j=0;j<es.length;j++){cum+=row[j];if(r<=cum){chosen=j;break;}}
+    w=[...w.slice(1),es[chosen]];return es[chosen];
+  });
+}
+
+// ── METHOD 5: KALMAN FILTER ────────────────────────
+function kalmanPredict(data,steps,set){
+  const R=Math.pow(std(data)*0.4,2)||0.01;
+  const Q=Math.pow(std(data)*0.15,2)||0.001;
+  const Qt=Math.pow(std(data)*0.05,2)||0.0001;
+  let xl=data[0],xt=(data[data.length-1]-data[0])/(data.length-1||1);
+  let Pll=1,Plt=0,Ptt=1;
+  for(let i=1;i<data.length;i++){
+    const xl_=xl+xt,xt_=xt;
+    const Pll_=Pll+2*Plt+Ptt+Q,Plt_=Plt+Ptt,Ptt_=Ptt+Qt;
+    const inn=data[i]-xl_,S=Pll_+R;
+    const Kl=Pll_/S,Kt=Plt_/S;
+    xl=xl_+Kl*inn;xt=xt_+Kt*inn;
+    Pll=(1-Kl)*Pll_;Plt=(1-Kl)*Plt_-Kl*Ptt_;Ptt=Ptt_-Kt*Plt_;
+  }
+  let lv=xl+gaussRand()*Math.sqrt(Math.max(0,Pll));
+  let tr=xt+gaussRand()*Math.sqrt(Math.max(0,Math.abs(Ptt)));
+  return Array.from({length:steps},()=>{
+    lv=lv+tr+gaussRand()*Math.sqrt(Q);
+    tr=tr+gaussRand()*Math.sqrt(Qt);
+    let v=lv+gaussRand()*Math.sqrt(R);
+    if(set.length)v=snapToSet(v,set);return v;
+  });
+}
+
+// ── METHOD 6: GAUSSIAN PROCESS (MATÉRN 5/2) ───────
+function gpPredict(data,steps,set){
+  const n=data.length;
+  // ── CRITICAL FIX: work in mean-subtracted space ──
+  // Eğer ham veri ile çalışırsak (örn. 3.0–3.6 aralığı) posterior mean
+  // 0'a yakınsayabilir; snap işlemi hepsini kümedeki 0'a en yakın değere
+  // çeker. Çözüm: veriyi ortala, GP'yi [0 çevresinde] çalıştır, sonra geri ekle.
+  const dataMean=mean(data);
+  const centered=data.map(v=>v-dataMean);
+  const sigF=std(centered)||0.1;
+  const ell=Math.max(3,n*0.15);
+  const sigN=sigF*0.3;
+  function k52(d){const r=Math.abs(d)/ell,s5=Math.sqrt(5)*r;return sigF*sigF*(1+s5+5*r*r/3)*Math.exp(-s5);}
+  const m=Math.min(20,n);
+  const Xu=Array.from({length:m},(_,i)=>i*(n-1)/(m-1||1));
+  const Xs=Array.from({length:steps},(_,i)=>n+i);
+  const X=Array.from({length:n},(_,i)=>i);
+  const sn2=sigN*sigN;
+  const Kuu=Array.from({length:m},(_,i)=>Array.from({length:m},(_,j)=>k52(Xu[i]-Xu[j])+(i===j?1e-5:0)));
+  const Knu=Array.from({length:n},(_,i)=>Array.from({length:m},(_,j)=>k52(X[i]-Xu[j])));
+  const Ksu=Array.from({length:steps},(_,i)=>Array.from({length:m},(_,j)=>k52(Xs[i]-Xu[j])));
+  function chol(A){
+    const sz=A.length,L=Array.from({length:sz},()=>Array(sz).fill(0));
+    for(let i=0;i<sz;i++){
+      for(let j=0;j<=i;j++){
+        let s=A[i][j];for(let k=0;k<j;k++)s-=L[i][k]*L[j][k];
+        L[i][j]=i===j?Math.sqrt(Math.max(s,1e-12)):s/(L[j][j]||1e-12);
+      }
+    }return L;
+  }
+  function solveL(L,b){const nn=L.length,x=Array(nn).fill(0);for(let i=0;i<nn;i++){let s=b[i];for(let j=0;j<i;j++)s-=L[i][j]*x[j];x[i]=s/(L[i][i]||1e-12);}return x;}
+  function solveLT(L,b){const nn=L.length,x=Array(nn).fill(0);for(let i=nn-1;i>=0;i--){let s=b[i];for(let j=i+1;j<nn;j++)s-=L[j][i]*x[j];x[i]=s/(L[i][i]||1e-12);}return x;}
+  const Luu=chol(Kuu);
+  const KnuT=Array.from({length:m},(_,j)=>Array.from({length:n},(_,i)=>Knu[i][j]));
+  const W=KnuT.map(col=>solveL(Luu,col));
+  const WWT=Array.from({length:m},(_,i)=>Array.from({length:m},(_,j)=>W[i].reduce((s,v,k)=>s+v*W[j][k],0)));
+  const A=WWT.map((row,i)=>row.map((v,j)=>v/sn2+(i===j?1:0)));
+  const La=chol(A);
+  // Use centered data for GP solve
+  const Wy=W.map(row=>row.reduce((s,v,i)=>s+v*centered[i],0));
+  const v1=solveL(La,Wy),v2=solveLT(La,v1);
+  const Wv2=Array.from({length:n},(_,i)=>W.reduce((s,row,j)=>s+row[i]*v2[j],0));
+  const alpha=centered.map((y,i)=>y/sn2-Wv2[i]/(sn2*sn2));
+  const KsuT=Array.from({length:m},(_,j)=>Array.from({length:steps},(_,i)=>Ksu[i][j]));
+  const Ws=KsuT.map(col=>solveL(Luu,col));
+  const KnuTalpha=Array.from({length:m},(_,j)=>Knu.reduce((s,row,i)=>s+row[j]*alpha[i],0));
+  const t1=solveL(Luu,KnuTalpha),t2=solveLT(Luu,t1);
+  const muStar=Ksu.map(row=>row.reduce((s,v,j)=>s+v*t2[j],0));
+  const varStar=Array.from({length:steps},(_,s)=>Math.max(sn2,sigF*sigF-Ws.reduce((sum,row)=>sum+row[s]*row[s],0)+sn2));
+  return muStar.map((mu,s)=>{
+    // Add back the data mean before snapping — this is the key fix
+    let v=(mu+dataMean)+gaussRand()*Math.sqrt(varStar[s]);
+    if(set.length)v=snapToSet(v,set);return v;
+  });
+}
+
+// ── METHOD 7: PARTICLE FILTER (SMC) ───────────────
+function particlePredict(data,steps,set,nP=250){
+  const sN=std(data)||0.1,a1v=acf1(data),mn=mean(data);
+  const tN=sN*Math.max(0.05,1-Math.abs(a1v));
+  function logLik(obs,x){const d=obs-x;return -0.5*d*d/(sN*sN*0.25+1e-10);}
+  let particles=Array.from({length:nP},()=>data[0]+gaussRand()*sN*0.3);
+  for(let t=1;t<data.length;t++){
+    particles=particles.map(x=>x*a1v+mn*(1-Math.abs(a1v))+gaussRand()*tN);
+    const logW=particles.map(x=>logLik(data[t],x));
+    const maxLW=Math.max(...logW);
+    const rawW=logW.map(lw=>Math.exp(lw-maxLW));
+    const sumW=rawW.reduce((a,b)=>a+b,0);
+    const weights=rawW.map(w=>w/sumW);
+    const cumW=[];weights.reduce((c,w,i)=>{cumW[i]=c+w;return cumW[i];},0);
+    const u0=Math.random()/nP,newP=[];let ci=0;
+    for(let k=0;k<nP;k++){
+      const target=u0+k/nP;
+      while(ci<nP-1&&cumW[ci]<target)ci++;
+      newP.push(particles[ci]+gaussRand()*tN*0.1);
+    }
+    particles=newP;
+  }
+  const path=[];
+  for(let s=0;s<steps;s++){
+    particles=particles.map(x=>x*a1v+mn*(1-Math.abs(a1v))+gaussRand()*tN);
+    const sorted=[...particles].sort((a,b)=>a-b);
+    let v=sorted[Math.floor(nP/2)];
+    if(set.length)v=snapToSet(v,set);
+    path.push(v);
+  }
+  return path;
+}
+
+// ── METHOD 8: LSTM / GRU with MC-Dropout ──────────
+// %10'da takılma sebebi: tf.ready() beklenmeden model.fit() çağrılıyor.
+// WASM backend ilk kernel compile ettiğinde bloklayabiliyor.
+// Çözüm: tf.ready() → küçük warmup tensor → sonra fit().
+let _lstmModel=null, _lstmNorm=null;
+
+async function trainLSTM(data, seqLen){
+  // 1. Backend tamamen hazır olana kadar bekle
+  setP(10,'TensorFlow.js backend yükleniyor…');
+  try{ await tf.ready(); } catch(e){}
+  await sleep(50);
+
+  // 2. Warmup: küçük bir dummy forward pass ile WASM kernel'leri önceden derle
+  tf.tidy(()=>{
+    const dummy=tf.zeros([1,seqLen,1]);
+    // sadece tensor oluşturup at — kernel compile tetikler
+    dummy.dispose();
+  });
+  await sleep(30);
+
+  const mn2=Math.min(...data), mx=Math.max(...data), rng=mx-mn2||1;
+  _lstmNorm={min:mn2,range:rng};
+  const norm=data.map(v=>(v-mn2)/rng);
+  const Xs=[],Ys=[];
+  for(let i=0;i<norm.length-seqLen;i++){Xs.push(norm.slice(i,i+seqLen));Ys.push(norm[i+seqLen]);}
+  if(Xs.length<4)return false;
+
+  // 3. Model — küçük tutuldu (GRU 16 unit), recurrentDropout YOK (WASM'da takılır)
+  if(_lstmModel){ try{_lstmModel.dispose();}catch(e){} _lstmModel=null; }
+  const model=tf.sequential();
+  model.add(tf.layers.gru({units:16,inputShape:[seqLen,1],returnSequences:false}));
+  model.add(tf.layers.dropout({rate:0.2}));
+  model.add(tf.layers.dense({units:8,activation:'relu'}));
+  model.add(tf.layers.dropout({rate:0.15}));
+  model.add(tf.layers.dense({units:1}));
+  model.compile({optimizer:tf.train.adam(0.02),loss:'mse'});
+
+  const xT=tf.tensor3d(Xs.map(s=>s.map(v=>[v])));
+  const yT=tf.tensor2d(Ys.map(v=>[v]));
+  const epochs=40;
+  let trainOk=false;
+  try{
+    await model.fit(xT,yT,{
+      epochs,
+      batchSize:Math.min(16,Xs.length),
+      shuffle:true,
+      validationSplit:0,
+      callbacks:{
+        onEpochEnd:async(ep,logs)=>{
+          setP(18+(ep/epochs)*48,`GRU eğitim — epoch ${ep+1}/${epochs}  loss: ${logs&&logs.loss?logs.loss.toFixed(5):''}`);
+          // Her epoch'ta main thread'e geri dön → UI donmaz
+          await new Promise(r=>setTimeout(r,0));
+        }
+      }
+    });
+    trainOk=true;
+  } catch(e){
+    console.warn('LSTM train error:',e);
+  }
+  xT.dispose();yT.dispose();
+  if(trainOk) _lstmModel=model;
+  else { try{model.dispose();}catch(e){} }
+  return trainOk;
+}
+
+async function lstmPredict(data,steps,set,mcRep=150){
+  const seqLen=Math.min(10,Math.max(3,Math.floor(data.length*0.4)));
+  if(data.length<seqLen+4){
+    return Array.from({length:mcRep},()=>kalmanPredict(data,steps,set));
+  }
+  setP(8,'GRU modeli hazırlanıyor…');
+  await sleep(20);
+  const ok=await trainLSTM(data,seqLen);
+  if(!ok){
+    setP(70,'GRU başarısız, Kalman\'a geçiliyor…');
+    return Array.from({length:mcRep},()=>kalmanPredict(data,steps,set));
+  }
+  const {min:mn2,range:rng}=_lstmNorm;
+  const norm=data.map(v=>(v-mn2)/rng);
+  const seed=norm.slice(-seqLen);
+  const allPaths=[];
+  for(let r=0;r<mcRep;r++){
+    let seq=[...seed];
+    const path=[];
+    for(let s=0;s<steps;s++){
+      const val=tf.tidy(()=>{
+        const inp=tf.tensor3d([seq.slice(-seqLen).map(v=>[v])]);
+        return _lstmModel.predict(inp,{training:true}).dataSync()[0];
+      });
+      const denorm=val*rng+mn2;
+      path.push(set.length?snapToSet(denorm,set):denorm);
+      seq.push(val);
+    }
+    allPaths.push(path);
+    if(r%15===0){
+      setP(68+(r/mcRep)*28,`MC-Dropout: ${r}/${mcRep}`);
+      await new Promise(res=>setTimeout(res,0));
+    }
+  }
+  return allPaths;
+}
+
+// ── METHOD 9: N-HiTS (Neural Hierarchical Interpolation) ──────────────
+// Orijinal N-HiTS: multi-rate örnekleme + basis expansion (sinüzoidal/polinomial).
+// Burada JavaScript'te verimli çalışan sadeleştirilmiş versiyonu:
+//   • 3 stack, her stack farklı "pooling factor" ile çalışır (1, 2, 4)
+//   • Her stack veriye polinomial + Fourier bazında regresyon yapar
+//   • Stackler artıkları (residuals) birbirinden öğrenir
+//   • Toplam tahmin = her stack çıkışının toplamı
+//
+// N-HiTS'in avantajı: hem trend (polinom stack) hem periyodik örüntü
+// (Fourier stack) hem kısa bağımlılık (ham stack) bileşenlerini
+// hiyerarşik olarak ayrıştırması.
+function nhitsPredict(data,steps,set){
+  const n=data.length;
+  const dataMean=mean(data);
+  const dataStd=std(data)||1;
+  const norm=data.map(v=>(v-dataMean)/dataStd);
+
+  // Basis functions at prediction horizon
+  // Polinom: 1, t, t², t³
+  // Fourier: sin(2πkt/H), cos(2πkt/H) for k=1..nFreq
+  function makeBasis(t,H,nPoly,nFreq){
+    const b=[1];
+    for(let p=1;p<=nPoly;p++) b.push(Math.pow(t/H,p));
+    for(let k=1;k<=nFreq;k++){
+      b.push(Math.sin(2*Math.PI*k*t/H));
+      b.push(Math.cos(2*Math.PI*k*t/H));
+    }
+    return b;
+  }
+
+  // OLS: fit y ~ Basis, return coefficients
+  function ols(X,y){
+    // X: n_samples × n_basis, y: n_samples
+    const nb=X[0].length,ns=X.length;
+    // Normal equations: (X^T X) beta = X^T y
+    const XtX=Array.from({length:nb},(_,i)=>Array.from({length:nb},(_,j)=>
+      X.reduce((s,row)=>s+row[i]*row[j],0)));
+    const Xty=Array.from({length:nb},(_,i)=>X.reduce((s,row,r)=>s+row[i]*y[r],0));
+    // Ridge regularization to avoid singular matrix
+    for(let i=0;i<nb;i++) XtX[i][i]+=1e-4;
+    // Simple Gaussian elimination
+    const aug=XtX.map((row,i)=>[...row,Xty[i]]);
+    for(let col=0;col<nb;col++){
+      let pivot=col;
+      for(let row=col+1;row<nb;row++) if(Math.abs(aug[row][col])>Math.abs(aug[pivot][col])) pivot=row;
+      [aug[col],aug[pivot]]=[aug[pivot],aug[col]];
+      const d=aug[col][col]||1e-12;
+      for(let row=0;row<nb;row++) if(row!==col){
+        const f=aug[row][col]/d;
+        for(let k=0;k<=nb;k++) aug[row][k]-=f*aug[col][k];
+      }
+      for(let k=0;k<=nb;k++) aug[col][k]/=d;
+    }
+    return aug.map(row=>row[nb]);
+  }
+
+  // Stack configurations: [poolingFactor, nPoly, nFreq]
+  const stackCfgs=[[1,2,3],[2,1,2],[4,1,1]];
+  const H=steps;
+
+  let residual=[...norm];
+  const stackOutputs=[];
+
+  for(const [pool,nPoly,nFreq] of stackCfgs){
+    // Downsample input by pooling factor
+    const pooled=[];
+    for(let i=0;i<n;i+=pool){
+      const chunk=norm.slice(i,Math.min(i+pool,n));
+      pooled.push(mean(chunk));
+    }
+    const np=pooled.length;
+    if(np<3) continue;
+
+    // Build basis matrix for look-back window
+    const lookback=Math.min(np,Math.max(4,Math.floor(np*0.5)));
+    const inputWindow=pooled.slice(-lookback);
+    const lbH=lookback;
+    const X_lb=Array.from({length:lbH},(_,t)=>makeBasis(t,lbH,nPoly,nFreq));
+    // Fit to recent look-back segment of residual (downsampled)
+    const resDown=[];
+    for(let i=0;i<n;i+=pool){
+      const chunk=residual.slice(i,Math.min(i+pool,n));
+      resDown.push(mean(chunk));
+    }
+    const resWindow=resDown.slice(-lookback);
+    const beta_lb=ols(X_lb,resWindow);
+
+    // Forecast basis for H steps
+    const X_fwd=Array.from({length:H},(_,t)=>makeBasis(t,H,nPoly,nFreq));
+    const forecast=X_fwd.map(brow=>brow.reduce((s,b,i)=>s+b*beta_lb[i],0));
+
+    stackOutputs.push(forecast);
+
+    // Update residual: subtract backcast (fitted values on look-back)
+    const backcast=X_lb.map(brow=>brow.reduce((s,b,i)=>s+b*beta_lb[i],0));
+    // Upscale backcast and subtract from residual
+    let ri=0;
+    for(let i=n-lbH*pool;i<n;i++){
+      const bIdx=Math.floor((i-(n-lbH*pool))/pool);
+      if(bIdx<backcast.length) residual[i]-=backcast[bIdx];
+      ri++;
+    }
+  }
+
+  if(!stackOutputs.length){
+    // Fallback
+    return arPredict(data,fitAR(data,3),steps,dataStd*0.3,set);
+  }
+
+  // Sum stack outputs + add noise proportional to residual std
+  const residStd=std(residual)||0.01;
+  return Array.from({length:steps},(_,s)=>{
+    const summed=stackOutputs.reduce((acc,out)=>acc+(out[s]||0),0);
+    let v=summed*dataStd+dataMean+gaussRand()*residStd*dataStd;
+    if(set.length) v=snapToSet(v,set);
+    return v;
+  });
+}
+
+// ── ENSEMBLE ──────────────────────────────────────
+function ensembleOnePath(data,steps,set,T,phi,nStd){
+  const paths=[
+    mcPredict(data,steps,set,T),
+    arPredict(data,phi,steps,nStd*0.4,set),
+    holtPredict(data,steps,set,nStd*0.4),
+    nbPredict(data,steps,set),
+    kalmanPredict(data,steps,set),
+    gpPredict(data,steps,set),
+    particlePredict(data,steps,set,150),
+    nhitsPredict(data,steps,set),
+  ];
+  return Array.from({length:steps},(_,s)=>{
+    const vals=paths.map(p=>p[s]);
+    if(set.length){
+      const freq={};
+      vals.forEach(v=>{const k=snapToSet(v,set).toString();freq[k]=(freq[k]||0)+1;});
+      return parseFloat(Object.entries(freq).sort((a,b)=>b[1]-a[1])[0][0]);
+    }
+    return mean(vals);
+  });
+}
+
+// ── MAIN ANALYSIS ─────────────────────────────────
+async function runAnalysis(){
+  seriesData=parseSeries();
+  if(seriesData.length<6){alert('En az 6 nokta gerekli');return;}
+
+  const nPred=+document.getElementById('rN').value;
+  const method=document.getElementById('method').value;
+  const mcRep=+document.getElementById('rMC').value;
+  const conf=+document.getElementById('bandConf').value;
+  const alpha=(1-conf)/2;
+  const effSet=allowedSet.length?allowedSet:[...new Set(seriesData)].sort((a,b)=>a-b);
+
+  const bad=allowedSet.length
+    ?seriesData.filter(v=>!allowedSet.some(s=>Math.abs(s-v)<1e-9)).length:0;
+  const m=mean(seriesData),s=std(seriesData),a1=acf1(seriesData),tr=linTrend(seriesData);
+  const ent=entropy(seriesData,effSet);
+
+  // update stat bar
+  document.getElementById('stLen').textContent=seriesData.length;
+  document.getElementById('stSetN').textContent=allowedSet.length||'—';
+  const bEl=document.getElementById('stBad');bEl.textContent=bad;bEl.className='si-val'+(bad>0?' err':'');
+  document.getElementById('stMean').textContent=m.toFixed(3);
+  document.getElementById('stStd').textContent=s.toFixed(3);
+  document.getElementById('stAcf').textContent=a1.toFixed(3);
+  document.getElementById('stEnt').textContent=ent.toFixed(2);
+  const tEl=document.getElementById('stTrend');
+  if(Math.abs(tr)<0.0005){tEl.textContent='→ Sabit';tEl.className='si-val';}
+  else if(tr>0){tEl.textContent='↑ Yükselen';tEl.className='si-val ok';}
+  else{tEl.textContent='↓ Düşen';tEl.className='si-val err';}
+
+  // hide results, show progress
+  ['tableSection','chartCard','summarySection','infoBox'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('progWrap').style.display='block';
+  setP(5,'Modeller hazırlanıyor…');await sleep(20);
+
+  const T=buildTrans(seriesData,effSet);
+  const phi=fitAR(seriesData,Math.min(6,Math.floor(seriesData.length*0.3)));
+  const nStd=s*Math.max(0.05,1-Math.abs(a1));
+
+  let simPaths=[];
+
+  // LSTM is special — async, returns paths array directly
+  if(method==='lstm'){
+    const lstmPaths=await lstmPredict(seriesData,nPred,effSet,Math.min(mcRep,300));
+    simPaths=lstmPaths;
+    setP(95,'Sonuçlar hesaplanıyor…');await sleep(10);
+  } else {
+    setP(12,'Simülasyonlar çalışıyor…');await sleep(10);
+    const bSz=80;
+    for(let i=0;i<mcRep;i+=bSz){
+      const nb=Math.min(bSz,mcRep-i);
+      for(let b=0;b<nb;b++){
+        let path;
+        if     (method==='mc')      path=mcPredict(seriesData,nPred,effSet,T||buildTrans(seriesData,effSet));
+        else if(method==='arima')   path=arPredict(seriesData,phi,nPred,nStd*0.4,effSet);
+        else if(method==='holt')    path=holtPredict(seriesData,nPred,effSet,nStd*0.4);
+        else if(method==='nbwin')   path=nbPredict(seriesData,nPred,effSet);
+        else if(method==='kalman')  path=kalmanPredict(seriesData,nPred,effSet);
+        else if(method==='gp')      path=gpPredict(seriesData,nPred,effSet);
+        else if(method==='particle')path=particlePredict(seriesData,nPred,effSet,150);
+        else if(method==='nhits')   path=nhitsPredict(seriesData,nPred,effSet);
+        else                        path=ensembleOnePath(seriesData,nPred,effSet,T||buildTrans(seriesData,effSet),phi,nStd);
+        simPaths.push(path);
+      }
+      setP(12+((i+bSz)/mcRep)*78,`Simülasyon: ${Math.min(i+bSz,mcRep)}/${mcRep}`);
+      await sleep(0);
+    }
+  }
+
+  if(!simPaths.length){alert('Simülasyon başarısız.');return;}
+
+  setP(93,'Tablolar oluşturuluyor…');await sleep(10);
+
+  // percentiles
+  const predMed=[],predLo=[],predHi=[];
+  for(let st=0;st<nPred;st++){
+    const vals=simPaths.map(p=>p[st]);
+    predMed.push(pct(vals,.5));
+    predLo.push(pct(vals,alpha));
+    predHi.push(pct(vals,1-alpha));
+  }
+
+  // 2D prob table
+  const prob2d=Array.from({length:nPred},(_,step)=>{
+    const vals=simPaths.map(p=>p[step]);
+    const cnt={};effSet.forEach(v=>{cnt[v]=0;});
+    vals.forEach(v=>{const k=snapToSet(v,effSet);cnt[k]=(cnt[k]||0)+1;});
+    return effSet.map(v=>(cnt[v]||0)/vals.length);
+  });
+
+  setP(97,'Grafik çiziliyor…');await sleep(10);
+  drawChart(predMed,predLo,predHi);
+  renderResults(predMed,predLo,predHi,nPred,bad,m,s,a1,tr,method,simPaths.length,conf,prob2d,effSet,ent);
+  setP(100,'Tamamlandı ✔','100%');
+
+  ['tableSection','chartCard','summarySection','infoBox'].forEach(id=>document.getElementById(id).style.display='block');
+  document.getElementById('summarySection').style.display='grid';
+}
+
+// ── CHART ────────────────────────────────────────
+function drawChart(predMed,predLo,predHi){
+  if(mainChart)mainChart.destroy();
+  const ctx=document.getElementById('mainChart').getContext('2d');
+  const oLen=seriesData.length;
+  const labels=Array.from({length:oLen+predMed.length},(_,i)=>i);
+  const obsSeries=[...seriesData,...Array(predMed.length).fill(null)];
+  const pMedS=[...Array(oLen-1).fill(null),seriesData[oLen-1],...predMed];
+  const pLoS =[...Array(oLen-1).fill(null),seriesData[oLen-1],...predLo];
+  const pHiS =[...Array(oLen-1).fill(null),seriesData[oLen-1],...predHi];
+  const invS=allowedSet.length
+    ?seriesData.map(v=>allowedSet.some(s=>Math.abs(s-v)<1e-9)?null:v)
+    :seriesData.map(()=>null);
+  mainChart=new Chart(ctx,{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Band Hi',data:pHiS,borderColor:'transparent',backgroundColor:'rgba(31,122,69,.10)',pointRadius:0,fill:'+1',tension:.35},
+      {label:'Band Lo',data:pLoS,borderColor:'rgba(31,122,69,.25)',borderWidth:1,borderDash:[3,2],backgroundColor:'rgba(31,122,69,.10)',pointRadius:0,fill:false,tension:.35},
+      {label:'Median',data:pMedS,borderColor:'#1f7a45',borderWidth:2.5,borderDash:[6,3],pointRadius:0,fill:false,tension:.35},
+      {label:'Gözlem',data:obsSeries,borderColor:'#1a5c8a',borderWidth:2,pointRadius:2.5,pointBackgroundColor:'#1a5c8a',fill:false,tension:.2},
+      {label:'Geçersiz',type:'scatter',data:[...invS,...Array(predMed.length).fill(null)],
+       backgroundColor:'rgba(184,50,50,.75)',borderColor:'transparent',pointRadius:5,pointStyle:'crossRot',fill:false},
+    ]},
+    options:{
+      animation:false,responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+        tooltip:{mode:'index',intersect:false,
+          callbacks:{label:c=>c.parsed.y!=null?`${c.dataset.label}: ${c.parsed.y.toFixed(4)}`:null}},
+        zoom:{pan:{enabled:true,mode:'x'},zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}}
+      },
+      scales:{
+        x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6e6050',font:{family:'Space Mono',size:9},maxTicksLimit:14},
+           title:{display:true,text:'Adım',color:'#6e6050',font:{family:'Space Mono',size:9}}},
+        y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6e6050',font:{family:'Space Mono',size:9},maxTicksLimit:8}}
+      },
+      elements:{point:{radius:0}}
+    }
+  });
+}
+function zoomIn(){if(mainChart)mainChart.zoom(1.35);}
+function zoomOut(){if(mainChart)mainChart.zoom(0.75);}
+function resetZoom(){if(mainChart)mainChart.resetZoom();}
+function toggleFS(){
+  const c=document.getElementById('chartCard');
+  const isFs=c.classList.toggle('fullscreen');
+  document.getElementById('fsBtn').textContent=isFs?'✕':'⛶';
+  setTimeout(()=>{if(mainChart)mainChart.resize();},50);
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    const c=document.getElementById('chartCard');
+    if(c.classList.contains('fullscreen')){
+      c.classList.remove('fullscreen');
+      document.getElementById('fsBtn').textContent='⛶';
+      setTimeout(()=>{if(mainChart)mainChart.resize();},50);
+    }
+  }
+});
+
+// ── 2D PROBABILITY TABLE ──────────────────────────
+function render2DTable(prob2d,effSet,nPred){
+  const nCols=effSet.length;
+  const nRows=nPred;
+
+  // ── Sütun bazlı maksimum (her sütunun kendi içinde normalize) ──
+  // Her sütunun en koyu mavi hücresi = o değerin tüm adımlar içinde en çok göründüğü satır
+  const colMax=Array.from({length:nCols},(_,ci)=>
+    Math.max(...prob2d.map(row=>row[ci]),1e-9));
+
+  // ── Satır bazlı en yüksek index (yeşil çerçeve) ──
+  const rowBestIdx=prob2d.map(row=>{
+    let best=0;
+    row.forEach((p,i)=>{if(p>row[best])best=i;});
+    return best;
+  });
+
+  // ── Her sütundaki max satır index (sarı çerçeve) ──
+  const colBestRow=Array.from({length:nCols},(_,ci)=>{
+    let best=0;
+    prob2d.forEach((row,ri)=>{if(row[ci]>prob2d[best][ci])best=ri;});
+    return best;
+  });
+
+  const header=`<tr>
+    <th class="rh" style="min-width:64px;text-align:left;padding-left:10px;">Adım ↓ / Değer →</th>
+    ${effSet.map(v=>`<th>${v}</th>`).join('')}
+    <th class="rh">↑ En Olası</th>
+    <th class="rh">2. Olası</th>
+  </tr>`;
+
+  const rows=prob2d.map((row,ri)=>{
+    const ranked=[...row.map((p,i)=>({p,i}))].sort((a,b)=>b.p-a.p);
+    const best=ranked[0], second=ranked[1]||ranked[0];
+
+    const cells=row.map((p,ci)=>{
+      const pctStr=(p*100).toFixed(1);
+      // Sütun içi normalize → bu sütunda en yüksek olan hücre en koyu
+      const norm=colMax[ci]>0?p/colMax[ci]:0;
+      // Mavi ısı (sütun-normalize)
+      const r=Math.round(248-norm*118);
+      const g=Math.round(245-norm*100);
+      const b=Math.round(255-norm*50);
+      const bg=`rgb(${r},${g},${b})`;
+      const txtCol=norm>0.58?'#fff':'var(--ink)';
+
+      const isRowBest=(ci===rowBestIdx[ri]);   // satırdaki en yüksek % → yeşil
+      const isColBest=(ri===colBestRow[ci]);    // sütundaki en yüksek % → sarı
+
+      // Çerçeve mantığı — iç içe:
+      // Her ikisi: yeşil dış (outline) + sarı iç (box-shadow inset)
+      // Sadece yeşil (satır max): outline yeşil
+      // Sadece sarı (sütun max): outline sarı
+      let extraStyle='';
+      if(isRowBest&&isColBest){
+        // İç içe çerçeve: dışta yeşil, içte sarı
+        extraStyle='outline:3px solid #1f7a45;outline-offset:-1px;box-shadow:inset 0 0 0 4px #c07a00;';
+      } else if(isRowBest){
+        extraStyle='outline:3px solid #1f7a45;outline-offset:-1px;';
+      } else if(isColBest){
+        extraStyle='outline:3px solid #c07a00;outline-offset:-1px;';
+      }
+
+      return `<td style="background:${bg};color:${txtCol};${extraStyle}">${pctStr}%</td>`;
+    }).join('');
+
+    return `<tr>
+      <td class="sh">t+${ri+1}</td>
+      ${cells}
+      <td class="best-txt">${effSet[best.i]} <span style="font-size:10px;color:var(--ink3);font-weight:400">(${(best.p*100).toFixed(1)}%)</span></td>
+      <td class="sec-txt">${effSet[second.i]} <span style="font-size:10px;color:var(--ink3);font-weight:400">(${(second.p*100).toFixed(1)}%)</span></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('prob2dWrap').innerHTML=
+    `<table class="prob2d"><thead>${header}</thead><tbody>${rows}</tbody></table>`;
+
+  document.getElementById('tblLegend').innerHTML=`
+    <div class="tbl-leg-item">
+      <div class="tbl-box" style="background:rgb(130,145,205);border:1px solid #888;"></div>
+      <span><b>Koyu mavi</b> = o <u>sütun (değer)</u> içinde en yüksek görülme oranı — renk sütun bazında normalize edilmiştir</span>
+    </div>
+    <div class="tbl-leg-item">
+      <div class="tbl-box" style="outline:3px solid #1f7a45;outline-offset:-1px;"></div>
+      <span><b>Yeşil çerçeve</b> = o satırda (adımda) en yüksek % olan değer</span>
+    </div>
+    <div class="tbl-leg-item">
+      <div class="tbl-box" style="outline:3px solid #c07a00;outline-offset:-1px;"></div>
+      <span><b>Sarı çerçeve</b> = o sütunda (değerde) en yüksek % olan adım</span>
+    </div>
+    <div class="tbl-leg-item">
+      <div class="tbl-box" style="outline:3px solid #1f7a45;outline-offset:-1px;box-shadow:inset 0 0 0 4px #c07a00;"></div>
+      <span><b>Yeşil dış + Sarı iç</b> = hem satırda hem sütunda en yüksek (çift kazanan)</span>
+    </div>`;
+}
+}
+
+// ── SHOW RESULTS ──────────────────────────────────
+function renderResults(predMed,predLo,predHi,nPred,bad,m,s,a1,tr,method,nSim,conf,prob2d,effSet,ent){
+  const last=seriesData[seriesData.length-1];
+  const fMed=predMed[nPred-1],fLo=predLo[nPred-1],fHi=predHi[nPred-1];
+  const acfI=Math.abs(a1)>0.5?'Güçlü':Math.abs(a1)>0.2?'Orta':'Zayıf';
+  const freq={};seriesData.forEach(v=>{const k=v.toString();freq[k]=(freq[k]||0)+1;});
+  const top=Object.entries(freq).sort((a,b)=>b[1]-a[1])[0];
+  const mnames={mc:'MC Markov',arima:'ARIMA AR(p)',holt:'Holt ES',nbwin:'Naive Bayes',
+    kalman:'Kalman Filter',gp:'Gauss. Process',particle:'Particle Filter',
+    lstm:'GRU+MC-Dropout',nhits:'N-HiTS',combined:'Ensemble (9 Yöntem)'};
+
+  document.getElementById('findings').innerHTML=`
+    <div class="fr"><span class="fr-l">En sık değer</span><span class="fr-r ok">${top[0]} (%${((top[1]/seriesData.length)*100).toFixed(1)})</span></div>
+    <div class="fr"><span class="fr-l">ACF(1)</span><span class="fr-r ${Math.abs(a1)>0.3?'ok':'warn'}">${a1.toFixed(4)} — ${acfI} otokor.</span></div>
+    <div class="fr"><span class="fr-l">Entropi</span><span class="fr-r ${ent>2?'warn':''}">${ent.toFixed(3)} / ${Math.log2(effSet.length||1).toFixed(2)} bit max</span></div>
+    <div class="fr"><span class="fr-l">Trend</span><span class="fr-r">${tr.toFixed(5)}/adım</span></div>
+    <div class="fr"><span class="fr-l">Geçersiz</span><span class="fr-r ${bad>0?'err':''}">${bad}${bad>0?' ⚠':''}</span></div>
+    <div class="fr"><span class="fr-l">Yöntem</span><span class="fr-r">${mnames[method]||method}</span></div>
+    <div class="fr"><span class="fr-l">Simülasyon</span><span class="fr-r">${nSim.toLocaleString()} yol</span></div>`;
+
+  document.getElementById('predSummary').innerHTML=`
+    <div class="fr"><span class="fr-l">Son gözlem</span><span class="fr-r">${last}</span></div>
+    <div class="fr"><span class="fr-l">t+${nPred} median</span><span class="fr-r ok">${typeof fMed==='number'?fMed.toFixed(4):fMed}</span></div>
+    <div class="fr"><span class="fr-l">Alt %${(conf*100).toFixed(0)}</span><span class="fr-r warn">${typeof fLo==='number'?fLo.toFixed(4):fLo}</span></div>
+    <div class="fr"><span class="fr-l">Üst %${(conf*100).toFixed(0)}</span><span class="fr-r warn">${typeof fHi==='number'?fHi.toFixed(4):fHi}</span></div>
+    <div class="fr"><span class="fr-l">Yön</span><span class="fr-r ${fMed>last?'ok':fMed<last?'err':''}">${fMed>last?'↑ Yükselen':fMed<last?'↓ Düşen':'→ Sabit'}</span></div>
+    <div class="fr"><span class="fr-l">Belirsizlik ±</span><span class="fr-r">${((fHi-fLo)/2).toFixed(4)}</span></div>`;
+
+  render2DTable(prob2d,effSet,nPred);
+
+  // ── 2B TABLO RENK AÇIKLAMASI + YÖNTEM AÇIKLAMALARI ──
+  const bestM=Math.abs(a1)>0.6?'Kalman Filter':Math.abs(a1)>0.4?'MC Markov':
+              ent<0.8?'Naive Bayes':ent>2.5?'Particle Filter':'Ensemble (8 Yöntem)';
+
+  document.getElementById('infoBox').innerHTML=`
+    <h4>📊 2B TABLO NASIL OKUNUR?</h4>
+    <div class="m-row">
+      <b>Mavi yoğunluğu sütun içinde normalize edilir.</b>
+      Her sütun kendi içinde değerlendirilir: o sütunun (değerin) en çok göründüğü satır en koyu mavi alır.
+      Bu sayede az görünen bir değer için bile hangi adımda "en çok" tahmin edildiğini görebilirsiniz.
+    </div>
+    <div class="m-row">
+      <b>% sayısı</b> → o adımda o değerin tüm simülasyonlardaki görülme oranı.
+      Örneğin %65 → 2000 simülasyonun 1300'ü o adımda o değeri üretmiş.
+      Satır boyunca dağılım eşitse model belirsiz; tek hücrede yığılma varsa yüksek güven.
+    </div>
+    <div class="m-row">
+      <b>🟢 Yeşil çerçeve</b> = o <u>satırda</u> (tahmin adımında) en yüksek % → "bu adımda en olası değer bu"
+    </div>
+    <div class="m-row">
+      <b>🟡 Sarı çerçeve</b> = o <u>sütunda</u> (değerde) en yüksek % → "bu değerin en çok tahmin edildiği adım bu"
+    </div>
+    <div class="m-row">
+      <b>🟢+🟡 İç içe çerçeve</b> = hem satırda hem sütunda zirve → model bu değeri bu adımda özellikle güçlü tahmin ediyor.
+    </div>
+    <br>
+    <h4>🔬 9 ANALİZ YÖNTEMİ</h4>
+    <div class="m-row"><span class="m-name">MC Markov Zinciri</span> — geçmiş geçiş sıklıklarından olasılık matrisi; hangi değerden sonra hangisi kaç kez geldi? Adım kümeli seriler için hızlı ve etkili.</div>
+    <div class="m-row"><span class="m-name">ARIMA AR(p)</span> — Yule-Walker otoregresif katsayılar; son p gözleme göre doğrusal tahmin. Güçlü ACF varsa iyi performans.</div>
+    <div class="m-row"><span class="m-name">Holt Exp. Smoothing</span> — α=0.3 seviye + β=0.1 trend; üstel ağırlıklı ortalama. Yavaş değişen ve trend içeren serilerde kararlı.</div>
+    <div class="m-row"><span class="m-name">Naive Bayes (Pencere-3)</span> — son 3 değerin oluşturduğu bağlama göre sonraki değer dağılımını öğrenir. Kısa örüntü tekrarlayan serilerde güçlü.</div>
+    <div class="m-row"><span class="m-name">Kalman Filter</span> — [seviye, trend] gizli durum; EM-lite ile R ve Q gürültüsü veriden otomatik tahmin edilir. Gürültülü + otokorele seriler için teorik en iyi deterministik yöntem.</div>
+    <div class="m-row"><span class="m-name">Gaussian Process (Matérn 5/2)</span> — kernel Bayesian regresyon. Matérn 5/2: RQ/SE'den farklı olarak ani geçişlere izin verir. <b>Mean-centered çalışır</b> (snap-to-zero hatası yoktur). FITC inducing-point yaklaşımı.</div>
+    <div class="m-row"><span class="m-name">Particle Filter (SMC)</span> — 250 parçacık, sistematik yeniden örnekleme. Non-linear, non-Gaussian durum uzayı. Adım kümesi kısıtlı seriler için teorik en doğru yöntem.</div>
+    <div class="m-row"><span class="m-name">GRU + MC-Dropout</span> — TensorFlow.js ile tarayıcı içi GRU (16 unit, 40 epoch). tf.ready() + warmup sonrası eğitilir; takılma sorunu yoktur. Test zamanında dropout=ON → 150 forward pass → Bayesian belirsizlik.</div>
+    <div class="m-row"><span class="m-name">N-HiTS</span> — Neural Hierarchical Interpolation for Time Series. 3 stack (pooling 1×/2×/4×), her stack polinom + Fourier bazında artık (residual) regresyonu yapar. Stack 1: kısa bağımlılık; Stack 2: orta ölçek; Stack 3: trend/mevsimsellik. Sinyal bileşenlerini hiyerarşik olarak ayrıştırır — hem trend hem periyodik örüntü içeren serilerde güçlü.</div>
+    <div class="m-row"><span class="m-name">Ensemble (9 Yöntem)</span> — tüm yöntemlerin çoğunluk oylaması (LSTM hariç). Tek yöntemin zayıf noktalarını dengeler.</div>
+    <br>
+    Entropi = <strong>${ent.toFixed(3)} bit</strong> →
+    ${ent<0.5?'çok düzenli, tahmin kolay':ent<1.5?'orta belirsizlik':ent<2.5?'yüksek belirsizlik':'çok belirsiz, tahmin güç'}.
+    &nbsp;Önerilen: <strong>${bestM}</strong>.
+    ${bad>0?`<br><br><span style="color:var(--red)">⚠ ${bad} nokta adım kümesi dışında — veriyi kontrol et.</span>`:''}`;
+
+
+// ── EXAMPLE ───────────────────────────────────────
+function loadExample(){
+  document.getElementById('setInput').value='3, 3.2, 3.4, 3.6';
+  parseSetInput();
+  document.getElementById('seriesInput').value=
+    '3,3,3.2,3.2,3.4,3.4,3.4,3.2,3.2,3,3,3,3.2,3.4,3.6,3.6,3.4,3.4,3.2,3.2,'+
+    '3,3,3.2,3.2,3.4,3.4,3.6,3.6,3.4,3.2,3,3,3.2,3.4,3.4,3.2,3.2,3,3,3.2';
+  document.getElementById('rN').value=8;
+  document.getElementById('vN').textContent='8';
+  document.getElementById('method').value='combined';
+}
+</script>
+</body>
+</html>
