@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dalga Analiz Aracı</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #07080a;
+    --surface: #0e1014;
+    --surface2: #13161c;
+    --border: #1e2330;
+    --accent: #00e5ff;
+    --accent2: #ff4081;
+    --accent3: #76ff03;
+    --text: #c8d0e0;
+    --text-dim: #5a6478;
+    --glow: rgba(0, 229, 255, 0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  header {
+    padding: 32px 0 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+
+  .header-tag {
+    font-size: 10px;
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    opacity: 0.7;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(24px, 4vw, 42px);
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.1;
+  }
+
+  h1 span {
+    color: var(--accent);
+    text-shadow: 0 0 30px var(--accent);
+  }
+
+  .subtitle {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  /* Controls Panel */
+  .controls {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    align-items: end;
+  }
+
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--accent);
+    cursor: pointer;
+  }
+
+  .range-val {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    outline: none;
+  }
+
+  select:focus { border-color: var(--accent); }
+
+  .btn {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.2s;
+    z-index: -1;
+  }
+
+  .btn:hover { color: #000; }
+  .btn:hover::before { transform: scaleX(1); }
+
+  .btn-danger {
+    border-color: var(--accent2);
+    color: var(--accent2);
+  }
+  .btn-danger::before { background: var(--accent2); }
+
+  /* Stats Bar */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--accent);
+  }
+
+  .stat-card.danger::after { background: var(--accent2); }
+  .stat-card.ok::after { background: var(--accent3); }
+  .stat-card.warn::after { background: #ffab00; }
+
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+  }
+
+  .stat-sub {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* Chart Grid */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+  }
+
+  .chart-card.wide {
+    grid-column: 1 / -1;
+  }
+
+  .chart-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+  }
+
+  .chart-desc {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    line-height: 1.6;
+  }
+
+  canvas {
+    max-height: 260px;
+  }
+
+  .chart-card.wide canvas {
+    max-height: 220px;
+  }
+
+  /* Analysis Panel */
+  .analysis-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+
+  .analysis-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .badge {
+    font-size: 9px;
+    letter-spacing: 2px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    text-transform: uppercase;
+  }
+
+  .badge-cyan { background: rgba(0,229,255,0.15); color: var(--accent); border: 1px solid rgba(0,229,255,0.3); }
+  .badge-red { background: rgba(255,64,129,0.15); color: var(--accent2); border: 1px solid rgba(255,64,129,0.3); }
+  .badge-green { background: rgba(118,255,3,0.15); color: var(--accent3); border: 1px solid rgba(118,255,3,0.3); }
+
+  .findings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+  }
+
+  .finding {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  .finding-label {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .finding-value {
+    font-size: 14px;
+    color: #fff;
+    line-height: 1.6;
+  }
+
+  .finding-value.good { color: var(--accent3); }
+  .finding-value.warn { color: #ffab00; }
+  .finding-value.alert { color: var(--accent2); }
+
+  /* Prediction section */
+  .prediction-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .pred-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    width: 80px;
+    outline: none;
+  }
+
+  .pred-input:focus { border-color: var(--accent); }
+
+  /* Wave indicator */
+  .wave-meter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .wave-bar {
+    width: 120px;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .wave-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s, background 0.5s;
+  }
+
+  @media (max-width: 768px) {
+    .chart-grid { grid-template-columns: 1fr; }
+    .chart-card.wide { grid-column: 1; }
+  }
+
+  .pulse {
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .section-sep {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 20px 0;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="header-tag">// Bounded Random Walk · Kümülatif Seri Analizi</div>
+    <h1>Dalga <span>Dedektörü</span></h1>
+    <div class="subtitle">δ ∈ [-2, +2] · Otokorelasyon · Dalga Tespiti · Tahmin</div>
+  </header>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="control-group">
+      <label>Veri Noktası Sayısı</label>
+      <span class="range-val" id="nVal">300</span>
+      <input type="range" id="nPoints" min="100" max="1000" step="50" value="300">
+    </div>
+    <div class="control-group">
+      <label>Dalga Tipi (Ham δ)</label>
+      <select id="waveType">
+        <option value="pure_random">Saf Rastgele (H0)</option>
+        <option value="sine_bias" selected>Sinüzoidal Bias (Dalga)</option>
+        <option value="momentum">Momentum / Trend</option>
+        <option value="mean_revert">Mean Reversion</option>
+        <option value="mixed">Karma (Dalga + Gürültü)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label>Dalga Periyodu</label>
+      <span class="range-val" id="periodVal">50</span>
+      <input type="range" id="wavePeriod" min="10" max="200" step="5" value="50">
+    </div>
+    <div class="control-group">
+      <label>Gürültü Yoğunluğu</label>
+      <span class="range-val" id="noiseVal">0.5</span>
+      <input type="range" id="noiseLevel" min="0" max="1" step="0.05" value="0.5">
+    </div>
+    <div class="control-group">
+      <label>Aksiyon</label>
+      <button class="btn" onclick="generate()">▶ YENİ VERİ ÜRET</button>
+    </div>
+    <div class="control-group">
+      <label>Kendi Verini Gir</label>
+      <button class="btn btn-danger" onclick="showImport()">↑ VERİ İÇE AKTAR</button>
+    </div>
+  </div>
+
+  <!-- Import area (hidden) -->
+  <div id="importArea" style="display:none; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:20px;">
+    <div class="chart-title" style="margin-bottom:8px;">Kendi Verinizi Girin</div>
+    <div class="chart-desc">Kümülatif Y değerlerini virgülle veya yeni satırla ayırarak yapıştırın:</div>
+    <textarea id="importData" style="width:100%; height:100px; background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:12px; border-radius:6px; font-family:'JetBrains Mono',monospace; font-size:12px; resize:vertical; outline:none;" placeholder="Örnek: 0, 1.5, 3, 2, 4, 5.5, ..."></textarea>
+    <div style="display:flex; gap:10px; margin-top:12px;">
+      <button class="btn" onclick="importData()">AKTAR VE ANALİZ ET</button>
+      <button class="btn btn-danger" onclick="document.getElementById('importArea').style.display='none'">İPTAL</button>
+    </div>
+  </div>
+
+  <!-- Stats Bar -->
+  <div class="stats-bar" id="statsBar"></div>
+
+  <!-- Charts -->
+  <div class="chart-grid">
+    <div class="chart-card wide">
+      <div class="chart-title">Kümülatif Seri (Y) + Tahmin</div>
+      <div class="chart-desc">Mavi: gözlemlenen veri · Turuncu: tahmin · Gri bant: %80 güven aralığı</div>
+      <canvas id="mainChart"></canvas>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Ham Δ Serisi (Türev)</div>
+      <div class="chart-desc">Y'den çıkarılan adım boyutları · Dalga burada görünür</div>
+      <canvas id="deltaChart"></canvas>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Otokorelasyon Fonksiyonu (ACF)</div>
+      <div class="chart-desc">Lag başına korelasyon · Sınır dışı = istatistiksel anlamlı</div>
+      <canvas id="acfChart"></canvas>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Δ Dağılımı (Histogram)</div>
+      <div class="chart-desc">Adım boyutu frekansları · Çan eğrisi mi, bimodal mi?</div>
+      <canvas id="histChart"></canvas>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Rolling Ortalama (Ham δ)</div>
+      <div class="chart-desc">Kayan pencere ortalaması · Dalga burada net görünür</div>
+      <canvas id="rollingChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Analysis Panel -->
+  <div class="analysis-panel">
+    <div class="analysis-title">
+      🔬 Otomatik Bulgular
+      <span class="badge badge-cyan" id="mainBadge">ANALİZ EDİLİYOR</span>
+    </div>
+    <div class="findings-grid" id="findingsGrid"></div>
+  </div>
+
+  <!-- Prediction Panel -->
+  <div class="analysis-panel">
+    <div class="analysis-title">
+      📡 Tahmin Motoru
+      <span class="badge badge-green">ARIMA-LITE</span>
+    </div>
+    <div class="prediction-bar">
+      <div class="control-group">
+        <label>Kaç Adım Tahmin</label>
+        <input type="number" class="pred-input" id="predSteps" value="20" min="1" max="100">
+      </div>
+      <div class="control-group">
+        <label>Yöntem</label>
+        <select id="predMethod">
+          <option value="arima">ARIMA (ACF tabanlı)</option>
+          <option value="montecarlo">Monte Carlo</option>
+          <option value="waveguide">Dalga Kılavuzlu</option>
+        </select>
+      </div>
+      <div class="control-group" style="padding-top:16px;">
+        <button class="btn" onclick="runPrediction()">▶ TAHMİN ET</button>
+      </div>
+    </div>
+    <div id="predResults" style="font-size:12px; color:var(--text-dim); line-height:1.8;"></div>
+  </div>
+
+</div>
+
+<script>
+// ===================== DATA ENGINE =====================
+let cumData = [], deltaData = [], charts = {};
+
+function clamp(v, mn, mx) { return Math.max(mn, Math.min(mx, v)); }
+
+function generateData() {
+  const n = +document.getElementById('nPoints').value;
+  const type = document.getElementById('waveType').value;
+  const period = +document.getElementById('wavePeriod').value;
+  const noise = +document.getElementById('noiseLevel').value;
+
+  deltaData = [];
+  for (let i = 0; i < n; i++) {
+    let bias = 0;
+    if (type === 'sine_bias') {
+      bias = Math.sin(2 * Math.PI * i / period) * (2 * (1 - noise));
+    } else if (type === 'momentum') {
+      bias = (deltaData.length > 0 ? deltaData[deltaData.length-1] * 0.7 : 0);
+    } else if (type === 'mean_revert') {
+      const lastCum = cumData.length > 0 ? cumData[cumData.length-1] : 0;
+      bias = -lastCum * 0.05;
+    } else if (type === 'mixed') {
+      bias = Math.sin(2 * Math.PI * i / period) * (1 - noise * 0.5) + 
+             Math.sin(2 * Math.PI * i / (period * 0.4)) * 0.3;
+    }
+    const rawNoise = (Math.random() * 4 - 2) * noise;
+    let d = bias + rawNoise;
+    d = clamp(d, -2, 2);
+    deltaData.push(d);
+  }
+
+  // Build cumulative
+  cumData = [0];
+  for (let i = 0; i < deltaData.length; i++) {
+    cumData.push(cumData[cumData.length-1] + deltaData[i]);
+  }
+  deltaData.unshift(0); // align
+}
+
+// ===================== STATISTICS =====================
+function mean(arr) { return arr.reduce((a,b)=>a+b,0)/arr.length; }
+function std(arr) {
+  const m = mean(arr);
+  return Math.sqrt(arr.reduce((a,b)=>a+(b-m)**2,0)/arr.length);
+}
+function acf(arr, maxLag) {
+  const m = mean(arr);
+  const denom = arr.reduce((a,b)=>a+(b-m)**2,0);
+  const result = [];
+  for (let lag = 1; lag <= maxLag; lag++) {
+    let num = 0;
+    for (let i = lag; i < arr.length; i++) {
+      num += (arr[i]-m)*(arr[i-lag]-m);
+    }
+    result.push(num/denom);
+  }
+  return result;
+}
+
+function rollingMean(arr, window) {
+  return arr.map((v, i) => {
+    if (i < window-1) return null;
+    const slice = arr.slice(i-window+1, i+1);
+    return mean(slice);
+  });
+}
+
+// ===================== ANALYSIS =====================
+function analyze() {
+  const d = deltaData.slice(1); // remove leading 0
+  const acfVals = acf(d, 40);
+  const ci = 1.96 / Math.sqrt(d.length);
+  
+  // Significant lags
+  const sigLags = acfVals.map((v,i) => Math.abs(v) > ci ? i+1 : null).filter(Boolean);
+  
+  // Detect periodicity via max ACF
+  let maxACF = 0, dominantPeriod = null;
+  acfVals.forEach((v,i) => { if (Math.abs(v) > maxACF) { maxACF = Math.abs(v); dominantPeriod = i+1; }});
+  
+  // Rolling mean std — if > noise threshold, wave detected
+  const roll = rollingMean(d, 20).filter(v => v !== null);
+  const rollStd = std(roll);
+  const waveStrength = Math.min(100, Math.round(rollStd / 1.0 * 100));
+
+  // Skewness of delta
+  const m = mean(d), s = std(d);
+  const skew = d.reduce((a,b)=>a+((b-m)/s)**3,0)/d.length;
+
+  // Update findings
+  const findings = [
+    {
+      label: 'Dalga Tespiti',
+      val: waveStrength > 30 
+        ? `<span class="good">✔ DALGA SAPTANDI (güç: ${waveStrength}%)</span>` 
+        : `<span class="warn">⚠ Zayıf veya belirsiz dalga (güç: ${waveStrength}%)</span>`,
+      desc: 'Rolling ortalama varyansına dayalı'
+    },
+    {
+      label: 'ACF — Anlamlı Lag\'lar',
+      val: sigLags.length > 0 
+        ? `<span class="good">${sigLags.slice(0,8).join(', ')}${sigLags.length>8?'...':''}</span>`
+        : `<span class="warn">Anlamlı lag yok → Saf rastgele olabilir</span>`,
+      desc: `%95 güven sınırı: ±${ci.toFixed(3)}`
+    },
+    {
+      label: 'Baskın Periyot Tahmini',
+      val: maxACF > ci
+        ? `<span class="good">~${dominantPeriod} adım (r=${maxACF.toFixed(3)})</span>`
+        : `<span class="alert">Belirgin periyot yok</span>`,
+      desc: 'ACF maksimumuna göre'
+    },
+    {
+      label: 'Δ Ortalaması / Std',
+      val: `${mean(d).toFixed(3)} / ${std(d).toFixed(3)}`,
+      desc: `Çarpıklık: ${skew.toFixed(3)} ${Math.abs(skew)>0.5?'⚠ Asimetrik':'✔ Simetrik'}`
+    },
+    {
+      label: 'Durağanlık (Δ)',
+      val: '<span class="good">✔ δ serisi durağan (bounded by design)</span>',
+      desc: 'Kümülatif Y ise I(1) süreç'
+    },
+    {
+      label: 'Öneri',
+      val: waveStrength > 50 
+        ? '<span class="good">Dalga Kılavuzlu tahmin önerilir</span>'
+        : sigLags.length > 3 
+          ? '<span class="warn">ARIMA(p,1,0) — p ≈ ' + Math.min(sigLags[0], 5) + '</span>'
+          : '<span class="alert">Monte Carlo (belirsizlik bandı ver)</span>',
+      desc: 'Model önerisi'
+    }
+  ];
+
+  const grid = document.getElementById('findingsGrid');
+  grid.innerHTML = findings.map(f => `
+    <div class="finding">
+      <div class="finding-label">${f.label}</div>
+      <div class="finding-value">${f.val}</div>
+      <div class="stat-sub" style="margin-top:4px;">${f.desc}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('mainBadge').textContent = waveStrength > 30 ? 'DALGA SAPTANDI' : 'DURAĞAN GÖRÜNEBİLİR';
+  document.getElementById('mainBadge').className = 'badge ' + (waveStrength > 30 ? 'badge-green' : 'badge-red');
+
+  return { acfVals, ci, waveStrength, dominantPeriod, maxACF, sigLags };
+}
+
+// ===================== STATS BAR =====================
+function updateStats() {
+  const d = deltaData.slice(1);
+  const pos = d.filter(v=>v>0).length/d.length*100;
+  const neg = d.filter(v=>v<0).length/d.length*100;
+  const near2 = d.filter(v=>Math.abs(v)>1.5).length/d.length*100;
+  const yMin = Math.min(...cumData), yMax = Math.max(...cumData);
+  const yLast = cumData[cumData.length-1];
+
+  const stats = [
+    { label: 'Son Y Değeri', value: yLast.toFixed(2), sub: `∈ [${yMin.toFixed(1)}, ${yMax.toFixed(1)}]`, cls: '' },
+    { label: '↑ Pozitif δ', value: pos.toFixed(1)+'%', sub: `${d.filter(v=>v>0).length} adım`, cls: 'ok' },
+    { label: '↓ Negatif δ', value: neg.toFixed(1)+'%', sub: `${d.filter(v=>v<0).length} adım`, cls: 'danger' },
+    { label: '|δ| > 1.5', value: near2.toFixed(1)+'%', sub: 'Uç adımlar', cls: 'warn' },
+    { label: 'δ Std Dev', value: std(d).toFixed(3), sub: 'adım büyüklüğü', cls: '' },
+    { label: 'Veri Uzunluğu', value: cumData.length, sub: 'nokta', cls: '' },
+  ];
+
+  document.getElementById('statsBar').innerHTML = stats.map(s => `
+    <div class="stat-card ${s.cls}">
+      <div class="stat-label">${s.label}</div>
+      <div class="stat-value">${s.value}</div>
+      <div class="stat-sub">${s.sub}</div>
+    </div>
+  `).join('');
+}
+
+// ===================== CHARTS =====================
+function destroyAll() {
+  Object.values(charts).forEach(c => c && c.destroy());
+  charts = {};
+}
+
+const CHART_DEFAULTS = {
+  animation: false,
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#5a6478', font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 8 } },
+    y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#5a6478', font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 6 } }
+  },
+  elements: { point: { radius: 0 } }
+};
+
+function drawMainChart(predY=[], predLow=[], predHigh=[]) {
+  if (charts.main) charts.main.destroy();
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  const xs = cumData.map((_, i) => i);
+  const predXs = Array.from({length: predY.length}, (_,i) => cumData.length - 1 + i);
+
+  charts.main = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [...xs, ...predXs.slice(1)],
+      datasets: [
+        {
+          label: 'Gözlem',
+          data: [...cumData, ...Array(predXs.length-1).fill(null)],
+          borderColor: '#00e5ff',
+          borderWidth: 1.5,
+          tension: 0.2,
+          pointRadius: 0,
+          fill: false
+        },
+        {
+          label: 'Tahmin',
+          data: [...Array(cumData.length-1).fill(null), cumData[cumData.length-1], ...predY.slice(1)],
+          borderColor: '#ff9800',
+          borderDash: [4,3],
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: false
+        },
+        {
+          label: 'Üst Bant',
+          data: [...Array(cumData.length-1).fill(null), cumData[cumData.length-1], ...predHigh.slice(1)],
+          borderColor: 'transparent',
+          backgroundColor: 'rgba(255,152,0,0.12)',
+          pointRadius: 0,
+          fill: '+1'
+        },
+        {
+          label: 'Alt Bant',
+          data: [...Array(cumData.length-1).fill(null), cumData[cumData.length-1], ...predLow.slice(1)],
+          borderColor: 'transparent',
+          backgroundColor: 'rgba(255,152,0,0.12)',
+          pointRadius: 0,
+          fill: false
+        }
+      ]
+    },
+    options: { ...CHART_DEFAULTS, animation: false, plugins: { legend: { display: false } }, responsive: true, maintainAspectRatio: true }
+  });
+}
+
+function drawDeltaChart() {
+  if (charts.delta) charts.delta.destroy();
+  const ctx = document.getElementById('deltaChart').getContext('2d');
+  const d = deltaData;
+  charts.delta = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: d.map((_,i)=>i),
+      datasets: [{
+        data: d,
+        borderColor: '#76ff03',
+        borderWidth: 1,
+        pointRadius: 0,
+        tension: 0,
+        fill: { target: 'origin', above: 'rgba(118,255,3,0.05)', below: 'rgba(255,64,129,0.05)' }
+      }]
+    },
+    options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: true }
+  });
+}
+
+function drawACFChart(acfVals, ci) {
+  if (charts.acf) charts.acf.destroy();
+  const ctx = document.getElementById('acfChart').getContext('2d');
+  const lags = acfVals.map((_,i)=>i+1);
+  charts.acf = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: lags,
+      datasets: [
+        {
+          data: acfVals,
+          backgroundColor: acfVals.map(v => Math.abs(v) > ci ? 'rgba(0,229,255,0.8)' : 'rgba(0,229,255,0.2)'),
+          borderWidth: 0
+        },
+        { data: Array(lags.length).fill(ci), type: 'line', borderColor: 'rgba(255,64,129,0.6)', borderDash: [3,2], borderWidth: 1, pointRadius: 0 },
+        { data: Array(lags.length).fill(-ci), type: 'line', borderColor: 'rgba(255,64,129,0.6)', borderDash: [3,2], borderWidth: 1, pointRadius: 0 }
+      ]
+    },
+    options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: true }
+  });
+}
+
+function drawHistChart() {
+  if (charts.hist) charts.hist.destroy();
+  const ctx = document.getElementById('histChart').getContext('2d');
+  const d = deltaData.slice(1);
+  const bins = 20;
+  const min = -2.1, max = 2.1;
+  const bw = (max-min)/bins;
+  const counts = Array(bins).fill(0);
+  d.forEach(v => {
+    const bi = Math.min(bins-1, Math.floor((v-min)/bw));
+    if (bi >= 0) counts[bi]++;
+  });
+  const labels = Array.from({length:bins}, (_,i) => (min+i*bw+bw/2).toFixed(2));
+  charts.hist = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: counts,
+        backgroundColor: labels.map(v => {
+          const f = parseFloat(v);
+          const t = Math.abs(f)/2;
+          return `rgba(${Math.round(t*255)}, ${Math.round((1-t)*229)}, ${Math.round((1-t)*255)}, 0.7)`;
+        }),
+        borderWidth: 0
+      }]
+    },
+    options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: true }
+  });
+}
+
+function drawRollingChart() {
+  if (charts.rolling) charts.rolling.destroy();
+  const ctx = document.getElementById('rollingChart').getContext('2d');
+  const d = deltaData.slice(1);
+  const r10 = rollingMean(d, 10);
+  const r30 = rollingMean(d, 30);
+  charts.rolling = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: d.map((_,i)=>i),
+      datasets: [
+        { data: d, borderColor: 'rgba(90,100,120,0.3)', borderWidth: 0.5, pointRadius: 0 },
+        { data: r10, borderColor: '#00e5ff', borderWidth: 1.5, pointRadius: 0, spanGaps: true },
+        { data: r30, borderColor: '#ff4081', borderWidth: 2, pointRadius: 0, spanGaps: true }
+      ]
+    },
+    options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: true, plugins: {
+      legend: { display: true, position: 'top', labels: { color: '#5a6478', font: { family: 'JetBrains Mono', size: 9 }, boxWidth: 12 } }
+    } }
+  });
+  charts.rolling.data.datasets[1].label = 'Rolling 10';
+  charts.rolling.data.datasets[2].label = 'Rolling 30';
+  charts.rolling.update();
+}
+
+// ===================== PREDICTION =====================
+function runPrediction() {
+  const steps = +document.getElementById('predSteps').value;
+  const method = document.getElementById('predMethod').value;
+  const d = deltaData.slice(1);
+  const m = mean(d);
+  const s = std(d);
+
+  let predY = [cumData[cumData.length-1]];
+  let predLow = [cumData[cumData.length-1]];
+  let predHigh = [cumData[cumData.length-1]];
+
+  if (method === 'montecarlo') {
+    // Run 1000 simulations
+    const sims = Array.from({length:1000}, () => {
+      let y = cumData[cumData.length-1];
+      const path = [y];
+      for (let i = 0; i < steps; i++) {
+        const delta = clamp(m + (Math.random()*2-1)*s*2, -2, 2);
+        y += delta;
+        path.push(y);
+      }
+      return path;
+    });
+    for (let t = 0; t <= steps; t++) {
+      const vals = sims.map(s => s[t]).sort((a,b)=>a-b);
+      predY.push(vals[500]);
+      predLow.push(vals[100]);
+      predHigh.push(vals[900]);
+    }
+    predY.shift(); predLow.shift(); predHigh.shift();
+
+  } else if (method === 'arima') {
+    // Simple AR(1) on delta
+    const ar1 = d.slice(1).reduce((acc, v, i) => acc + v * d[i], 0) / d.slice(0,-1).reduce((a,b)=>a+b*b,0);
+    let lastDelta = d[d.length-1];
+    let y = cumData[cumData.length-1];
+    const growingStd = s * Math.sqrt(1);
+    for (let i = 1; i <= steps; i++) {
+      const nextDelta = clamp(ar1 * lastDelta + m*(1-Math.abs(ar1)), -2, 2);
+      y += nextDelta;
+      predY.push(y);
+      const band = growingStd * Math.sqrt(i) * 1.28;
+      predLow.push(y - band);
+      predHigh.push(y + band);
+      lastDelta = nextDelta;
+    }
+
+  } else { // waveguide
+    const acfVals = acf(d, 60);
+    let maxAcf = 0, period = 1;
+    acfVals.forEach((v,i) => { if (Math.abs(v) > maxAcf) { maxAcf = Math.abs(v); period = i+1; }});
+    let y = cumData[cumData.length-1];
+    const phase = d.length % period;
+    for (let i = 1; i <= steps; i++) {
+      const wavePhase = (phase + i) % period;
+      const waveBias = maxAcf > 0.1 ? mean(d.filter((_,idx) => idx % period === wavePhase)) : m;
+      const nextDelta = clamp(waveBias * 0.7 + m * 0.3, -2, 2);
+      y += nextDelta;
+      predY.push(y);
+      const band = s * Math.sqrt(i) * 0.9;
+      predLow.push(y - band);
+      predHigh.push(y + band);
+    }
+  }
+
+  drawMainChart(predY, predLow, predHigh);
+
+  const finalY = predY[predY.length-1];
+  const finalLow = predLow[predLow.length-1];
+  const finalHigh = predHigh[predHigh.length-1];
+
+  document.getElementById('predResults').innerHTML = `
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin-top:8px;">
+      <div style="background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:14px;">
+        <div class="stat-label">Merkez Tahmin (t+${steps})</div>
+        <div style="font-size:20px; color:#ff9800; font-weight:700;">${finalY.toFixed(2)}</div>
+      </div>
+      <div style="background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:14px;">
+        <div class="stat-label">%80 Aralık</div>
+        <div style="font-size:16px; color:var(--text);">[${finalLow.toFixed(2)}, ${finalHigh.toFixed(2)}]</div>
+      </div>
+      <div style="background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:14px;">
+        <div class="stat-label">Yöntem</div>
+        <div style="font-size:14px; color:var(--accent);">${method.toUpperCase()}</div>
+      </div>
+    </div>
+  `;
+}
+
+// ===================== MAIN =====================
+function generate() {
+  generateData();
+  updateStats();
+  const { acfVals, ci, waveStrength } = analyze();
+  drawMainChart();
+  drawDeltaChart();
+  drawACFChart(acfVals, ci);
+  drawHistChart();
+  drawRollingChart();
+}
+
+function showImport() {
+  const el = document.getElementById('importArea');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function importData() {
+  const raw = document.getElementById('importData').value;
+  const parsed = raw.split(/[\n,;]+/).map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+  if (parsed.length < 10) { alert('En az 10 nokta gerekli'); return; }
+  cumData = parsed;
+  deltaData = [0, ...parsed.slice(1).map((v,i) => v - parsed[i])];
+  document.getElementById('importArea').style.display = 'none';
+  updateStats();
+  const { acfVals, ci } = analyze();
+  drawMainChart();
+  drawDeltaChart();
+  drawACFChart(acfVals, ci);
+  drawHistChart();
+  drawRollingChart();
+}
+
+// Slider sync
+document.getElementById('nPoints').oninput = e => document.getElementById('nVal').textContent = e.target.value;
+document.getElementById('wavePeriod').oninput = e => document.getElementById('periodVal').textContent = e.target.value;
+document.getElementById('noiseLevel').oninput = e => document.getElementById('noiseVal').textContent = e.target.value;
+
+// Init
+generate();
+</script>
+</body>
+</html>
