@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Zaman Serisi Tahmin Defteri</title>
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#f5f0e8;--paper-dark:#e8e0cc;--ink:#2c1810;--ink-light:#5c3d2e;--red:#c0392b;--blue:#1a3a5c;--green:#1a4a2e;--rule:#b8a898;--shadow:rgba(44,24,16,0.15);}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#8b7355 url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");font-family:'Courier Prime',monospace;color:var(--ink);min-height:100vh;padding:20px;display:flex;justify-content:center;}
+.notebook{width:100%;max-width:900px;background:var(--paper);box-shadow:4px 4px 0 #5a4a35,8px 8px 0 #3a2a15,12px 12px 20px rgba(0,0,0,0.4);position:relative;}
+/* Spiral binding */
+.spiral{position:absolute;left:-18px;top:0;width:18px;height:100%;display:flex;flex-direction:column;align-items:center;padding:30px 0;gap:24px;z-index:10;}
+.ring{width:16px;height:16px;border:3px solid #666;border-radius:50%;background:#888;box-shadow:inset 0 1px 3px rgba(0,0,0,0.5);}
+/* Red margin line */
+.margin-line{position:absolute;left:60px;top:0;width:2px;height:100%;background:var(--red);opacity:0.6;z-index:1;}
+/* Ruled lines background */
+.ruled-bg{position:absolute;top:0;left:0;width:100%;height:100%;background-image:repeating-linear-gradient(transparent,transparent 31px,var(--rule) 31px,var(--rule) 32px);background-size:100% 32px;opacity:0.4;pointer-events:none;}
+.page{padding:20px 30px 30px 70px;position:relative;z-index:2;}
+/* Header */
+.header{border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:20px;}
+.title{font-family:'Special Elite',cursive;font-size:28px;color:var(--ink);letter-spacing:2px;text-shadow:1px 1px 0 var(--paper-dark);}
+.subtitle{font-size:11px;color:var(--ink-light);font-style:italic;margin-top:4px;}
+.date-line{font-size:11px;color:var(--ink-light);text-align:right;margin-top:4px;}
+/* Sections */
+.section{margin-bottom:20px;}
+.section-label{font-family:'Special Elite',cursive;font-size:13px;color:var(--red);text-transform:uppercase;letter-spacing:3px;margin-bottom:8px;border-bottom:1px dashed var(--red);padding-bottom:3px;}
+/* Inputs */
+textarea,input{width:100%;background:transparent;border:none;border-bottom:1px solid var(--rule);font-family:'Courier Prime',monospace;font-size:13px;color:var(--ink);padding:6px 4px;resize:none;outline:none;line-height:1.8;}
+textarea:focus,input:focus{border-bottom:2px solid var(--blue);background:rgba(26,58,92,0.03);}
+textarea{min-height:80px;}
+.input-hint{font-size:10px;color:var(--ink-light);font-style:italic;margin-top:3px;}
+/* Button */
+.btn{font-family:'Special Elite',cursive;font-size:14px;letter-spacing:2px;padding:10px 28px;background:var(--ink);color:var(--paper);border:none;cursor:pointer;margin-top:10px;position:relative;box-shadow:3px 3px 0 var(--ink-light);transition:all 0.1s;}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink-light);}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink-light);}
+/* Status */
+#status{font-size:11px;font-style:italic;color:var(--ink-light);margin-top:8px;min-height:16px;}
+/* Results */
+#results{display:none;}
+.result-title{font-family:'Special Elite',cursive;font-size:16px;color:var(--blue);margin-bottom:12px;border-bottom:1px solid var(--blue);padding-bottom:4px;}
+/* Probability table */
+.prob-table-wrap{overflow-x:auto;margin-bottom:20px;}
+table{border-collapse:collapse;font-size:12px;width:100%;}
+th{font-family:'Special Elite',cursive;font-size:11px;letter-spacing:1px;color:var(--red);border-bottom:2px solid var(--red);padding:6px 8px;text-align:center;background:rgba(192,57,43,0.05);}
+td{padding:5px 8px;text-align:center;border-bottom:1px dashed var(--rule);font-family:'Courier Prime',monospace;}
+td.day-label{font-style:italic;color:var(--ink-light);text-align:left;font-size:11px;}
+td.best{font-weight:700;color:var(--blue);}
+.bar-cell{padding:4px 8px;}
+.bar-wrap{display:flex;align-items:center;gap:4px;}
+.bar{height:10px;background:var(--blue);opacity:0.6;min-width:2px;transition:width 0.3s;}
+.bar-val{font-size:10px;color:var(--ink-light);}
+/* Chart */
+.chart-section{margin-bottom:20px;}
+canvas{border:1px solid var(--rule);background:rgba(255,255,255,0.3);width:100%;max-height:200px;}
+/* Regime & info */
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.info-box{border:1px dashed var(--rule);padding:10px;background:rgba(255,255,255,0.2);}
+.info-box-title{font-size:10px;color:var(--red);letter-spacing:2px;font-family:'Special Elite',cursive;margin-bottom:4px;}
+.info-box-val{font-size:20px;font-family:'Special Elite',cursive;color:var(--ink);}
+.info-box-sub{font-size:10px;color:var(--ink-light);font-style:italic;}
+/* Model weights */
+.model-weights{font-size:11px;color:var(--ink-light);font-style:italic;margin-bottom:12px;}
+/* Footnote */
+.footnote{font-size:10px;color:var(--ink-light);font-style:italic;border-top:1px solid var(--rule);padding-top:8px;margin-top:10px;}
+/* Stamp */
+.stamp{position:absolute;right:30px;top:20px;border:3px solid var(--red);color:var(--red);font-family:'Special Elite',cursive;font-size:10px;letter-spacing:2px;padding:4px 8px;opacity:0.5;transform:rotate(3deg);}
+/* Page number */
+.page-num{text-align:center;font-size:11px;color:var(--ink-light);font-style:italic;padding:10px 0 5px;border-top:1px solid var(--rule);}
+</style>
+</head>
+<body>
+<div class="notebook">
+<div class="spiral" id="spiralContainer"></div>
+<div class="margin-line"></div>
+<div class="ruled-bg"></div>
+<div class="page">
+  <div class="header">
+    <div class="stamp">TAHMİN</div>
+    <div class="title">▸ Zaman Serisi Analiz Defteri</div>
+    <div class="subtitle">DTW+KNN · N-gram+NaiveBayes · HMM — Çok Katmanlı Tahmin Sistemi</div>
+    <div class="date-line" id="dateDisplay"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">① Değer Kümesi</div>
+    <input type="text" id="inputDomain" placeholder="örn: 1,2,3,4,5  veya  0,1,2,3,4,5,6,7,8,9,10" spellcheck="false">
+    <div class="input-hint">▸ virgülle ayrılmış tüm olası değerler — sıralı olmasına gerek yok</div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">② Veri Seti</div>
+    <textarea id="inputData" placeholder="örn: 1,2,2,4,5,4,5,4,5,2,6,4,5,2,1,1,2,3,4,..." spellcheck="false"></textarea>
+    <div class="input-hint">▸ virgülle ayrılmış zaman serisi — boşluk ve yeni satır kabul edilir</div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">③ Tahmin Parametreleri</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+      <div>
+        <div class="input-hint" style="margin-bottom:3px;">Kaç gün ilerisi?</div>
+        <input type="number" id="inputHorizon" value="4" min="1" max="30" style="font-size:16px;font-family:'Special Elite',cursive;">
+      </div>
+      <div>
+        <div class="input-hint" style="margin-bottom:3px;">Pencere uzunluğu (gün)</div>
+        <input type="number" id="inputWindow" value="7" min="3" max="30" style="font-size:16px;font-family:'Special Elite',cursive;">
+      </div>
+      <div>
+        <div class="input-hint" style="margin-bottom:3px;">KNN komşu sayısı</div>
+        <input type="number" id="inputK" value="5" min="1" max="20" style="font-size:16px;font-family:'Special Elite',cursive;">
+      </div>
+    </div>
+  </div>
+
+  <button class="btn" onclick="runAnalysis()">ANALİZ ET & TAHMİN YAP</button>
+  <div id="status"></div>
+
+  <div id="results">
+    <br>
+    <div class="result-title">✦ Analiz Sonuçları</div>
+    <div class="info-grid" id="infoGrid"></div>
+    <div class="model-weights" id="modelWeights"></div>
+    <div class="chart-section">
+      <div class="section-label">Zaman Serisi + Tahmin</div>
+      <canvas id="chart" height="160"></canvas>
+    </div>
+    <div class="section-label">Tahmin Olasılık Tablosu</div>
+    <div class="prob-table-wrap"><table id="probTable"></table></div>
+    <div class="footnote" id="footnote"></div>
+  </div>
+
+  <div class="page-num">— <span id="pageNum">1</span> —</div>
+</div>
+</div>
+
+<script>
+// Spiral oluştur
+(function(){const c=document.getElementById('spiralContainer');const n=Math.floor((window.innerHeight*2)/40);for(let i=0;i<n;i++){const r=document.createElement('div');r.className='ring';c.appendChild(r);}})();
+// Tarih
+document.getElementById('dateDisplay').textContent='Tarih: '+new Date().toLocaleDateString('tr-TR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+function setStatus(msg){document.getElementById('status').textContent=msg;}
+
+// Veri temizle
+function parseData(raw){return raw.split(/[\s,;]+/).map(s=>s.trim()).filter(s=>s.length>0).map(Number).filter(n=>!isNaN(n));}
+function parseDomain(raw){return [...new Set(raw.split(/[\s,;]+/).map(s=>s.trim()).filter(s=>s.length>0).map(Number).filter(n=>!isNaN(n)))].sort((a,b)=>a-b);}
+
+// ─── DTW mesafesi ───────────────────────────────────────────────────────────
+function dtw(a,b){const n=a.length,m=b.length;const dp=Array.from({length:n+1},()=>new Float64Array(m+1).fill(Infinity));dp[0][0]=0;for(let i=1;i<=n;i++)for(let j=1;j<=m;j++){const cost=(a[i-1]-b[j-1])**2;dp[i][j]=cost+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);}return Math.sqrt(dp[n][m]);}
+
+// ─── DTW + KNN tahmini ──────────────────────────────────────────────────────
+function dtwKnnPredict(data,domain,windowLen,k,horizon){
+  const query=data.slice(-windowLen);
+  const candidates=[];
+  // Tüm geçmiş pencereleri tara
+  for(let i=0;i<=data.length-windowLen-1;i++){
+    const seg=data.slice(i,i+windowLen);
+    const d=dtw(query,seg);
+    const future=data.slice(i+windowLen,i+windowLen+horizon);
+    if(future.length>0)candidates.push({d,future});
+  }
+  candidates.sort((a,b)=>a.d-b.d);
+  const neighbors=candidates.slice(0,k);
+  // Her adım için olasılık dağılımı
+  const probs=[];
+  for(let h=0;h<horizon;h++){
+    const counts={};domain.forEach(v=>counts[v]=0);
+    let total=0;
+    neighbors.forEach(nb=>{
+      if(nb.future[h]!==undefined){
+        const v=nb.future[h];
+        // Sadece domain içindeki değerler
+        const closest=domain.reduce((p,c)=>Math.abs(c-v)<Math.abs(p-v)?c:p);
+        // Mesafeye göre ağırlık (yakın komşu daha önemli)
+        const w=1/(nb.d+1e-9);
+        counts[closest]=(counts[closest]||0)+w;total+=w;
+      }
+    });
+    const dist={};domain.forEach(v=>dist[v]=total>0?(counts[v]/total)*100:0);
+    probs.push(dist);
+  }
+  return probs;
+}
+
+// ─── N-gram + Naive Bayes ───────────────────────────────────────────────────
+function ngramNBPredict(data,domain,n,horizon){
+  // n-gram geçiş sayaçları
+  const counts={};
+  for(let i=0;i<=data.length-n-horizon;i++){
+    const key=data.slice(i,i+n).join(',');
+    if(!counts[key])counts[key]={};
+    for(let h=0;h<horizon;h++){
+      const v=data[i+n+h];
+      const closest=domain.reduce((p,c)=>Math.abs(c-v)<Math.abs(p-v)?c:p);
+      if(!counts[key][h])counts[key][h]={};
+      counts[key][h][closest]=(counts[key][h][closest]||0)+1;
+    }
+  }
+  const queryKey=data.slice(-n).join(',');
+  const probs=[];
+  for(let h=0;h<horizon;h++){
+    const dist={};
+    // Tam eşleşme varsa kullan, yoksa (n-1)-gram'a düş
+    let found=false;
+    for(let nn=n;nn>=1;nn--){
+      const qk=data.slice(-nn).join(',');
+      // Bu gram ile başlayan tüm kayıtları topla (smoothing)
+      const mergedCounts={};domain.forEach(v=>mergedCounts[v]=1); // Laplace smoothing
+      let total=domain.length;
+      Object.keys(counts).forEach(k=>{
+        if(k.endsWith(data.slice(-nn).join(','))||k===qk){
+          if(counts[k][h]){Object.entries(counts[k][h]).forEach(([v,c])=>{mergedCounts[v]=(mergedCounts[v]||1)+c;total+=c;});}
+        }
+      });
+      if(total>domain.length){domain.forEach(v=>dist[v]=(mergedCounts[v]/total)*100);found=true;break;}
+    }
+    if(!found)domain.forEach(v=>dist[v]=100/domain.length);
+    probs.push(dist);
+  }
+  return probs;
+}
+
+// ─── Basit HMM (Baum-Welch yok, Viterbi tabanlı bağlam) ────────────────────
+function hmmContextPredict(data,domain,numStates,horizon){
+  // Emission ve transition matrislerini veriden tahmin et
+  // Durum: basit k-means benzeri ile data'yı segmente et
+  const dLen=domain.length;
+  // Domainı numStates gruba böl
+  const stateSize=Math.ceil(dLen/numStates);
+  function valToState(v){const idx=domain.indexOf(domain.reduce((p,c)=>Math.abs(c-v)<Math.abs(p-v)?c:p));return Math.min(Math.floor(idx/stateSize),numStates-1);}
+  // Sequence of states
+  const stateSeq=data.map(valToState);
+  // Transition matrix
+  const trans=Array.from({length:numStates},()=>new Float64Array(numStates).fill(1/(numStates*10)));
+  for(let i=0;i<stateSeq.length-1;i++)trans[stateSeq[i]][stateSeq[i+1]]++;
+  trans.forEach(row=>{const s=row.reduce((a,b)=>a+b,0);row.forEach((_,j)=>row[j]/=s);});
+  // Emission: state -> value distribution
+  const emit=Array.from({length:numStates},()=>{const o={};domain.forEach(v=>o[v]=1);return o;});
+  const emitTotal=new Float64Array(numStates).fill(domain.length);
+  for(let i=0;i<data.length;i++){const s=stateSeq[i];const closest=domain.reduce((p,c)=>Math.abs(c-data[i])<Math.abs(p-data[i])?c:p);emit[s][closest]++;emitTotal[s]++;}
+  // Güncel durum tahmini (son penceredeki en olası durum)
+  const curState=stateSeq[stateSeq.length-1];
+  // Horizon adım ileri projeksiyon
+  const probs=[];
+  let stateDist=new Float64Array(numStates).fill(0);stateDist[curState]=1.0;
+  for(let h=0;h<horizon;h++){
+    // Bir adım ileri: stateDist = stateDist * trans
+    const nextStateDist=new Float64Array(numStates).fill(0);
+    for(let s=0;s<numStates;s++)for(let t=0;t<numStates;t++)nextStateDist[t]+=stateDist[s]*trans[s][t];
+    stateDist=nextStateDist;
+    // Emission marginal
+    const dist={};domain.forEach(v=>dist[v]=0);
+    for(let s=0;s<numStates;s++)domain.forEach(v=>{dist[v]+=stateDist[s]*(emit[s][v]/emitTotal[s]);});
+    const total=Object.values(dist).reduce((a,b)=>a+b,0);
+    domain.forEach(v=>dist[v]=(dist[v]/total)*100);
+    probs.push(dist);
+  }
+  return probs;
+}
+
+// ─── Modelleri birleştir (ağırlıklı ensemble) ───────────────────────────────
+function ensemble(predsList,weights){
+  const horizon=predsList[0].length;
+  const domain=Object.keys(predsList[0][0]).map(Number);
+  return Array.from({length:horizon},(_,h)=>{
+    const dist={};domain.forEach(v=>dist[v]=0);
+    const totalW=weights.reduce((a,b)=>a+b,0);
+    predsList.forEach((preds,mi)=>{domain.forEach(v=>dist[v]+=(preds[h][v]||0)*(weights[mi]/totalW));});
+    return dist;
+  });
+}
+
+// ─── Rejim tespiti (basit: son N'nin ortalama ve std'si) ────────────────────
+function detectRegime(data,windowLen){
+  const recent=data.slice(-windowLen);
+  const mean=recent.reduce((a,b)=>a+b,0)/recent.length;
+  const std=Math.sqrt(recent.reduce((s,v)=>s+(v-mean)**2,0)/recent.length);
+  const trend=recent[recent.length-1]-recent[0];
+  let regime='Kararsız';
+  if(std<0.8)regime='Düşük Gürültü / Stabil';
+  else if(std>2)regime='Yüksek Gürültü / Kaotik';
+  else if(Math.abs(trend)>2)regime=trend>0?'Yükselen Trend':'Düşen Trend';
+  else regime='Osilatör / Git-Gel';
+  return{mean:mean.toFixed(2),std:std.toFixed(2),trend:trend.toFixed(2),regime};
+}
+
+// ─── Ana canvas grafiği ─────────────────────────────────────────────────────
+function drawChart(data,domain,futureBest,windowLen){
+  const canvas=document.getElementById('chart');const ctx=canvas.getContext('2d');
+  const W=canvas.offsetWidth||800,H=160;canvas.width=W;canvas.height=H;
+  const padL=30,padR=20,padT=15,padB=20;
+  const dw=W-padL-padR,dh=H-padT-padB;
+  const minV=domain[0],maxV=domain[domain.length-1],rangeV=maxV-minV||1;
+  const allData=[...data,...futureBest];
+  const n=Math.min(allData.length,60);const showData=data.slice(-Math.min(data.length,60-futureBest.length));
+  function xPos(i,total){return padL+i*(dw/(total-1||1));}
+  function yPos(v){return padT+dh-(((v-minV)/rangeV)*dh);}
+  ctx.clearRect(0,0,W,H);
+  // Grid
+  ctx.strokeStyle='rgba(184,168,152,0.4)';ctx.lineWidth=1;
+  domain.forEach(v=>{ctx.beginPath();ctx.setLineDash([3,3]);ctx.moveTo(padL,yPos(v));ctx.lineTo(W-padR,yPos(v));ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='rgba(92,61,46,0.6)';ctx.font='9px Courier Prime';ctx.fillText(v,2,yPos(v)+3);});
+  // Geçmiş veri
+  const histLen=showData.length;
+  ctx.beginPath();ctx.strokeStyle='#1a3a5c';ctx.lineWidth=1.5;ctx.setLineDash([]);
+  showData.forEach((v,i)=>{i===0?ctx.moveTo(xPos(i,histLen+futureBest.length),yPos(v)):ctx.lineTo(xPos(i,histLen+futureBest.length),yPos(v));});
+  ctx.stroke();
+  // Geçmiş noktalar
+  showData.forEach((v,i)=>{ctx.beginPath();ctx.fillStyle='#1a3a5c';ctx.arc(xPos(i,histLen+futureBest.length),yPos(v),2,0,Math.PI*2);ctx.fill();});
+  // Tahmin çizgisi
+  if(futureBest.length>0){
+    const joinX=xPos(histLen-1,histLen+futureBest.length),joinY=yPos(showData[histLen-1]);
+    ctx.beginPath();ctx.strokeStyle='#c0392b';ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
+    ctx.moveTo(joinX,joinY);
+    futureBest.forEach((v,i)=>ctx.lineTo(xPos(histLen+i,histLen+futureBest.length),yPos(v)));
+    ctx.stroke();ctx.setLineDash([]);
+    futureBest.forEach((v,i)=>{ctx.beginPath();ctx.fillStyle='#c0392b';ctx.arc(xPos(histLen+i,histLen+futureBest.length),yPos(v),3,0,Math.PI*2);ctx.fill();});
+    // "TAHMİN" etiketi
+    ctx.font='bold 10px Special Elite';ctx.fillStyle='#c0392b';ctx.fillText('▸ TAHMİN',xPos(histLen,histLen+futureBest.length)+4,padT+10);
+  }
+}
+
+// ─── Olasılık tablosu çiz ───────────────────────────────────────────────────
+function buildTable(ensembleProbs,domain,horizon){
+  const tbl=document.getElementById('probTable');tbl.innerHTML='';
+  // Header
+  const hr=tbl.insertRow();const th0=document.createElement('th');th0.textContent='Gün';hr.appendChild(th0);
+  domain.forEach(v=>{const th=document.createElement('th');th.textContent=v;hr.appendChild(th);});
+  const thB=document.createElement('th');thB.textContent='En Olası';hr.appendChild(thB);
+  // Rows
+  ensembleProbs.forEach((dist,h)=>{
+    const tr=tbl.insertRow();
+    const tdL=tr.insertCell();tdL.className='day-label';tdL.textContent='+'+(h+1)+'. gün';
+    let bestV=domain[0],bestP=0;
+    domain.forEach(v=>{if(dist[v]>bestP){bestP=dist[v];bestV=v;}});
+    domain.forEach(v=>{
+      const td=tr.insertCell();td.className='bar-cell';
+      const pct=dist[v]||0;
+      const wrap=document.createElement('div');wrap.className='bar-wrap';
+      const bar=document.createElement('div');bar.className='bar';bar.style.width=Math.round(pct*1.2)+'px';
+      const val=document.createElement('span');val.className='bar-val';val.textContent=pct.toFixed(1)+'%';
+      wrap.appendChild(bar);wrap.appendChild(val);td.appendChild(wrap);
+      if(v===bestV)td.classList.add('best');
+    });
+    const tdBest=tr.insertCell();tdBest.className='best';tdBest.textContent=bestV+' ('+bestP.toFixed(1)+'%)';
+  });
+}
+
+// ─── ANA FONKSİYON ──────────────────────────────────────────────────────────
+function runAnalysis(){
+  const domainRaw=document.getElementById('inputDomain').value.trim();
+  const dataRaw=document.getElementById('inputData').value.trim();
+  const horizon=parseInt(document.getElementById('inputHorizon').value)||4;
+  const windowLen=parseInt(document.getElementById('inputWindow').value)||7;
+  const k=parseInt(document.getElementById('inputK').value)||5;
+
+  if(!domainRaw||!dataRaw){setStatus('⚠ Lütfen değer kümesi ve veri setini girin.');return;}
+  const domain=parseDomain(domainRaw);const data=parseData(dataRaw);
+  if(domain.length<2){setStatus('⚠ Değer kümesinde en az 2 değer olmalı.');return;}
+  if(data.length<windowLen+horizon+2){setStatus('⚠ Veri çok kısa. Pencere+ufuk+2 kadar veriye ihtiyaç var: en az '+(windowLen+horizon+2)+' nokta.');return;}
+
+  setStatus('⏳ Hesaplanıyor...');
+  setTimeout(()=>{
+    try{
+      // Rejim tespiti
+      const regime=detectRegime(data,windowLen);
+      // Model ağırlıkları: rejime göre adaptif
+      let wDTW=0.5,wNB=0.25,wHMM=0.25;
+      if(regime.regime.includes('Stabil')){wDTW=0.4;wNB=0.35;wHMM=0.25;}
+      else if(regime.regime.includes('Kaotik')){wDTW=0.3;wNB=0.4;wHMM=0.3;}
+      else if(regime.regime.includes('Trend')){wDTW=0.45;wNB=0.2;wHMM=0.35;}
+      // Modelleri çalıştır
+      const dtwPreds=dtwKnnPredict(data,domain,windowLen,k,horizon);
+      const nbPreds=ngramNBPredict(data,domain,Math.min(3,Math.floor(data.length/10)),horizon);
+      const numStates=Math.min(5,Math.max(2,Math.floor(domain.length/2)));
+      const hmmPreds=hmmContextPredict(data,domain,numStates,horizon);
+      const ensProbs=ensemble([dtwPreds,nbPreds,hmmPreds],[wDTW,wNB,wHMM]);
+      // En iyi tahmin dizisi
+      const futureBest=ensProbs.map(dist=>domain.reduce((best,v)=>dist[v]>dist[best]?v:best,domain[0]));
+      // UI güncelle
+      document.getElementById('results').style.display='block';
+      document.getElementById('infoGrid').innerHTML=
+        '<div class="info-box"><div class="info-box-title">Güncel Rejim</div><div class="info-box-val" style="font-size:14px">'+regime.regime+'</div><div class="info-box-sub">Son '+windowLen+' günün analizi</div></div>'+
+        '<div class="info-box"><div class="info-box-title">Son Değer</div><div class="info-box-val">'+data[data.length-1]+'</div><div class="info-box-sub">Ort: '+regime.mean+' · Std: '+regime.std+'</div></div>'+
+        '<div class="info-box"><div class="info-box-title">Veri Uzunluğu</div><div class="info-box-val">'+data.length+'</div><div class="info-box-sub">nokta / '+domain.length+' farklı değer</div></div>'+
+        '<div class="info-box"><div class="info-box-title">Tahmin Ufku</div><div class="info-box-val">'+horizon+' gün</div><div class="info-box-sub">En olası: '+futureBest.join(' → ')+'</div></div>';
+      document.getElementById('modelWeights').textContent=
+        '▸ Model ağırlıkları (rejime göre adaptif) — DTW+KNN: '+(wDTW*100).toFixed(0)+'%  ·  N-gram+NB: '+(wNB*100).toFixed(0)+'%  ·  HMM: '+(wHMM*100).toFixed(0)+'%';
+      buildTable(ensProbs,domain,horizon);
+      drawChart(data,domain,futureBest,windowLen);
+      document.getElementById('footnote').textContent=
+        '* DTW+KNN: en benzer geçmiş '+windowLen+'-günlük pencerelerin '+k+' komşusundan tahmin. N-gram+NB: son 3-gram geçiş frekansları + Laplace düzleştirme. HMM: '+numStates+' gizli durumlu Markov emisyon modeli. Ensemble ağırlıkları rejime adaptif olarak ayarlandı.';
+      setStatus('✓ Analiz tamamlandı.');
+      document.getElementById('pageNum').textContent=Math.ceil(Math.random()*3+1);
+    }catch(e){setStatus('⚠ Hata: '+e.message);console.error(e);}
+  },50);
+}
+
+// Enter ile çalıştır
+document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='Enter')runAnalysis();});
+// Pencere boyutu değişince grafiği yeniden çiz
+window.addEventListener('resize',()=>{const rb=document.getElementById('results');if(rb.style.display==='block')document.getElementById('chart')&&drawChart([],[],[],7);});
+</script>
+</body>
+</html>
