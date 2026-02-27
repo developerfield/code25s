@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Zaman Serisi Tahmin Motoru</title>
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#f4ede0;--paper2:#ede3d0;--paper3:#e5d8c0;--ink:#1e110a;--ink2:#4a2e1a;--ink3:#7a5a3a;--red:#9e2a2b;--blue:#1c3f6e;--green:#1a4a2e;--gold:#8b6914;--rule:#c8b89a;--shadow:rgba(30,17,10,0.18);}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#6b5240 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");font-family:'Courier Prime',monospace;color:var(--ink);min-height:100vh;padding:24px 16px;display:flex;justify-content:center;align-items:flex-start;}
+.notebook{width:100%;max-width:960px;position:relative;display:flex;}
+/* Cilt */
+.spine{width:28px;background:linear-gradient(90deg,#3a2010,#6b4020,#3a2010);border-radius:4px 0 0 4px;box-shadow:inset -3px 0 6px rgba(0,0,0,0.4);flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:20px 0;gap:18px;}
+.ring{width:14px;height:14px;border:2.5px solid #888;border-radius:50%;background:radial-gradient(circle at 35% 35%,#bbb,#666);box-shadow:0 1px 3px rgba(0,0,0,0.5);}
+/* Sayfa */
+.pages{flex:1;background:var(--paper);box-shadow:3px 0 8px rgba(0,0,0,0.3),6px 0 20px rgba(0,0,0,0.2);position:relative;overflow:hidden;}
+.ruled{position:absolute;top:0;left:0;width:100%;height:100%;background-image:repeating-linear-gradient(transparent,transparent 31px,var(--rule) 31px,var(--rule) 32px);opacity:0.35;pointer-events:none;z-index:0;}
+.margin{position:absolute;left:52px;top:0;width:1.5px;height:100%;background:var(--red);opacity:0.5;z-index:1;pointer-events:none;}
+.content{position:relative;z-index:2;padding:18px 24px 28px 64px;}
+/* Header */
+.hdr{border-bottom:2px solid var(--ink);padding-bottom:12px;margin-bottom:18px;position:relative;}
+.hdr-title{font-family:'Special Elite',cursive;font-size:24px;letter-spacing:3px;color:var(--ink);}
+.hdr-sub{font-size:10px;color:var(--ink3);font-style:italic;margin-top:3px;letter-spacing:1px;}
+.stamp{position:absolute;right:0;top:0;border:2.5px solid var(--red);color:var(--red);font-family:'Special Elite',cursive;font-size:9px;letter-spacing:2px;padding:3px 7px;transform:rotate(2.5deg);opacity:0.6;}
+/* Sections */
+.sec{margin-bottom:16px;}
+.sec-lbl{font-family:'Special Elite',cursive;font-size:11px;color:var(--red);letter-spacing:3px;text-transform:uppercase;border-bottom:1px dashed var(--red);padding-bottom:2px;margin-bottom:8px;}
+textarea,input[type=text],input[type=number]{width:100%;background:transparent;border:none;border-bottom:1px solid var(--rule);font-family:'Courier Prime',monospace;font-size:13px;color:var(--ink);padding:5px 3px;outline:none;resize:none;}
+textarea{min-height:64px;line-height:1.7;}
+textarea:focus,input:focus{border-bottom:2px solid var(--blue);background:rgba(28,63,110,0.03);}
+.hint{font-size:9px;color:var(--ink3);font-style:italic;margin-top:2px;}
+/* Grid params */
+.pgrid{display:grid;gap:10px;margin-bottom:10px;}
+.pgrid-3{grid-template-columns:1fr 1fr 1fr;}
+.pgrid-2{grid-template-columns:1fr 1fr;}
+.plabel{font-size:9px;color:var(--ink3);letter-spacing:1px;margin-bottom:2px;font-family:'Special Elite',cursive;}
+input[type=number]{font-size:15px;font-family:'Special Elite',cursive;text-align:center;}
+/* Slider */
+.slider-wrap{margin-bottom:14px;}
+.slider-row{display:flex;align-items:center;gap:10px;}
+input[type=range]{flex:1;-webkit-appearance:none;height:4px;background:linear-gradient(90deg,var(--blue),var(--red));border-radius:2px;outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;background:var(--ink);border-radius:50%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.4);}
+.sim-val{font-family:'Special Elite',cursive;font-size:18px;color:var(--blue);min-width:80px;text-align:right;}
+/* Button */
+.btn{font-family:'Special Elite',cursive;font-size:13px;letter-spacing:2px;padding:10px 24px;background:var(--ink);color:var(--paper);border:none;cursor:pointer;box-shadow:3px 3px 0 var(--ink2);transition:all 0.1s;margin-top:4px;}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink2);}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink2);}
+.btn:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
+/* Progress */
+#progressWrap{display:none;margin-top:10px;}
+.prog-bar-bg{height:8px;background:var(--paper3);border:1px solid var(--rule);border-radius:4px;overflow:hidden;}
+.prog-bar-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--red));width:0%;transition:width 0.1s;border-radius:4px;}
+#progText{font-size:9px;color:var(--ink3);font-style:italic;margin-top:3px;}
+/* Status */
+#status{font-size:11px;font-style:italic;color:var(--ink3);margin-top:6px;min-height:14px;}
+/* Results */
+#results{display:none;margin-top:20px;}
+.res-hdr{font-family:'Special Elite',cursive;font-size:15px;color:var(--blue);border-bottom:1px solid var(--blue);padding-bottom:3px;margin-bottom:12px;}
+/* Info boxes */
+.ibox-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;}
+.ibox{border:1px dashed var(--rule);padding:8px;background:rgba(255,255,255,0.2);}
+.ibox-t{font-size:8px;color:var(--red);letter-spacing:2px;font-family:'Special Elite',cursive;margin-bottom:3px;}
+.ibox-v{font-size:18px;font-family:'Special Elite',cursive;color:var(--ink);}
+.ibox-s{font-size:9px;color:var(--ink3);font-style:italic;}
+/* Model breakdown */
+.model-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;}
+.mbox{border:1px solid var(--rule);padding:8px;background:rgba(255,255,255,0.15);}
+.mbox-t{font-size:9px;color:var(--gold);letter-spacing:2px;font-family:'Special Elite',cursive;margin-bottom:4px;border-bottom:1px dashed var(--gold);padding-bottom:2px;}
+.mbox-entry{font-size:9px;color:var(--ink2);margin:2px 0;display:flex;justify-content:space-between;}
+.mbox-conf{font-size:8px;color:var(--ink3);font-style:italic;margin-top:3px;}
+/* Chart */
+canvas{border:1px solid var(--rule);background:rgba(255,255,255,0.25);display:block;width:100%;}
+/* Prob table */
+.tbl-wrap{overflow-x:auto;margin-bottom:14px;}
+table{border-collapse:collapse;font-size:11px;width:100%;}
+th{font-family:'Special Elite',cursive;font-size:10px;letter-spacing:1px;color:var(--red);border-bottom:2px solid var(--red);padding:5px 7px;text-align:center;background:rgba(158,42,43,0.05);}
+td{padding:4px 7px;border-bottom:1px dashed var(--rule);text-align:center;font-family:'Courier Prime',monospace;font-size:11px;}
+td.dlabel{text-align:left;font-style:italic;color:var(--ink3);font-size:10px;}
+td.best{font-weight:700;color:var(--blue);}
+td.uncertain{color:var(--red);font-style:italic;}
+.barcell{padding:3px 6px;}
+.barwrap{display:flex;align-items:center;gap:4px;}
+.bar{height:9px;border-radius:1px;min-width:1px;}
+.barval{font-size:9px;color:var(--ink3);}
+/* CRF panel */
+.crf-panel{border:1px solid var(--gold);padding:10px;background:rgba(139,105,20,0.05);margin-bottom:14px;}
+.crf-title{font-family:'Special Elite',cursive;font-size:11px;color:var(--gold);letter-spacing:2px;margin-bottom:6px;}
+.crf-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:10px;}
+.crf-step{color:var(--ink3);width:55px;font-style:italic;}
+.crf-chain{flex:1;display:flex;gap:4px;flex-wrap:wrap;}
+.crf-val{background:var(--ink);color:var(--paper);padding:2px 7px;font-family:'Special Elite',cursive;font-size:11px;}
+.crf-arr{color:var(--ink3);}
+.crf-prob{color:var(--blue);font-size:9px;margin-left:2px;}
+/* Sim distribution */
+.dist-title{font-family:'Special Elite',cursive;font-size:10px;color:var(--ink2);margin-bottom:5px;letter-spacing:1px;}
+.dist-grid{display:grid;gap:3px;margin-bottom:12px;}
+.dist-row{display:flex;align-items:center;gap:6px;font-size:10px;}
+.dist-lbl{width:20px;text-align:right;color:var(--ink2);font-family:'Special Elite',cursive;}
+.dist-bar-bg{flex:1;height:12px;background:var(--paper3);border:1px solid var(--rule);overflow:hidden;}
+.dist-bar-fill{height:100%;transition:width 0.4s;}
+.dist-pct{width:45px;font-size:9px;color:var(--ink3);}
+.dist-cnt{width:50px;font-size:9px;color:var(--ink3);text-align:right;}
+/* Footnote */
+.fn{font-size:9px;color:var(--ink3);font-style:italic;border-top:1px solid var(--rule);padding-top:6px;margin-top:8px;line-height:1.6;}
+.pgnum{text-align:center;font-size:10px;color:var(--ink3);font-style:italic;padding:8px 0 4px;border-top:1px solid var(--rule);margin-top:12px;}
+/* Confidence badge */
+.badge{display:inline-block;font-family:'Special Elite',cursive;font-size:9px;letter-spacing:1px;padding:2px 6px;border-radius:1px;margin-left:6px;}
+.badge-high{background:var(--green);color:#fff;}
+.badge-mid{background:var(--gold);color:#fff;}
+.badge-low{background:var(--red);color:#fff;}
+/* Tabs */
+.tabs{display:flex;gap:0;margin-bottom:12px;border-bottom:2px solid var(--ink);}
+.tab{font-family:'Special Elite',cursive;font-size:10px;letter-spacing:1px;padding:5px 12px;cursor:pointer;color:var(--ink3);border:1px solid transparent;border-bottom:none;margin-bottom:-2px;}
+.tab.active{background:var(--paper);color:var(--ink);border-color:var(--ink);font-weight:700;}
+.tabpanel{display:none;}.tabpanel.active{display:block;}
+</style>
+</head>
+<body>
+<div class="notebook">
+<div class="spine" id="spineRings"></div>
+<div class="pages">
+<div class="ruled"></div><div class="margin"></div>
+<div class="content">
+
+<div class="hdr">
+  <div class="stamp">PRO v2</div>
+  <div class="hdr-title">▸ Tahmin Motoru</div>
+  <div class="hdr-sub">Hiyerarşik N-gram · Çok Pencereli NaiveBayes · Çok Ölçekli DTW · CRF Ensemble · Monte Carlo</div>
+</div>
+
+<div class="sec">
+  <div class="sec-lbl">① Değer Kümesi</div>
+  <input type="text" id="iDomain" placeholder="örn: 0,1,2,3,4,5,6,7,8,9,10">
+  <div class="hint">▸ tüm olası değerler virgülle — sırasız olabilir</div>
+</div>
+<div class="sec">
+  <div class="sec-lbl">② Veri Seti</div>
+  <textarea id="iData" placeholder="örn: 2,3,3,4,5,4,3,2,1,2,3,4,5,4,3,2,1,0,1,2,..."></textarea>
+  <div class="hint">▸ virgül / boşluk / yeni satır kabul edilir</div>
+</div>
+
+<div class="sec">
+  <div class="sec-lbl">③ Temel Parametreler</div>
+  <div class="pgrid pgrid-3">
+    <div><div class="plabel">Tahmin Ufku (gün)</div><input type="number" id="iHorizon" value="4" min="1" max="30"></div>
+    <div><div class="plabel">Min DTW Penceresi</div><input type="number" id="iDtwMin" value="5" min="3" max="20"></div>
+    <div><div class="plabel">Max DTW Penceresi</div><input type="number" id="iDtwMax" value="21" min="5" max="60"></div>
+  </div>
+  <div class="pgrid pgrid-3">
+    <div><div class="plabel">Max N-gram N</div><input type="number" id="iNgramMax" value="5" min="2" max="8"></div>
+    <div><div class="plabel">Max NB Penceresi</div><input type="number" id="iNbMax" value="5" min="2" max="10"></div>
+    <div><div class="plabel">CRF Geçiş Ağırlığı</div><input type="number" id="iCrfW" value="0.35" min="0.05" max="0.95" step="0.05"></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-lbl">④ Monte Carlo Simülasyon Sayısı</div>
+  <div class="slider-wrap">
+    <div class="slider-row">
+      <input type="range" id="iSim" min="100" max="500000" step="100" value="10000" oninput="updateSimLabel()">
+      <div class="sim-val" id="simLabel">10,000</div>
+    </div>
+    <div class="hint">▸ simülasyon sayısı — daha fazla = daha kararlı sonuç (yavaş)</div>
+  </div>
+</div>
+
+<button class="btn" id="btnRun" onclick="runAll()">▸ ANALİZ & SİMÜLE ET</button>
+<div id="status"></div>
+<div id="progressWrap">
+  <div class="prog-bar-bg"><div class="prog-bar-fill" id="progFill"></div></div>
+  <div id="progText"></div>
+</div>
+
+<!-- RESULTS -->
+<div id="results">
+  <br>
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('tOverview')">GENEL BAKIŞ</div>
+    <div class="tab" onclick="showTab('tModels')">MODEL DETAY</div>
+    <div class="tab" onclick="showTab('tSim')">SİMÜLASYON</div>
+    <div class="tab" onclick="showTab('tCrf')">CRF & ENSEMBLE</div>
+  </div>
+
+  <!-- TAB 1: Overview -->
+  <div class="tabpanel active" id="tOverview">
+    <div class="ibox-grid" id="iboxes"></div>
+    <div class="res-hdr">Zaman Serisi + Tahmin</div>
+    <canvas id="mainChart" height="170"></canvas>
+    <br>
+    <div class="res-hdr">Final Olasılık Tablosu <span style="font-size:10px;font-family:'Courier Prime';color:var(--ink3)">(CRF Ensemble)</span></div>
+    <div class="tbl-wrap"><table id="probTable"></table></div>
+  </div>
+
+  <!-- TAB 2: Model Detail -->
+  <div class="tabpanel" id="tModels">
+    <div class="res-hdr">N-gram Hiyerarşik — Varyasyon Detayları</div>
+    <div id="ngramDetail"></div>
+    <div class="res-hdr" style="margin-top:14px">NaiveBayes Çok Pencereli — Varyasyon Detayları</div>
+    <div id="nbDetail"></div>
+    <div class="res-hdr" style="margin-top:14px">DTW Çok Ölçekli — Varyasyon Detayları</div>
+    <div id="dtwDetail"></div>
+  </div>
+
+  <!-- TAB 3: Simulation -->
+  <div class="tabpanel" id="tSim">
+    <div class="res-hdr">Monte Carlo Dağılımı</div>
+    <div id="simDetail"></div>
+    <canvas id="simChart" height="180"></canvas>
+  </div>
+
+  <!-- TAB 4: CRF -->
+  <div class="tabpanel" id="tCrf">
+    <div class="res-hdr">CRF Geçiş Zinciri & Ensemble Ağırlıkları</div>
+    <div id="crfDetail"></div>
+    <div id="weightDetail"></div>
+  </div>
+
+  <div class="fn" id="footnote"></div>
+  <div class="pgnum">— <span id="pgnum">1</span> —</div>
+</div><!-- /results -->
+
+</div><!-- /content -->
+</div><!-- /pages -->
+</div><!-- /notebook -->
+
+<script>
+// ─── Spiral oluştur ─────────────────────────────────────────────────────────
+(()=>{const s=document.getElementById('spineRings');for(let i=0;i<60;i++){const r=document.createElement('div');r.className='ring';s.appendChild(r);}})();
+
+function showTab(id){document.querySelectorAll('.tab').forEach((t,i)=>{const panels=['tOverview','tModels','tSim','tCrf'];t.classList.toggle('active',panels[i]===id);});document.querySelectorAll('.tabpanel').forEach(p=>p.classList.toggle('active',p.id===id));}
+function updateSimLabel(){const v=parseInt(document.getElementById('iSim').value);document.getElementById('simLabel').textContent=v.toLocaleString('tr-TR');}
+function setSt(m){document.getElementById('status').textContent=m;}
+function setProgress(pct,txt){document.getElementById('progFill').style.width=pct+'%';document.getElementById('progText').textContent=txt;}
+
+// ─── Veri işleme ─────────────────────────────────────────────────────────────
+const parseData=raw=>raw.split(/[\s,;|\n]+/).map(s=>s.trim()).filter(s=>s.length>0).map(Number).filter(n=>!isNaN(n));
+const parseDomain=raw=>[...new Set(raw.split(/[\s,;]+/).map(s=>s.trim()).filter(Boolean).map(Number).filter(n=>!isNaN(n)))].sort((a,b)=>a-b);
+const snap=(v,domain)=>domain.reduce((p,c)=>Math.abs(c-v)<Math.abs(p-v)?c:p);
+
+// ─── DTW mesafesi (sakura band ile hızlandırılmış) ──────────────────────────
+function dtw(a,b,band=Infinity){
+  const n=a.length,m=b.length;
+  const INF=1e18;
+  const dp=Array.from({length:n+1},()=>new Float64Array(m+1).fill(INF));
+  dp[0][0]=0;
+  for(let i=1;i<=n;i++)for(let j=Math.max(1,i-band);j<=Math.min(m,i+band);j++){
+    const cost=(a[i-1]-b[j-1])**2;
+    dp[i][j]=cost+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  }
+  return Math.sqrt(dp[n][m]);
+}
+
+// ─── HİYERARŞİK N-GRAM ──────────────────────────────────────────────────────
+// Tüm n değerleri için (1..maxN) geçiş tablolarını hesapla
+// Her n için olasılık, backoff zinciriyle: büyük n'den küçüğe in
+function buildNgramTables(data,domain,maxN){
+  const tables={};
+  for(let n=1;n<=maxN;n++){
+    tables[n]={};
+    for(let i=0;i<data.length-n;i++){
+      const key=data.slice(i,i+n).join(',');
+      if(!tables[n][key])tables[n][key]={};
+      const nxt=snap(data[i+n],domain);
+      tables[n][key][nxt]=(tables[n][key][nxt]||0)+1;
+    }
+  }
+  return tables;
+}
+function ngramPredict(tables,data,domain,maxN,horizon){
+  // Her adım için: en uzun n'den başla, eşleşme yoksa düş
+  const results=[];
+  let context=[...data];
+  for(let h=0;h<horizon;h++){
+    const stepDist={};domain.forEach(v=>stepDist[v]=0);
+    let found=false;
+    for(let n=Math.min(maxN,context.length);n>=1;n--){
+      const key=context.slice(-n).join(',');
+      if(tables[n]&&tables[n][key]){
+        const counts=tables[n][key];
+        const total=Object.values(counts).reduce((a,b)=>a+b,0)+domain.length; // Laplace
+        domain.forEach(v=>stepDist[v]=((counts[v]||0)+1)/total*100);
+        found=true;break;
+      }
+    }
+    if(!found)domain.forEach(v=>stepDist[v]=100/domain.length);
+    results.push({dist:stepDist,confidence:found?'match':'uniform'});
+    // Bir sonraki adım için en olası değeri context'e ekle
+    const best=domain.reduce((b,v)=>stepDist[v]>stepDist[b]?v:b,domain[0]);
+    context=[...context,best];
+  }
+  return results;
+}
+// Tüm N varyasyonları için ayrı ayrı tahmin üret ve ağırlıkla
+function ngramHierarchicalAll(data,domain,maxN,horizon){
+  const tables=buildNgramTables(data,domain,maxN);
+  const allPreds=[];
+  // Her n için ayrı tahmin
+  for(let n=1;n<=maxN;n++){
+    const tSingle={};for(let k=1;k<=n;k++)tSingle[k]=tables[k];
+    allPreds.push({n,preds:ngramPredict(tSingle,data,domain,n,horizon)});
+  }
+  // Ağırlıklar: büyük n daha özgün (eğer eşleşme varsa daha iyi), ama veri azsa güven düşer
+  // Coverage = tablodaki toplam kayıt / olası kombinasyonlar
+  const weights=allPreds.map(({n})=>{
+    let matchCount=0;
+    if(!tables[n])return 0.1;
+    for(let i=0;i<data.length-n;i++){const key=data.slice(i,i+n).join(',');if(tables[n][key])matchCount++;}
+    const coverage=matchCount/Math.max(1,data.length-n);
+    return Math.pow(n,0.5)*coverage; // büyük n ama düşük coverage cezalanır
+  });
+  const wSum=weights.reduce((a,b)=>a+b,0)||1;
+  // Ensemble
+  const final=Array.from({length:horizon},(_,h)=>{
+    const d={};domain.forEach(v=>d[v]=0);
+    allPreds.forEach(({preds},mi)=>domain.forEach(v=>d[v]+=(preds[h].dist[v]||0)*weights[mi]/wSum));
+    return d;
+  });
+  return{final,allPreds,weights:weights.map(w=>w/wSum),tables};
+}
+
+// ─── ÇOK PENCERELİ NAİVE BAYES ──────────────────────────────────────────────
+// Her pencere boyutu için bağımsız NB modeli
+// NB: P(sonraki | özellikler) = ∏ P(özellik_i | sınıf) * P(sınıf)
+function nbSingle(data,domain,windowSize,horizon){
+  // Her pencere-değer çifti için emisyon sayaçları
+  const priorCounts={};domain.forEach(v=>priorCounts[v]=1);
+  const emitCounts={};// emitCounts[hedef][feature_index][feature_value] = count
+  domain.forEach(v=>{emitCounts[v]={};for(let f=0;f<windowSize;f++){emitCounts[v][f]={};domain.forEach(d=>emitCounts[v][f][d]=1);}});
+  let priorTotal=domain.length;
+  const emitTotal={};domain.forEach(v=>emitTotal[v]={});
+  for(let f=0;f<windowSize;f++){domain.forEach(v=>emitTotal[v][f]=domain.length);}
+
+  for(let i=windowSize;i<data.length;i++){
+    const target=snap(data[i],domain);
+    priorCounts[target]++;priorTotal++;
+    for(let f=0;f<windowSize;f++){
+      const feat=snap(data[i-windowSize+f],domain);
+      emitCounts[target][f][feat]++;emitTotal[target][f]++;
+    }
+  }
+  const results=[];
+  let context=[...data];
+  for(let h=0;h<horizon;h++){
+    const features=context.slice(-windowSize).map(v=>snap(v,domain));
+    const dist={};
+    domain.forEach(v=>{
+      let logP=Math.log(priorCounts[v]/priorTotal);
+      for(let f=0;f<Math.min(windowSize,features.length);f++)logP+=Math.log(emitCounts[v][f][features[f]]/emitTotal[v][f]);
+      dist[v]=logP;
+    });
+    // Softmax
+    const maxL=Math.max(...Object.values(dist));
+    const exps={};let sumE=0;domain.forEach(v=>{exps[v]=Math.exp(dist[v]-maxL);sumE+=exps[v];});
+    const normalized={};domain.forEach(v=>normalized[v]=exps[v]/sumE*100);
+    results.push(normalized);
+    const best=domain.reduce((b,v)=>normalized[v]>normalized[b]?v:b,domain[0]);
+    context=[...context,best];
+  }
+  return results;
+}
+function nbHierarchicalAll(data,domain,maxWindow,horizon){
+  const allPreds=[];
+  for(let w=2;w<=Math.min(maxWindow,Math.floor(data.length/4));w++){
+    allPreds.push({w,preds:nbSingle(data,domain,w,horizon)});
+  }
+  // Ağırlık: orta pencereler genellikle daha iyi (2 çok kısa, çok büyük overfit)
+  // optimal pencere ≈ sqrt(data.length)/2 civarı
+  const optimal=Math.sqrt(data.length)/2;
+  const weights=allPreds.map(({w})=>Math.exp(-0.15*Math.abs(w-optimal)));
+  const wSum=weights.reduce((a,b)=>a+b,0)||1;
+  const final=Array.from({length:horizon},(_,h)=>{
+    const d={};domain.forEach(v=>d[v]=0);
+    allPreds.forEach(({preds},mi)=>domain.forEach(v=>d[v]+=(preds[h][v]||0)*weights[mi]/wSum));
+    return d;
+  });
+  return{final,allPreds,weights:weights.map(w=>w/wSum)};
+}
+
+// ─── ÇOK ÖLÇEKLİ DTW ────────────────────────────────────────────────────────
+// Farklı sorgu penceresi uzunlukları + adaptif K
+function dtwSingle(data,domain,queryLen,k,horizon){
+  const query=data.slice(-queryLen);
+  const candidates=[];
+  for(let i=0;i<=data.length-queryLen-1;i++){
+    const seg=data.slice(i,i+queryLen);
+    // Sakura band = %20 pencere genişliği
+    const d=dtw(query,seg,Math.ceil(queryLen*0.2));
+    const future=data.slice(i+queryLen,i+queryLen+horizon);
+    if(future.length>0)candidates.push({d,future,start:i});
+  }
+  candidates.sort((a,b)=>a.d-b.d);
+  const actualK=Math.min(k,candidates.length);
+  if(actualK===0)return Array.from({length:horizon},()=>{const d={};domain.forEach(v=>d[v]=100/domain.length);return d;});
+  const neighbors=candidates.slice(0,actualK);
+  // Mesafe bazlı ağırlık: Gaussian kernel
+  const sigma=neighbors[Math.floor(actualK/2)]?.d||1;
+  return Array.from({length:horizon},(_,h)=>{
+    const counts={};domain.forEach(v=>counts[v]=1e-9); // pseudocount
+    let total=domain.length*1e-9;
+    neighbors.forEach(nb=>{
+      if(nb.future[h]!==undefined){
+        const v=snap(nb.future[h],domain);
+        const w=Math.exp(-nb.d**2/(2*sigma**2+1e-9));
+        counts[v]+=w;total+=w;
+      }
+    });
+    const dist={};domain.forEach(v=>dist[v]=counts[v]/total*100);
+    return dist;
+  });
+}
+function dtwMultiScaleAll(data,domain,minW,maxW,horizon){
+  const allPreds=[];
+  // Pencere adımı: doğrusal değil, logaritmik
+  const windows=[];
+  for(let w=minW;w<=Math.min(maxW,data.length-horizon-2);w+=Math.max(1,Math.floor(w*0.3))){windows.push(w);}
+  if(windows.length===0)windows.push(minW);
+  windows.forEach(w=>{
+    // Her pencere için adaptif K: pencere büyükse daha az komşu (az veri)
+    const k=Math.max(1,Math.min(7,Math.floor((data.length-w)/10)));
+    allPreds.push({w,k,preds:dtwSingle(data,domain,w,k,horizon)});
+  });
+  // Ağırlık: en iyi eşleşmeyi bulan pencere (minimum DTW mesafesi) ağır basar
+  // Her pencere için en iyi komşunun mesafesini sakla
+  const weights=allPreds.map(({w})=>{
+    const query=data.slice(-w);
+    let best=Infinity;
+    for(let i=0;i<=data.length-w-1;i++){const d=dtw(query,data.slice(i,i+w),Math.ceil(w*0.2));if(d<best)best=d;}
+    return best===Infinity?0:1/(best+1e-9);
+  });
+  const wSum=weights.reduce((a,b)=>a+b,0)||1;
+  const final=Array.from({length:horizon},(_,h)=>{
+    const d={};domain.forEach(v=>d[v]=0);
+    allPreds.forEach(({preds},mi)=>domain.forEach(v=>d[v]+=(preds[h][v]||0)*weights[mi]/wSum));
+    return d;
+  });
+  return{final,allPreds,weights:weights.map(w=>w/wSum),windows};
+}
+
+// ─── MODEL AĞIRLIĞI: Çapraz doğrulama taklidi ───────────────────────────────
+// Son %20 veriyi "test" say, her modelin doğruluğunu ölç
+function estimateModelAccuracy(data,domain,maxN,maxNbW,minDtw,maxDtw,horizon){
+  const testSize=Math.max(horizon+2,Math.floor(data.length*0.15));
+  if(data.length<testSize+10)return{ng:1,nb:1,dtw:1};
+  const trainData=data.slice(0,-testSize);
+  const testData=data.slice(-testSize);
+  let ngScore=0,nbScore=0,dtwScore=0,n=0;
+  for(let i=0;i<testSize-horizon;i++){
+    const ctx=[...trainData,...testData.slice(0,i)];
+    if(ctx.length<maxN+1)continue;
+    // Sadece 1 adım ilerisi için hızlı test
+    const actual=snap(testData[i],domain);
+    // ng
+    const ngTbls=buildNgramTables(ctx,domain,Math.min(maxN,ctx.length-1));
+    const ngP=ngramPredict(ngTbls,ctx,domain,Math.min(maxN,ctx.length-1),1);
+    const ngBest=domain.reduce((b,v)=>ngP[0].dist[v]>ngP[0].dist[b]?v:b,domain[0]);
+    if(ngBest===actual)ngScore++;
+    // nb
+    const nbW=Math.min(maxNbW,Math.floor(ctx.length/4));
+    const nbP=nbSingle(ctx,domain,nbW,1);
+    const nbBest=domain.reduce((b,v)=>nbP[0][v]>nbP[0][b]?v:b,domain[0]);
+    if(nbBest===actual)nbScore++;
+    // dtw (sadece bir pencere, hızlı)
+    const dw=Math.min(minDtw,ctx.length-2);
+    const dtwP=dtwSingle(ctx,domain,dw,3,1);
+    const dtwBest=domain.reduce((b,v)=>dtwP[0][v]>dtwP[0][b]?v:b,domain[0]);
+    if(dtwBest===actual)dtwScore++;
+    n++;
+  }
+  if(n===0)return{ng:1,nb:1,dtw:1};
+  return{ng:ngScore/n+0.01,nb:nbScore/n+0.01,dtw:dtwScore/n+0.01};
+}
+
+// ─── CRF (basit lineer zincir, Viterbi decode) ───────────────────────────────
+// Unary potansiyeller: her model ensemble'ın olasılıkları
+// Pairwise potansiyeller: geçmiş veriden öğrenilen geçiş matrisi
+function buildTransitionMatrix(data,domain){
+  const T={};domain.forEach(a=>{T[a]={};domain.forEach(b=>T[a][b]=1);});// Laplace
+  for(let i=0;i<data.length-1;i++){const a=snap(data[i],domain),b=snap(data[i+1],domain);T[a][b]++;}
+  domain.forEach(a=>{const s=Object.values(T[a]).reduce((x,y)=>x+y,0);domain.forEach(b=>T[a][b]/=s);});
+  return T;
+}
+function crfViterbi(unaryProbs,transMatrix,domain,crfWeight){
+  // unaryProbs: [{v:prob,...}, ...] horizon uzunluğunda
+  const H=unaryProbs.length;
+  const viterbi=Array.from({length:H},()=>({}));
+  const backtrack=Array.from({length:H},()=>({}));
+  // Init
+  domain.forEach(v=>viterbi[0][v]=Math.log(unaryProbs[0][v]/100+1e-12));
+  // Forward
+  for(let h=1;h<H;h++){
+    domain.forEach(v=>{
+      let best=-Infinity,bestPrev=domain[0];
+      domain.forEach(prev=>{
+        const score=viterbi[h-1][prev]+(crfWeight*Math.log(transMatrix[prev][v]+1e-12));
+        if(score>best){best=score;bestPrev=prev;}
+      });
+      viterbi[h][v]=best+(1-crfWeight)*Math.log(unaryProbs[h][v]/100+1e-12);
+      backtrack[h][v]=bestPrev;
+    });
+  }
+  // Backtrack
+  const seq=[];
+  let cur=domain.reduce((b,v)=>viterbi[H-1][v]>viterbi[H-1][b]?v:b,domain[0]);
+  seq[H-1]=cur;
+  for(let h=H-1;h>0;h--){cur=backtrack[h][cur];seq[h-1]=cur;}
+  // Marginal olasılıklar (Viterbi path üzerinden değil, unary+pairwise normalize)
+  const marginals=unaryProbs.map((up,h)=>{
+    if(h===0)return up;
+    const d={};domain.forEach(v=>{
+      const trans=transMatrix[seq[h-1]][v];
+      d[v]=(up[v]/100)*Math.pow(trans,crfWeight);
+    });
+    const s=Object.values(d).reduce((a,b)=>a+b,0)||1;
+    const r={};domain.forEach(v=>r[v]=d[v]/s*100);return r;
+  });
+  return{seq,marginals};
+}
+
+// ─── MONTE CARLO SİMÜLASYON ──────────────────────────────────────────────────
+// finalProbs'dan örnekleme yaparak N simülasyon üret
+// Her simülasyon: olasılık dağılımından her adım için değer seç
+function monteCarlo(finalProbs,domain,numSims){
+  // Her adım için sayaçlar
+  const simCounts=Array.from({length:finalProbs.length},()=>{const c={};domain.forEach(v=>c[v]=0);return c;});
+  const simPaths=[];// sadece ilk 1000'i sakla gösterim için
+  for(let s=0;s<numSims;s++){
+    const path=finalProbs.map(dist=>{
+      const r=Math.random()*100;let cum=0;
+      for(const v of domain){cum+=dist[v];if(r<cum)return v;}
+      return domain[domain.length-1];
+    });
+    path.forEach((v,h)=>simCounts[h][v]++);
+    if(s<1000)simPaths.push(path);
+  }
+  // Normalize
+  const simProbs=simCounts.map(c=>{const d={};domain.forEach(v=>d[v]=c[v]/numSims*100);return d;});
+  return{simProbs,simPaths,simCounts};
+}
+
+// ─── GENEL ENSEMBLE ─────────────────────────────────────────────────────────
+function weightedEnsemble(predsList,weights,domain,horizon){
+  const wSum=weights.reduce((a,b)=>a+b,0)||1;
+  return Array.from({length:horizon},(_,h)=>{
+    const d={};domain.forEach(v=>d[v]=0);
+    predsList.forEach((preds,mi)=>domain.forEach(v=>d[v]+=(preds[h][v]||0)*weights[mi]/wSum));
+    return d;
+  });
+}
+
+// ─── CANVAS GRAFIK ───────────────────────────────────────────────────────────
+function drawMainChart(canvas,data,domain,futureBest,simPaths){
+  const W=canvas.offsetWidth||800,H=170;canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  const PL=32,PR=16,PT=14,PB=22;
+  const dw=W-PL-PR,dh=H-PT-PB;
+  const minV=domain[0],maxV=domain[domain.length-1],rng=maxV-minV||1;
+  const showHist=data.slice(-Math.min(data.length,50));
+  const total=showHist.length+futureBest.length;
+  const xp=(i)=>PL+i*(dw/(total-1||1));
+  const yp=(v)=>PT+dh-((v-minV)/rng)*dh;
+  ctx.clearRect(0,0,W,H);
+  // Grid lines
+  domain.forEach(v=>{ctx.beginPath();ctx.strokeStyle='rgba(200,184,154,0.35)';ctx.setLineDash([2,4]);ctx.moveTo(PL,yp(v));ctx.lineTo(W-PR,yp(v));ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='rgba(74,46,26,0.5)';ctx.font='8px Courier Prime';ctx.fillText(v,2,yp(v)+3);});
+  // Sim paths (faint)
+  simPaths.slice(0,200).forEach(path=>{
+    ctx.beginPath();ctx.strokeStyle='rgba(28,63,110,0.04)';ctx.lineWidth=1;ctx.setLineDash([]);
+    const joinX=xp(showHist.length-1),joinY=yp(showHist[showHist.length-1]);
+    ctx.moveTo(joinX,joinY);
+    path.forEach((v,i)=>ctx.lineTo(xp(showHist.length+i),yp(v)));
+    ctx.stroke();
+  });
+  // History line
+  ctx.beginPath();ctx.strokeStyle='#1c3f6e';ctx.lineWidth=1.5;ctx.setLineDash([]);
+  showHist.forEach((v,i)=>i===0?ctx.moveTo(xp(i),yp(v)):ctx.lineTo(xp(i),yp(v)));
+  ctx.stroke();
+  showHist.forEach((v,i)=>{ctx.beginPath();ctx.fillStyle='#1c3f6e';ctx.arc(xp(i),yp(v),2,0,Math.PI*2);ctx.fill();});
+  // Future best
+  if(futureBest.length>0){
+    ctx.beginPath();ctx.strokeStyle='#9e2a2b';ctx.lineWidth=2;ctx.setLineDash([5,3]);
+    ctx.moveTo(xp(showHist.length-1),yp(showHist[showHist.length-1]));
+    futureBest.forEach((v,i)=>ctx.lineTo(xp(showHist.length+i),yp(v)));
+    ctx.stroke();ctx.setLineDash([]);
+    futureBest.forEach((v,i)=>{ctx.beginPath();ctx.fillStyle='#9e2a2b';ctx.arc(xp(showHist.length+i),yp(v),3.5,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();});
+    ctx.font='bold 9px Special Elite';ctx.fillStyle='#9e2a2b';ctx.fillText('▸ TAHMİN',xp(showHist.length)+4,PT+10);
+  }
+  // Divider
+  ctx.beginPath();ctx.strokeStyle='rgba(158,42,43,0.4)';ctx.setLineDash([2,3]);ctx.moveTo(xp(showHist.length-1),PT);ctx.lineTo(xp(showHist.length-1),H-PB);ctx.stroke();ctx.setLineDash([]);
+}
+function drawSimChart(canvas,simProbs,domain){
+  const W=canvas.offsetWidth||800,H=180;canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  const H_steps=simProbs.length,dLen=domain.length;
+  const PL=32,PR=16,PT=14,PB=24;
+  const dw=W-PL-PR,dh=H-PT-PB;
+  const barW=dw/H_steps;
+  const colors=['#1c3f6e','#9e2a2b','#1a4a2e','#8b6914','#4a1a5c','#1a4a4a','#5c3a1a','#2a4a1a'];
+  ctx.clearRect(0,0,W,H);
+  // Stacked bar per step
+  simProbs.forEach((dist,h)=>{
+    let y=PT+dh;
+    domain.forEach((v,vi)=>{
+      const barH=dist[v]/100*dh;
+      ctx.fillStyle=colors[vi%colors.length];
+      ctx.globalAlpha=0.7;
+      ctx.fillRect(PL+h*barW+2,y-barH,barW-4,barH);
+      ctx.globalAlpha=1;
+      y-=barH;
+    });
+    ctx.fillStyle='rgba(30,17,10,0.6)';ctx.font='9px Courier Prime';
+    ctx.fillText('+'+(h+1),PL+h*barW+barW/2-5,H-6);
+  });
+  // Legend
+  let lx=PL;
+  domain.forEach((v,vi)=>{
+    ctx.fillStyle=colors[vi%colors.length];ctx.globalAlpha=0.7;ctx.fillRect(lx,PT,8,8);ctx.globalAlpha=1;
+    ctx.fillStyle='#1e110a';ctx.font='8px Courier Prime';ctx.fillText(v,lx+10,PT+7);
+    lx+=22;
+  });
+}
+
+// ─── UI YARDIMCILARI ─────────────────────────────────────────────────────────
+function buildInfoBoxes(data,domain,regime,futureBest,numSims){
+  const r=regime;
+  document.getElementById('iboxes').innerHTML=
+    `<div class="ibox"><div class="ibox-t">Veri</div><div class="ibox-v">${data.length}</div><div class="ibox-s">${domain.length} farklı değer</div></div>`+
+    `<div class="ibox"><div class="ibox-t">Rejim</div><div class="ibox-v" style="font-size:12px">${r.regime}</div><div class="ibox-s">ort:${r.mean} std:${r.std}</div></div>`+
+    `<div class="ibox"><div class="ibox-t">Tahmin</div><div class="ibox-v">${futureBest.join('→')}</div><div class="ibox-s">${futureBest.length} adım</div></div>`+
+    `<div class="ibox"><div class="ibox-t">Simülasyon</div><div class="ibox-v">${numSims.toLocaleString('tr-TR')}</div><div class="ibox-s">Monte Carlo</div></div>`;
+}
+function buildProbTable(probs,domain,horizon){
+  const tbl=document.getElementById('probTable');tbl.innerHTML='';
+  const hr=tbl.insertRow();
+  [['Adım','dlabel'],...domain.map(v=>[v,'']),[' En Olası','']].forEach(([txt,cls])=>{const th=document.createElement('th');th.textContent=txt;if(cls)th.className=cls;hr.appendChild(th);});
+  probs.forEach((dist,h)=>{
+    const tr=tbl.insertRow();
+    const tdl=tr.insertCell();tdl.className='dlabel';tdl.textContent='+'+(h+1)+'. gün';
+    let best=domain[0],bestP=0;domain.forEach(v=>{if(dist[v]>bestP){bestP=dist[v];best=v;}});
+    const colors=['#1c3f6e22','#9e2a2b22','#1a4a2e22','#8b691422','#4a1a5c22','#1a4a4a22'];
+    domain.forEach((v,vi)=>{
+      const td=tr.insertCell();td.className='barcell';
+      const pct=dist[v]||0;
+      const wrap=document.createElement('div');wrap.className='barwrap';
+      const bar=document.createElement('div');bar.className='bar';
+      bar.style.width=Math.round(pct*1.4)+'px';bar.style.background=v===best?'#9e2a2b':'#1c3f6e';bar.style.opacity='0.6';
+      const val=document.createElement('span');val.className='barval';val.textContent=pct.toFixed(1)+'%';
+      wrap.appendChild(bar);wrap.appendChild(val);td.appendChild(wrap);
+      if(v===best)td.classList.add('best');
+      if(pct<(100/domain.length)*0.5)td.classList.add('uncertain');
+    });
+    const tb=tr.insertCell();tb.className='best';
+    const conf=bestP>66?'high':bestP>40?'mid':'low';
+    tb.innerHTML=`${best} <span class="badge badge-${conf}">${bestP.toFixed(1)}%</span>`;
+  });
+}
+function buildModelDetail(ngRes,nbRes,dtwRes,domain,horizon){
+  // N-gram detail
+  let html='<div class="model-grid">';
+  ngRes.allPreds.forEach(({n,preds},i)=>{
+    const w=(ngRes.weights[i]*100).toFixed(1);
+    html+=`<div class="mbox"><div class="mbox-t">${n}-GRAM (ağırlık: ${w}%)</div>`;
+    preds.forEach((p,h)=>{
+      const best=domain.reduce((b,v)=>p.dist[v]>p.dist[b]?v:b,domain[0]);
+      html+=`<div class="mbox-entry"><span>+${h+1}. gün</span><span>${best} (${p.dist[best].toFixed(1)}%)</span></div>`;
+    });
+    html+=`<div class="mbox-conf">${preds[0].confidence==='match'?'✓ eşleşme bulundu':'⚠ uniform (eşleşme yok)'}</div></div>`;
+  });
+  html+='</div>';
+  document.getElementById('ngramDetail').innerHTML=html;
+
+  // NB detail
+  html='<div class="model-grid">';
+  nbRes.allPreds.forEach(({w,preds},i)=>{
+    const wt=(nbRes.weights[i]*100).toFixed(1);
+    html+=`<div class="mbox"><div class="mbox-t">PENCERE-${w} (ağırlık: ${wt}%)</div>`;
+    preds.forEach((dist,h)=>{
+      const best=domain.reduce((b,v)=>dist[v]>dist[b]?v:b,domain[0]);
+      html+=`<div class="mbox-entry"><span>+${h+1}. gün</span><span>${best} (${dist[best].toFixed(1)}%)</span></div>`;
+    });
+    html+='</div>';
+  });
+  html+='</div>';
+  document.getElementById('nbDetail').innerHTML=html;
+
+  // DTW detail
+  html='<div class="model-grid">';
+  dtwRes.allPreds.forEach(({w,k,preds},i)=>{
+    const wt=(dtwRes.weights[i]*100).toFixed(1);
+    html+=`<div class="mbox"><div class="mbox-t">W=${w} K=${k} (ağırlık: ${wt}%)</div>`;
+    preds.forEach((dist,h)=>{
+      const best=domain.reduce((b,v)=>dist[v]>dist[b]?v:b,domain[0]);
+      html+=`<div class="mbox-entry"><span>+${h+1}. gün</span><span>${best} (${dist[best].toFixed(1)}%)</span></div>`;
+    });
+    html+='</div>';
+  });
+  html+='</div>';
+  document.getElementById('dtwDetail').innerHTML=html;
+}
+function buildSimDetail(simRes,domain,horizon,numSims){
+  let html='';
+  const colors=['#1c3f6e','#9e2a2b','#1a4a2e','#8b6914','#4a1a5c','#1a4a4a','#5c3a1a','#2a4a1a'];
+  simRes.simProbs.forEach((dist,h)=>{
+    html+=`<div class="dist-title">+${h+1}. GÜN (${numSims.toLocaleString('tr-TR')} simülasyon)</div><div class="dist-grid">`;
+    domain.forEach((v,vi)=>{
+      const pct=dist[v]||0;
+      const cnt=simRes.simCounts[h][v]||0;
+      html+=`<div class="dist-row"><div class="dist-lbl">${v}</div><div class="dist-bar-bg"><div class="dist-bar-fill" style="width:${pct}%;background:${colors[vi%colors.length]};opacity:0.7"></div></div><div class="dist-pct">${pct.toFixed(2)}%</div><div class="dist-cnt">${cnt.toLocaleString('tr-TR')}</div></div>`;
+    });
+    html+='</div>';
+  });
+  document.getElementById('simDetail').innerHTML=html;
+}
+function buildCrfDetail(crfRes,domain,modelAccs,ngW,nbW,dtwW){
+  let html='<div class="crf-panel"><div class="crf-title">▸ Viterbi Zinciri</div>';
+  crfRes.seq.forEach((v,h)=>{
+    const prob=crfRes.marginals[h][v]||0;
+    html+=`<div class="crf-row"><span class="crf-step">+${h+1}. gün</span><div class="crf-chain">`;
+    if(h>0)html+=`<span class="crf-arr">→</span>`;
+    html+=`<span class="crf-val">${v}</span><span class="crf-prob">(${prob.toFixed(1)}%)</span></div></div>`;
+  });
+  html+='</div>';
+  document.getElementById('crfDetail').innerHTML=html;
+
+  const totalAcc=modelAccs.ng+modelAccs.nb+modelAccs.dtw;
+  document.getElementById('weightDetail').innerHTML=
+    `<div class="model-grid"><div class="mbox"><div class="mbox-t">N-GRAM (doğruluk bazlı)</div><div class="mbox-entry"><span>CV Skor</span><span>${(modelAccs.ng*100).toFixed(1)}%</span></div><div class="mbox-entry"><span>Final Ağırlık</span><span>${(ngW*100).toFixed(1)}%</span></div></div>`+
+    `<div class="mbox"><div class="mbox-t">NAIVE BAYES</div><div class="mbox-entry"><span>CV Skor</span><span>${(modelAccs.nb*100).toFixed(1)}%</span></div><div class="mbox-entry"><span>Final Ağırlık</span><span>${(nbW*100).toFixed(1)}%</span></div></div>`+
+    `<div class="mbox"><div class="mbox-t">DTW</div><div class="mbox-entry"><span>CV Skor</span><span>${(modelAccs.dtw*100).toFixed(1)}%</span></div><div class="mbox-entry"><span>Final Ağırlık</span><span>${(dtwW*100).toFixed(1)}%</span></div></div></div>`;
+}
+function detectRegime(data,w){
+  const recent=data.slice(-w);
+  const mean=recent.reduce((a,b)=>a+b,0)/recent.length;
+  const std=Math.sqrt(recent.reduce((s,v)=>s+(v-mean)**2,0)/recent.length);
+  const trend=recent[recent.length-1]-recent[0];
+  let regime='Kararsız';
+  if(std<0.6)regime='Stabil';else if(std>2.5)regime='Kaotik';
+  else if(Math.abs(trend)>2.5)regime=trend>0?'Yükselen':'Düşen';
+  else regime='Osilatör';
+  return{mean:mean.toFixed(2),std:std.toFixed(2),trend:trend.toFixed(2),regime};
+}
+
+// ─── ANA AKIŞ ────────────────────────────────────────────────────────────────
+async function runAll(){
+  const domainRaw=document.getElementById('iDomain').value.trim();
+  const dataRaw=document.getElementById('iData').value.trim();
+  const horizon=parseInt(document.getElementById('iHorizon').value)||4;
+  const dtwMin=parseInt(document.getElementById('iDtwMin').value)||5;
+  const dtwMax=parseInt(document.getElementById('iDtwMax').value)||21;
+  const ngramMax=parseInt(document.getElementById('iNgramMax').value)||5;
+  const nbMax=parseInt(document.getElementById('iNbMax').value)||5;
+  const crfW=parseFloat(document.getElementById('iCrfW').value)||0.35;
+  const numSims=parseInt(document.getElementById('iSim').value)||10000;
+
+  if(!domainRaw||!dataRaw){setSt('⚠ Değer kümesi ve veri seti gerekli.');return;}
+  const domain=parseDomain(domainRaw);const data=parseData(dataRaw);
+  if(domain.length<2){setSt('⚠ En az 2 farklı değer gerekli.');return;}
+  const minRequired=Math.max(dtwMin,ngramMax,nbMax)+horizon+3;
+  if(data.length<minRequired){setSt(`⚠ Yetersiz veri. En az ${minRequired} nokta gerekli.`);return;}
+
+  document.getElementById('btnRun').disabled=true;
+  document.getElementById('progressWrap').style.display='block';
+  document.getElementById('results').style.display='none';
+  setSt('');
+
+  // async ile UI'nin güncellenmesine izin ver
+  await new Promise(r=>setTimeout(r,10));
+
+  try{
+    setProgress(5,'N-gram tabloları oluşturuluyor...');await new Promise(r=>setTimeout(r,0));
+    const ngRes=ngramHierarchicalAll(data,domain,Math.min(ngramMax,Math.floor(data.length/3)),horizon);
+
+    setProgress(20,'NaiveBayes modelleri eğitiliyor...');await new Promise(r=>setTimeout(r,0));
+    const nbRes=nbHierarchicalAll(data,domain,Math.min(nbMax,Math.floor(data.length/5)),horizon);
+
+    setProgress(40,'DTW çok ölçekli analiz...');await new Promise(r=>setTimeout(r,0));
+    const dtwRes=dtwMultiScaleAll(data,domain,dtwMin,Math.min(dtwMax,data.length-horizon-2),horizon);
+
+    setProgress(60,'Çapraz doğrulama & ağırlık hesaplama...');await new Promise(r=>setTimeout(r,0));
+    const modelAccs=estimateModelAccuracy(data,domain,Math.min(ngramMax,3),Math.min(nbMax,4),dtwMin,Math.min(dtwMax,15),1);
+    const accTotal=modelAccs.ng+modelAccs.nb+modelAccs.dtw;
+    const ngW=modelAccs.ng/accTotal,nbW=modelAccs.nb/accTotal,dtwW=modelAccs.dtw/accTotal;
+
+    setProgress(70,'Ensemble birleştiriliyor...');await new Promise(r=>setTimeout(r,0));
+    const ensProbs=weightedEnsemble([ngRes.final,nbRes.final,dtwRes.final],[ngW,nbW,dtwW],domain,horizon);
+
+    setProgress(78,'CRF geçiş zinciri hesaplanıyor...');await new Promise(r=>setTimeout(r,0));
+    const transMatrix=buildTransitionMatrix(data,domain);
+    const crfRes=crfViterbi(ensProbs,transMatrix,domain,crfW);
+
+    setProgress(85,`Monte Carlo simülasyonu başlıyor (${numSims.toLocaleString('tr-TR')} sim)...`);await new Promise(r=>setTimeout(r,0));
+
+    // Monte Carlo: büyük simülasyonları parçalara böl
+    const CHUNK=50000;
+    const allSimCounts=Array.from({length:horizon},()=>{const c={};domain.forEach(v=>c[v]=0);return c;});
+    const allSimPaths=[];
+    let done=0;
+    while(done<numSims){
+      const batch=Math.min(CHUNK,numSims-done);
+      const batchRes=monteCarlo(crfRes.marginals,domain,batch);
+      batchRes.simCounts.forEach((c,h)=>domain.forEach(v=>allSimCounts[h][v]+=c[v]));
+      if(allSimPaths.length<1000)allSimPaths.push(...batchRes.simPaths.slice(0,1000-allSimPaths.length));
+      done+=batch;
+      const pct=85+Math.floor((done/numSims)*12);
+      setProgress(pct,`Simülasyon: ${done.toLocaleString('tr-TR')} / ${numSims.toLocaleString('tr-TR')}`);
+      await new Promise(r=>setTimeout(r,0));
+    }
+    const simProbs=allSimCounts.map(c=>{const d={};domain.forEach(v=>d[v]=c[v]/numSims*100);return d;});
+    const simRes={simProbs,simPaths:allSimPaths,simCounts:allSimCounts};
+
+    setProgress(98,'Görselleştirme...');await new Promise(r=>setTimeout(r,0));
+
+    // Final olasılıklar: CRF marginals + sim ortalaması
+    const finalProbs=simProbs.map((sp,h)=>{
+      const d={};
+      domain.forEach(v=>d[v]=(sp[v]*0.6+crfRes.marginals[h][v]*0.4));
+      const s=Object.values(d).reduce((a,b)=>a+b,0)||1;
+      domain.forEach(v=>d[v]=d[v]/s*100);return d;
+    });
+    const futureBest=finalProbs.map(d=>domain.reduce((b,v)=>d[v]>d[b]?v:b,domain[0]));
+
+    // UI
+    const regime=detectRegime(data,Math.min(14,data.length));
+    document.getElementById('results').style.display='block';
+    buildInfoBoxes(data,domain,regime,futureBest,numSims);
+    buildProbTable(finalProbs,domain,horizon);
+    buildModelDetail(ngRes,nbRes,dtwRes,domain,horizon);
+    buildSimDetail(simRes,domain,horizon,numSims);
+    buildCrfDetail(crfRes,domain,modelAccs,ngW,nbW,dtwW);
+
+    // Grafikler
+    const mc=document.getElementById('mainChart');
+    drawMainChart(mc,data,domain,futureBest,allSimPaths);
+    const sc=document.getElementById('simChart');
+    drawSimChart(sc,simProbs,domain);
+
+    document.getElementById('footnote').innerHTML=
+      `<b>Metodoloji:</b> Hiyerarşik N-gram (1..${Math.min(ngramMax,Math.floor(data.length/3))}, backoff+Laplace) · `+
+      `Çok Pencereli NB (2..${Math.min(nbMax,Math.floor(data.length/5))}, Gaussian ağırlık) · `+
+      `DTW Çok Ölçekli (${dtwMin}..${Math.min(dtwMax,data.length-horizon-2)} gün, Sakura band, adaptif K) · `+
+      `Doğruluk bazlı ensemble (NG:${(ngW*100).toFixed(0)}% NB:${(nbW*100).toFixed(0)}% DTW:${(dtwW*100).toFixed(0)}%) · `+
+      `CRF lineer zincir (Viterbi, λ=${crfW}) · Monte Carlo ${numSims.toLocaleString('tr-TR')} sim · Final = sim×0.6 + CRF×0.4`;
+
+    document.getElementById('pgnum').textContent=Math.floor(Math.random()*8+2);
+    setProgress(100,'✓ Tamamlandı');
+    setSt('✓ Analiz tamamlandı.');
+  }catch(e){setSt('⚠ Hata: '+e.message);console.error(e);}
+  document.getElementById('btnRun').disabled=false;
+}
+
+window.addEventListener('resize',()=>{
+  if(document.getElementById('results').style.display!=='none'){
+    const mc=document.getElementById('mainChart');if(mc.dataset.drawn)drawMainChart(mc,[],[],[],[]);
+  }
+});
+document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='Enter')runAll();});
+</script>
+</body>
+</html>
