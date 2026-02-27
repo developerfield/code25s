@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Veri Paneli</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #0a0b0f;
+            --surface: #12141a;
+            --surface2: #1a1d26;
+            --border: rgba(255,255,255,0.07);
+            --accent: #c8f04a;
+            --accent2: #4af0c8;
+            --text: #e8eaf0;
+            --muted: #5a5f70;
+            --danger: #f04a6a;
+        }
+
+        body {
+            font-family: 'DM Mono', monospace;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 48px 32px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.5;
+        }
+
+        .blob {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(120px);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .blob-1 { width: 400px; height: 400px; background: rgba(200, 240, 74, 0.06); top: -100px; right: -100px; }
+        .blob-2 { width: 350px; height: 350px; background: rgba(74, 240, 200, 0.05); bottom: 100px; left: -80px; }
+
+        .wrapper { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; }
+
+        header { margin-bottom: 48px; animation: fadeUp 0.6s ease both; }
+        .tag {
+            display: inline-block;
+            background: rgba(200, 240, 74, 0.12);
+            color: var(--accent);
+            border: 1px solid rgba(200, 240, 74, 0.25);
+            border-radius: 4px;
+            font-size: 10px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            padding: 3px 10px;
+            margin-bottom: 16px;
+        }
+        h1 { font-family: 'Syne', sans-serif; font-size: clamp(28px, 5vw, 48px); font-weight: 800; color: var(--text); line-height: 1.1; letter-spacing: -0.02em; }
+        h1 span { color: var(--accent); }
+
+        #status-bar { display: flex; align-items: center; gap: 10px; margin-top: 16px; font-size: 12px; color: var(--muted); }
+        .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); transition: background 0.4s; }
+        .dot.live { background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse 2s infinite; }
+        .dot.error { background: var(--danger); }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; animation: fadeUp 0.6s 0.1s ease both; }
+        @media (max-width: 600px) { .stats-row { grid-template-columns: 1fr; } }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px 24px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.3s;
+        }
+        .stat-card:hover { border-color: rgba(255,255,255,0.14); }
+        .stat-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(200,240,74,0.03) 0%, transparent 60%); pointer-events: none; }
+        .stat-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+        .stat-value { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 700; color: var(--text); }
+        .stat-value.accent { color: var(--accent); }
+        .stat-value.accent2 { color: var(--accent2); }
+
+        .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; margin-bottom: 20px; overflow: hidden; animation: fadeUp 0.6s ease both; }
+        .panel:nth-child(1) { animation-delay: 0.15s; }
+        .panel:nth-child(2) { animation-delay: 0.25s; }
+
+        .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+        .panel-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: var(--text); display: flex; align-items: center; gap: 10px; }
+        .panel-title .icon { width: 20px; height: 20px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+        .icon-raw { background: rgba(200, 240, 74, 0.15); color: var(--accent); }
+        .icon-cum { background: rgba(74, 240, 200, 0.15); color: var(--accent2); }
+
+        .copy-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--muted); font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+        .copy-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); border-color: rgba(255,255,255,0.15); }
+        .copy-btn.copied { background: rgba(200,240,74,0.12); color: var(--accent); border-color: rgba(200,240,74,0.25); }
+
+        .panel-body { padding: 24px; max-height: 240px; overflow-y: auto; }
+        .panel-body::-webkit-scrollbar { width: 4px; }
+        .panel-body::-webkit-scrollbar-track { background: transparent; }
+        .panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .values-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+        .value-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 12px; color: var(--text); transition: all 0.2s; cursor: default; }
+        .value-chip:hover { border-color: rgba(200,240,74,0.3); color: var(--accent); background: rgba(200,240,74,0.05); }
+        .value-chip.cum:hover { border-color: rgba(74,240,200,0.3); color: var(--accent2); background: rgba(74,240,200,0.05); }
+
+        .skeleton { display: flex; flex-wrap: wrap; gap: 8px; }
+        .sk-chip { height: 28px; border-radius: 6px; background: linear-gradient(90deg, var(--surface2) 25%, rgba(255,255,255,0.04) 50%, var(--surface2) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        .chart-wrap { padding: 0 24px 24px; }
+        canvas#chart { width: 100%; height: 120px; display: block; }
+
+        footer { margin-top: 40px; text-align: center; font-size: 11px; color: var(--muted); letter-spacing: 0.06em; animation: fadeUp 0.6s 0.35s ease both; }
+
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+
+<div class="wrapper">
+    <header>
+        <div class="tag">Firebase / Firestore</div>
+        <h1>Veri <span>Paneli</span></h1>
+        <div id="status-bar">
+            <div class="dot" id="status-dot"></div>
+            <span id="status-text">Bağlanılıyor...</span>
+        </div>
+    </header>
+
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-label">Toplam Kayıt</div>
+            <div class="stat-value" id="stat-count">—</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Kümülatif Toplam</div>
+            <div class="stat-value accent" id="stat-total">—</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Günlük Ort.</div>
+            <div class="stat-value accent2" id="stat-avg">—</div>
+        </div>
+    </div>
+
+    <div class="panel" style="animation-delay:0.1s">
+        <div class="panel-header">
+            <div class="panel-title">
+                <span class="icon icon-cum">↗</span>
+                Kümülatif Trend
+            </div>
+        </div>
+        <div class="chart-wrap">
+            <canvas id="chart"></canvas>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-title">
+                <span class="icon icon-raw">#</span>
+                Ham Değerler
+            </div>
+            <button class="copy-btn" onclick="copyData('raw')">Kopyala</button>
+        </div>
+        <div class="panel-body" id="raw-values">
+            <div class="skeleton">
+                <div class="sk-chip" style="width:60px"></div>
+                <div class="sk-chip" style="width:75px"></div>
+                <div class="sk-chip" style="width:55px"></div>
+                <div class="sk-chip" style="width:80px"></div>
+                <div class="sk-chip" style="width:65px"></div>
+                <div class="sk-chip" style="width:70px"></div>
+                <div class="sk-chip" style="width:58px"></div>
+                <div class="sk-chip" style="width:90px"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-title">
+                <span class="icon icon-cum">∑</span>
+                Kümülatif Değerler
+            </div>
+            <button class="copy-btn" onclick="copyData('cum')">Kopyala</button>
+        </div>
+        <div class="panel-body" id="cumulative-values">
+            <div class="skeleton">
+                <div class="sk-chip" style="width:72px"></div>
+                <div class="sk-chip" style="width:88px"></div>
+                <div class="sk-chip" style="width:95px"></div>
+                <div class="sk-chip" style="width:105px"></div>
+                <div class="sk-chip" style="width:110px"></div>
+                <div class="sk-chip" style="width:120px"></div>
+            </div>
+        </div>
+    </div>
+
+    <footer>Paralayici · Firebase Firestore · cumulative_daily_data</footer>
+</div>
+
+<script>
+    let rawData = [], cumData = [];
+
+    function setStatus(state, msg) {
+        const dot = document.getElementById('status-dot');
+        const txt = document.getElementById('status-text');
+        dot.className = 'dot ' + state;
+        txt.textContent = msg;
+    }
+
+    function copyData(type) {
+        const arr = type === 'raw' ? rawData : cumData;
+        navigator.clipboard.writeText(arr.join(', '));
+        const btn = document.querySelector(`[onclick="copyData('${type}')"]`);
+        btn.textContent = 'Kopyalandı!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Kopyala'; btn.classList.remove('copied'); }, 2000);
+    }
+
+    function renderChips(containerId, values, type) {
+        const el = document.getElementById(containerId);
+        el.innerHTML = '';
+        const grid = document.createElement('div');
+        grid.className = 'values-grid';
+        values.forEach(v => {
+            const chip = document.createElement('span');
+            chip.className = 'value-chip' + (type === 'cum' ? ' cum' : '');
+            chip.textContent = v;
+            grid.appendChild(chip);
+        });
+        el.appendChild(grid);
+    }
+
+    function drawChart(cumValues) {
+        const canvas = document.getElementById('chart');
+        const dpr = window.devicePixelRatio || 1;
+        const W = canvas.offsetWidth, H = 120;
+        canvas.width = W * dpr;
+        canvas.height = H * dpr;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        if (!cumValues.length) return;
+        const min = Math.min(...cumValues);
+        const max = Math.max(...cumValues);
+        const range = max - min || 1;
+        const pad = { left: 8, right: 8, top: 12, bottom: 12 };
+        const aw = W - pad.left - pad.right;
+        const ah = H - pad.top - pad.bottom;
+
+        const pts = cumValues.map((v, i) => ({
+            x: pad.left + (i / Math.max(cumValues.length - 1, 1)) * aw,
+            y: pad.top + (1 - (v - min) / range) * ah
+        }));
+
+        const grad = ctx.createLinearGradient(0, pad.top, 0, H);
+        grad.addColorStop(0, 'rgba(74,240,200,0.25)');
+        grad.addColorStop(1, 'rgba(74,240,200,0)');
+
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, H);
+        pts.forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.lineTo(pts[pts.length-1].x, H);
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        ctx.beginPath();
+        pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+        ctx.strokeStyle = '#4af0c8';
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+
+        if (pts.length) {
+            const last = pts[pts.length - 1];
+            ctx.beginPath();
+            ctx.arc(last.x, last.y, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#4af0c8';
+            ctx.fill();
+        }
+    }
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",
+        authDomain: "paralayici.firebaseapp.com",
+        projectId: "paralayici",
+        storageBucket: "paralayici.firebasestorage.app",
+        messagingSenderId: "980843550614",
+        appId: "1:980843550614:web:93dd5bda4ddc377b20efb7"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    setStatus('', 'Bağlanılıyor...');
+
+    db.collection("cumulative_daily_data")
+        .orderBy("date", "asc")
+        .get()
+        .then(snapshot => {
+            if (snapshot.empty) {
+                setStatus('error', 'Veri bulunamadı.');
+                return;
+            }
+
+            let sum = 0;
+            snapshot.forEach(doc => {
+                const val = doc.data().value;
+                rawData.push(val);
+                sum += val;
+                cumData.push(parseFloat(sum.toFixed(4)));
+            });
+
+            const avg = rawData.length ? (sum / rawData.length).toFixed(4) : 0;
+
+            document.getElementById('stat-count').textContent = rawData.length;
+            document.getElementById('stat-total').textContent = parseFloat(sum.toFixed(4));
+            document.getElementById('stat-avg').textContent = avg;
+
+            renderChips('raw-values', rawData, 'raw');
+            renderChips('cumulative-values', cumData, 'cum');
+            setTimeout(() => drawChart(cumData), 50);
+
+            setStatus('live', `${rawData.length} kayıt yüklendi`);
+        })
+        .catch(err => {
+            setStatus('error', 'Hata: ' + err.message);
+            document.getElementById('raw-values').innerHTML = `<span style="color:var(--danger);font-size:12px">${err.message}</span>`;
+            document.getElementById('cumulative-values').innerHTML = '';
+        });
+
+    window.addEventListener('resize', () => { if (cumData.length) drawChart(cumData); });
+</script>
+</body>
+</html>
