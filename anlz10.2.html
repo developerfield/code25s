@@ -4,6 +4,8 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Veri Analizi</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
@@ -240,9 +242,6 @@ footer{padding:12px 28px;border-top:1px solid var(--border);font-size:10px;color
 </div>
 
 <!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-
 <script>
 // ══════════════════════════════════════════════════
 // STATE
@@ -251,36 +250,35 @@ let RAW=[], DOMAIN=[], dataReady=false;
 const COLORS=['#4f8eff','#ff6b35','#36d399','#f4c842','#b45eff','#ff4757','#00cec9','#fd79a8'];
 
 // ══════════════════════════════════════════════════
-// FIREBASE — script yüklendikten sonra çalışır
+// FIREBASE — orijinal kodla birebir aynı yapı
 // ══════════════════════════════════════════════════
-window.addEventListener('load', ()=>{
-  setTopBar(10,'Firebase hazırlanıyor...');
-  try{
-    firebase.initializeApp({
-      apiKey:"AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",
-      authDomain:"paralayici.firebaseapp.com",
-      projectId:"paralayici",
-      storageBucket:"paralayici.firebasestorage.app",
-      messagingSenderId:"980843550614",
-      appId:"1:980843550614:web:93dd5bda4ddc377b20efb7"
+const firebaseConfig={
+  apiKey:"AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",
+  authDomain:"paralayici.firebaseapp.com",
+  projectId:"paralayici",
+  storageBucket:"paralayici.firebasestorage.app",
+  messagingSenderId:"980843550614",
+  appId:"1:980843550614:web:93dd5bda4ddc377b20efb7"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore();
+
+db.collection("cumulative_daily_data")
+  .orderBy("date","asc")
+  .get()
+  .then(snapshot=>{
+    if(snapshot.empty){setTopBar(100,'Veri bulunamadı.');return;}
+    RAW=[];
+    snapshot.forEach(doc=>{
+      const val=doc.data().value;
+      if(typeof val==='number')RAW.push(val);
     });
-    const db = firebase.firestore();
-    setTopBar(30,'Veri çekiliyor...');
-    db.collection('cumulative_daily_data').orderBy('date','asc').get()
-      .then(snap=>{
-        setTopBar(70,'İşleniyor...');
-        if(snap.empty){setTopBar(100,'Veri bulunamadı.');return;}
-        RAW=[];
-        snap.forEach(doc=>{const v=doc.data().value;if(typeof v==='number')RAW.push(v);});
-        DOMAIN=[...new Set(RAW.map(v=>Math.round(v*10)/10))].sort((a,b)=>a-b);
-        // Eğer domain çok geniş (float) ise integer'a yuvarlayalım
-        if(DOMAIN.length>20) DOMAIN=[...new Set(RAW.map(v=>Math.round(v)))].sort((a,b)=>a-b);
-        dataReady=true;
-        onDataReady();
-      })
-      .catch(err=>{setTopBar(100,'Firestore hatası: '+err.message);console.error(err);});
-  }catch(e){setTopBar(100,'Firebase hatası: '+e.message);console.error(e);}
-});
+    DOMAIN=[...new Set(RAW.map(v=>Math.round(v*10)/10))].sort((a,b)=>a-b);
+    if(DOMAIN.length>20)DOMAIN=[...new Set(RAW.map(v=>Math.round(v)))].sort((a,b)=>a-b);
+    dataReady=true;
+    onDataReady();
+  })
+  .catch(err=>{setTopBar(100,'Hata: '+err.message);console.error(err);});
 
 function setTopBar(pct, msg){
   document.getElementById('topBarFill').style.width=pct+'%';
