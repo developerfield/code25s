@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Veri Analizi</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#0a0c0f;--bg2:#111318;--bg3:#181c24;--bg4:#1e2330;
+  --border:#252b38;--border2:#2e3647;
+  --text:#c8d0e0;--text2:#7a8499;--text3:#3d4558;
+  --accent:#4f8eff;--accent2:#ff6b35;--accent3:#36d399;--accent4:#f4c842;
+  --red:#ff4757;
+}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;font-size:13px;min-height:100vh;overflow-x:hidden;}
+
+/* ── LOADING ── */
+#loadScreen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s;}
+#loadScreen.hidden{opacity:0;pointer-events:none;}
+.load-title{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--accent);letter-spacing:4px;margin-bottom:24px;}
+.load-bar-bg{width:260px;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;}
+.load-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent3));border-radius:2px;width:0%;transition:width .15s;}
+.load-msg{color:var(--text2);font-size:11px;margin-top:12px;letter-spacing:1px;}
+
+/* ── LAYOUT ── */
+#app{display:none;flex-direction:column;min-height:100vh;}
+header{padding:18px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg2);position:sticky;top:0;z-index:100;}
+.logo{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--text);letter-spacing:2px;}
+.logo span{color:var(--accent);}
+.header-meta{font-size:11px;color:var(--text2);letter-spacing:1px;}
+.header-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent3);margin-right:6px;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;};}
+
+main{flex:1;padding:24px 28px;display:flex;flex-direction:column;gap:20px;}
+
+/* ── CARDS ── */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:4px;overflow:hidden;}
+.card-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;color:var(--text2);text-transform:uppercase;}
+.card-body{padding:16px;}
+
+/* ── STAT GRID ── */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;}
+.stat{background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:14px 16px;}
+.stat-label{font-size:10px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;}
+.stat-val{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--text);}
+.stat-sub{font-size:10px;color:var(--text2);margin-top:3px;}
+.stat.accent-blue .stat-val{color:var(--accent);}
+.stat.accent-orange .stat-val{color:var(--accent2);}
+.stat.accent-green .stat-val{color:var(--accent3);}
+.stat.accent-yellow .stat-val{color:var(--accent4);}
+
+/* ── CANVAS ── */
+canvas{display:block;width:100%;}
+.chart-wrap{position:relative;width:100%;}
+
+/* ── CONTROLS ── */
+.controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.ctrl-group{display:flex;flex-direction:column;gap:4px;}
+.ctrl-label{font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;}
+.slider-row{display:flex;align-items:center;gap:8px;}
+input[type=range]{-webkit-appearance:none;width:160px;height:3px;background:var(--bg4);border-radius:2px;outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg2);}
+.slider-val{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--accent);min-width:72px;}
+input[type=number]{background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:'DM Mono',monospace;font-size:13px;padding:6px 10px;border-radius:3px;width:80px;outline:none;text-align:center;}
+input[type=number]:focus{border-color:var(--accent);}
+
+/* ── BUTTON ── */
+.btn{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;padding:9px 22px;border:none;border-radius:3px;cursor:pointer;transition:all .15s;text-transform:uppercase;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{background:#6fa0ff;}
+.btn-primary:active{transform:scale(.97);}
+.btn-primary:disabled{background:var(--bg4);color:var(--text3);cursor:not-allowed;}
+
+/* ── PROGRESS ── */
+.prog-wrap{display:none;}
+.prog-bg{height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-top:8px;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent3));border-radius:2px;width:0%;transition:width .1s;}
+.prog-text{font-size:10px;color:var(--text2);margin-top:5px;letter-spacing:.5px;}
+
+/* ── PROBABILITY TABLE ── */
+.prob-table{width:100%;border-collapse:collapse;}
+.prob-table th{font-size:10px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;padding:8px 12px;border-bottom:1px solid var(--border);text-align:center;white-space:nowrap;}
+.prob-table th:first-child{text-align:left;}
+.prob-table td{padding:7px 12px;border-bottom:1px solid var(--border);text-align:center;font-size:12px;}
+.prob-table td:first-child{color:var(--text2);text-align:left;font-size:11px;}
+.prob-table tr:last-child td{border-bottom:none;}
+.prob-table .winner{color:var(--accent);font-weight:500;}
+.bar-cell{padding:6px 12px;}
+.mini-bar-wrap{display:flex;align-items:center;gap:6px;}
+.mini-bar-bg{width:80px;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;flex-shrink:0;}
+.mini-bar-fill{height:100%;border-radius:3px;transition:width .3s;}
+.mini-bar-pct{font-size:10px;color:var(--text2);width:38px;text-align:right;}
+
+/* ── MODEL DETAIL ── */
+.model-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px;}
+.mtab{font-size:11px;letter-spacing:1px;padding:8px 16px;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;transition:all .15s;text-transform:uppercase;}
+.mtab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.mtab:hover{color:var(--text);}
+.mtab-panel{display:none;}
+.mtab-panel.active{display:block;}
+
+/* ── MODEL VARIANT GRID ── */
+.variant-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;}
+.variant-card{background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:10px 12px;}
+.variant-title{font-size:10px;color:var(--accent4);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border);}
+.variant-row{display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-top:4px;}
+.variant-row .vval{color:var(--text);}
+.variant-weight{font-size:10px;color:var(--text3);margin-top:5px;}
+.w-bar-bg{height:3px;background:var(--bg4);border-radius:2px;margin-top:3px;overflow:hidden;}
+.w-bar-fill{height:100%;background:var(--accent);border-radius:2px;}
+
+/* ── SIM DISTRIBUTION ── */
+.sim-dist{display:grid;gap:6px;}
+.sim-step-title{font-size:11px;color:var(--text2);letter-spacing:1px;margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid var(--border);}
+.sim-row{display:flex;align-items:center;gap:8px;font-size:11px;}
+.sim-lbl{width:28px;color:var(--text2);text-align:right;flex-shrink:0;}
+.sim-bar-bg{flex:1;height:10px;background:var(--bg4);border-radius:2px;overflow:hidden;}
+.sim-bar-fill{height:100%;border-radius:2px;}
+.sim-pct{width:48px;text-align:right;color:var(--text2);font-size:10px;}
+.sim-cnt{width:52px;text-align:right;color:var(--text3);font-size:10px;}
+
+/* ── CRF CHAIN ── */
+.crf-chain{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:12px 0;}
+.crf-node{background:var(--bg4);border:1px solid var(--border2);padding:6px 14px;border-radius:2px;text-align:center;}
+.crf-node-step{font-size:9px;color:var(--text3);letter-spacing:1px;margin-bottom:2px;}
+.crf-node-val{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--accent);}
+.crf-node-prob{font-size:10px;color:var(--text2);}
+.crf-arrow{color:var(--text3);font-size:18px;}
+.weight-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;}
+.weight-box{background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:10px 14px;flex:1;min-width:120px;}
+.weight-box-title{font-size:10px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;}
+.weight-box-val{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;}
+.weight-box-sub{font-size:10px;color:var(--text2);margin-top:2px;}
+
+/* ── FOOTER ── */
+footer{padding:14px 28px;border-top:1px solid var(--border);font-size:10px;color:var(--text3);letter-spacing:.5px;display:flex;justify-content:space-between;}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loadScreen">
+  <div class="load-title">VERİ ANALİZİ</div>
+  <div class="load-bar-bg"><div class="load-bar-fill" id="loadFill"></div></div>
+  <div class="load-msg" id="loadMsg">Firebase bağlantısı kuruluyor...</div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="logo">VERİ <span>ANALİZİ</span></div>
+    <div class="header-meta"><span class="header-dot"></span><span id="headerMeta">—</span></div>
+  </header>
+
+  <main>
+
+    <!-- STATS -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">Genel Bakış</div></div>
+      <div class="card-body">
+        <div class="stat-grid" id="statGrid"></div>
+      </div>
+    </div>
+
+    <!-- MAIN CHART -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Zaman Serisi</div>
+        <div style="font-size:10px;color:var(--text3)" id="chartMeta"></div>
+      </div>
+      <div class="card-body" style="padding:8px 4px;">
+        <div class="chart-wrap"><canvas id="mainChart" height="200"></canvas></div>
+      </div>
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">Tahmin Parametreleri</div></div>
+      <div class="card-body">
+        <div class="controls">
+          <div class="ctrl-group">
+            <div class="ctrl-label">Tahmin Ufku (gün)</div>
+            <input type="number" id="pHorizon" value="4" min="1" max="30">
+          </div>
+          <div class="ctrl-group">
+            <div class="ctrl-label">DTW Min Pencere</div>
+            <input type="number" id="pDtwMin" value="5" min="3" max="30">
+          </div>
+          <div class="ctrl-group">
+            <div class="ctrl-label">DTW Max Pencere</div>
+            <input type="number" id="pDtwMax" value="20" min="5" max="60">
+          </div>
+          <div class="ctrl-group">
+            <div class="ctrl-label">Max N-gram</div>
+            <input type="number" id="pNgramMax" value="5" min="2" max="8">
+          </div>
+          <div class="ctrl-group">
+            <div class="ctrl-label">Max NB Pencere</div>
+            <input type="number" id="pNbMax" value="5" min="2" max="10">
+          </div>
+          <div class="ctrl-group">
+            <div class="ctrl-label">CRF Ağırlığı</div>
+            <input type="number" id="pCrfW" value="0.35" min="0.05" max="0.95" step="0.05">
+          </div>
+        </div>
+        <div style="margin-top:16px;" class="ctrl-group">
+          <div class="ctrl-label">Monte Carlo Simülasyon Sayısı</div>
+          <div class="slider-row">
+            <input type="range" id="pSim" min="500" max="500000" step="500" value="10000" oninput="updateSimLabel()">
+            <div class="slider-val" id="simLabel">10,000</div>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;align-items:center;gap:12px;">
+          <button class="btn btn-primary" id="btnRun" onclick="runAnalysis()">ANALİZ ET</button>
+          <div style="flex:1;">
+            <div class="prog-wrap" id="progWrap">
+              <div class="prog-bg"><div class="prog-fill" id="progFill"></div></div>
+              <div class="prog-text" id="progText"></div>
+            </div>
+            <div id="statusMsg" style="font-size:11px;color:var(--text2);margin-top:4px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTS (hidden until run) -->
+    <div id="resultsSection" style="display:none;display:flex;flex-direction:column;gap:20px;">
+
+      <!-- FORECAST CHART -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Tahmin Grafiği</div>
+          <div style="display:flex;gap:16px;font-size:10px;color:var(--text3);">
+            <span>─── Geçmiş</span>
+            <span style="color:var(--accent2);">- - - Tahmin</span>
+            <span style="color:var(--accent);opacity:.4;">░ Simülasyon</span>
+          </div>
+        </div>
+        <div class="card-body" style="padding:8px 4px;">
+          <div class="chart-wrap"><canvas id="forecastChart" height="220"></canvas></div>
+        </div>
+      </div>
+
+      <!-- PROB TABLE -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">Olasılık Tablosu</div><div id="tableSubtitle" style="font-size:10px;color:var(--text3);"></div></div>
+        <div class="card-body" style="padding:0;overflow-x:auto;">
+          <table class="prob-table" id="probTable"></table>
+        </div>
+      </div>
+
+      <!-- MODEL DETAIL -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">Model Detayları</div></div>
+        <div class="card-body">
+          <div class="model-tabs">
+            <div class="mtab active" onclick="switchMTab(0)">N-GRAM</div>
+            <div class="mtab" onclick="switchMTab(1)">NAIVE BAYES</div>
+            <div class="mtab" onclick="switchMTab(2)">DTW</div>
+          </div>
+          <div class="mtab-panel active" id="mtp0"></div>
+          <div class="mtab-panel" id="mtp1"></div>
+          <div class="mtab-panel" id="mtp2"></div>
+        </div>
+      </div>
+
+      <!-- SIM + CRF side by side -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Simülasyon Dağılımı</div></div>
+          <div class="card-body"><div id="simDetail"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">CRF Ensemble</div></div>
+          <div class="card-body">
+            <div class="crf-chain" id="crfChain"></div>
+            <div class="weight-row" id="weightRow"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SIM STACKED CHART -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">Simülasyon Dağılım Grafiği</div></div>
+        <div class="card-body" style="padding:8px 4px;">
+          <div class="chart-wrap"><canvas id="simChart" height="180"></canvas></div>
+        </div>
+      </div>
+
+    </div><!-- /resultsSection -->
+  </main>
+
+  <footer>
+    <span id="footerLeft">VERİ ANALİZİ</span>
+    <span id="footerRight"></span>
+  </footer>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// FIREBASE
+// ════════════════════════════════════════════════════════
+const firebaseConfig={apiKey:"AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",authDomain:"paralayici.firebaseapp.com",projectId:"paralayici",storageBucket:"paralayici.firebasestorage.app",messagingSenderId:"980843550614",appId:"1:980843550614:web:93dd5bda4ddc377b20efb7"};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore();
+
+// ════════════════════════════════════════════════════════
+// GLOBALS
+// ════════════════════════════════════════════════════════
+let RAW_DATA=[];
+let DOMAIN=[];
+
+// ════════════════════════════════════════════════════════
+// LOADING
+// ════════════════════════════════════════════════════════
+function setLoad(pct,msg){
+  document.getElementById('loadFill').style.width=pct+'%';
+  document.getElementById('loadMsg').textContent=msg;
+}
+function hideLoad(){
+  const s=document.getElementById('loadScreen');
+  s.classList.add('hidden');
+  setTimeout(()=>s.style.display='none',500);
+}
+
+// ════════════════════════════════════════════════════════
+// FIREBASE FETCH
+// ════════════════════════════════════════════════════════
+async function fetchData(){
+  setLoad(20,'Firestore sorgusu gönderiliyor...');
+  const snap=await db.collection('cumulative_daily_data').orderBy('date','asc').get();
+  setLoad(60,'Veriler işleniyor...');
+  if(snap.empty)throw new Error('Koleksiyonda veri yok.');
+  RAW_DATA=[];
+  snap.forEach(doc=>{const v=doc.data().value;if(typeof v==='number')RAW_DATA.push(v);});
+  if(RAW_DATA.length<5)throw new Error('Yeterli veri yok (min 5).');
+  // Domain: veriden benzersiz değerleri bul, sırala
+  DOMAIN=[...new Set(RAW_DATA.map(v=>Math.round(v)))].sort((a,b)=>a-b);
+  setLoad(80,'Grafikler hazırlanıyor...');
+}
+
+// ════════════════════════════════════════════════════════
+// UTIL
+// ════════════════════════════════════════════════════════
+const snap_v=(v,d)=>d.reduce((p,c)=>Math.abs(c-v)<Math.abs(p-v)?c:p);
+const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
+const std=a=>{const m=mean(a);return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/a.length);};
+const updateSimLabel=()=>document.getElementById('simLabel').textContent=parseInt(document.getElementById('pSim').value).toLocaleString('tr-TR');
+const setProg=(pct,msg)=>{document.getElementById('progFill').style.width=pct+'%';document.getElementById('progText').textContent=msg;};
+const setSt=msg=>document.getElementById('statusMsg').textContent=msg;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function switchMTab(i){
+  document.querySelectorAll('.mtab').forEach((t,j)=>t.classList.toggle('active',j===i));
+  document.querySelectorAll('.mtab-panel').forEach((p,j)=>p.classList.toggle('active',j===i));
+}
+
+// ════════════════════════════════════════════════════════
+// STATS & REGIME
+// ════════════════════════════════════════════════════════
+function calcStats(data){
+  const m=mean(data),s=std(data);
+  const trend=data[data.length-1]-data[0];
+  const w=Math.min(14,data.length);
+  const recent=data.slice(-w);
+  const rs=std(recent);
+  let regime='Kararsız';
+  if(rs<0.6)regime='Stabil';
+  else if(rs>2)regime='Kaotik';
+  else if(Math.abs(trend)>2)regime=trend>0?'Yükselen':'Düşen';
+  else regime='Osilatör';
+  return{mean:m.toFixed(3),std:s.toFixed(3),min:Math.min(...data),max:Math.max(...data),last:data[data.length-1],trend:trend.toFixed(3),regime,count:data.length};
+}
+function buildStatGrid(st){
+  document.getElementById('statGrid').innerHTML=
+    `<div class="stat accent-blue"><div class="stat-label">Veri Sayısı</div><div class="stat-val">${st.count}</div><div class="stat-sub">${DOMAIN.length} farklı değer</div></div>`+
+    `<div class="stat"><div class="stat-label">Son Değer</div><div class="stat-val">${st.last}</div><div class="stat-sub">trend: ${st.trend>0?'+':''}${st.trend}</div></div>`+
+    `<div class="stat accent-green"><div class="stat-label">Ortalama</div><div class="stat-val">${st.mean}</div><div class="stat-sub">std: ${st.std}</div></div>`+
+    `<div class="stat accent-orange"><div class="stat-label">Rejim</div><div class="stat-val" style="font-size:15px">${st.regime}</div><div class="stat-sub">son 14 gün</div></div>`+
+    `<div class="stat"><div class="stat-label">Min / Max</div><div class="stat-val">${st.min} / ${st.max}</div><div class="stat-sub">domain: [${DOMAIN[0]}..${DOMAIN[DOMAIN.length-1]}]</div></div>`;
+}
+
+// ════════════════════════════════════════════════════════
+// DTW
+// ════════════════════════════════════════════════════════
+function dtw(a,b){
+  const n=a.length,m=b.length,band=Math.ceil(Math.max(n,m)*0.2);
+  const INF=1e18;
+  const dp=[];
+  for(let i=0;i<=n;i++){dp[i]=new Float64Array(m+1).fill(INF);}
+  dp[0][0]=0;
+  for(let i=1;i<=n;i++)for(let j=Math.max(1,i-band);j<=Math.min(m,i+band);j++){
+    dp[i][j]=(a[i-1]-b[j-1])**2+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  }
+  return Math.sqrt(dp[n][m]);
+}
+
+// ════════════════════════════════════════════════════════
+// MODEL: HİYERARŞİK N-GRAM
+// ════════════════════════════════════════════════════════
+function buildNgramTables(data,domain,maxN){
+  const tables={};
+  for(let n=1;n<=maxN;n++){
+    tables[n]={};
+    for(let i=0;i<data.length-n;i++){
+      const key=data.slice(i,i+n).join(',');
+      if(!tables[n][key])tables[n][key]={};
+      const nxt=snap_v(data[i+n],domain);
+      tables[n][key][nxt]=(tables[n][key][nxt]||0)+1;
+    }
+  }
+  return tables;
+}
+function ngramPredict(tables,ctxData,domain,maxN,horizon){
+  const results=[];let ctx=[...ctxData];
+  for(let h=0;h<horizon;h++){
+    const dist={};domain.forEach(v=>dist[v]=0);
+    let found=false,foundN=0;
+    for(let n=Math.min(maxN,ctx.length);n>=1;n--){
+      const key=ctx.slice(-n).join(',');
+      if(tables[n]&&tables[n][key]){
+        const counts=tables[n][key];
+        const total=Object.values(counts).reduce((a,b)=>a+b,0)+domain.length;
+        domain.forEach(v=>dist[v]=((counts[v]||0)+1)/total*100);
+        found=true;foundN=n;break;
+      }
+    }
+    if(!found)domain.forEach(v=>dist[v]=100/domain.length);
+    results.push({dist,found,foundN});
+    const best=domain.reduce((b,v)=>dist[v]>dist[b]?v:b,domain[0]);
+    ctx=[...ctx,best];
+  }
+  return results;
+}
+function ngramAll(data,domain,maxN,horizon){
+  const tables=buildNgramTables(data,domain,maxN);
+  const allPreds=[];
+  for(let n=1;n<=maxN;n++){
+    const t={};for(let k=1;k<=n;k++)t[k]=tables[k];
+    allPreds.push({n,preds:ngramPredict(t,data,domain,n,horizon)});
+  }
+  const weights=allPreds.map(({n})=>{
+    if(!tables[n])return 0.01;
+    let hits=0;
+    for(let i=0;i<data.length-n;i++){if(tables[n][data.slice(i,i+n).join(',')])hits++;}
+    const cov=hits/Math.max(1,data.length-n);
+    return Math.sqrt(n)*cov;
+  });
+  const wSum=weights.reduce((a,b)=>a+b,0)||1;
+  const final=Array.from({length:horizon},(_,h)=>{
+    const d={};domain.forEach(v=>d[v]=0);
+    allPreds.forEach(({preds},i)=>domain.forEach(v=>d[v]+=(preds[h].dist[v]||0)*weights[i]/wSum));
+    return d;
+  });
+  return{final,allPreds,weights:weights.map(w=>w/wSum)};
+}
+
+// ════════════════════════════════════════════════════════
+// MODEL: ÇOK PENCERELİ NAIVE BAYES
+// ════════════════════════════════════════════════════════
+function nbSingle(data,domain,win,horizon){
+  const prior={};domain.forEach(v=>prior[v]=1);
+  const emit={};
+  domain.forEach(v=>{emit[v]={};for(let f=0;f<win;f++){emit[v][f]={};domain.forEach(d=>emit[v][f][d]=1);}});
+  const emitTot={};domain.forEach(v=>{emitTot[v]={};for(let f=0;f<win;f++)emitTot[v][f]=domain.length;});
+  let priorTot=domain.length;
+  for(let i=win;i<data.length;i++){
+    const tgt=snap_v(data[i],domain);
+    prior[tgt]++;priorTot++;
+    for(let f=0;f<win;f++){const feat=snap_v(data[i-win+f],domain);emit[tgt][f][feat]++;emitTot[tgt][f]++;}
+  }
+  const results=[];let ctx=[...data];
+  for(let h=0;h<horizon;h++){
+    const feats=ctx.slice(-win).map(v=>snap_v(v,domain));
+    const logScores={};
+    domain.forEach(v=>{
+      let lp=Math.log(prior[v]/priorTot);
+      for(let f=0;f<Math.min(win,feats.length);f++)lp+=Math.log(emit[v][f][feats[f]]/emitTot[v][f]);
+      logScores[v]=lp;
+    });
+    const maxL=Math.max(...Object.values(logScores));
+    const exps={};let sumE=0;
+    domain.forEach(v=>{exps[v]=Math.exp(logScores[v]-maxL);sumE+=exps[v];});
+    const dist={};domain.forEach(v=>dist[v]=exps[v]/sumE*100);
+    results.push(dist);
+    const best=domain.reduce((b,v)=>dist[v]>dist[b]?v:b,domain[0]);
+    ctx=[...ctx,best];
+  }
+  return results;
+}
+function nbAll(data,domain,maxWin,horizon){
+  const allPreds=[];
+  const opt=Math.sqrt(data.length)/2;
+  for(let w=2;w<=Math.min(maxWin,Math.floor(data.length/4));w++){
+    allPreds.push({w,preds:nbSingle(data,domain,w,horizon)});
+  }
+  const weights=allPreds.map(({w})=>Math.exp(-0.12*Math.abs(w-opt)));
+  const wSum=weights.reduce((a,b)=>a+b,0)||1;
+  const final=Array.from({length:horizon},(_,h)=>{
+    const d={};domain.forEach(v=>d[v]=0);
+    allPreds.forEach(({preds},i)=>domain.forEach(v=>d[v]+=(preds[h][v]||0)*weights[i]/wSum));
+    return d;
+  });
+  return{final,allPreds,weights:weights.map(w=>w/wSum)};
+}
+
+// ════════════════════════════════════════════════════════
+// MODEL: ÇOK ÖLÇEKLİ DTW
+// ════════════════════════════════════════════════════════
+function dtwSingle(data,domain,queryLen,k,horizon){
+  const query=data.slice(-queryLen);
+  const cands=[];
+  for(let i=0;i<=data.length-queryLen-1;i++){
+    const seg=data.slice(i,i+queryLen);
+    const d=dtw(query,seg);
+    const future=data.slice(i+queryLen,i+queryLen+horizon);
+    if(future.length>0)cands.push({d,future});
+  }
+  cands.sort((a,b)=>a.d-b.d);
+  const nn=Math.min(k,cands.length);
+  if(nn===0)return Array.from({length:horizon},()=>{const d={};domain.forEach(v=>d[v]=100/domain.length);return d;});
+  const nbrs=cands.slice(0,nn);
+  const sigma=nbrs[Math.floor(nn/2)]?.d||1;
+  return Array.from({length:horizon},(_,h)=>{
+    const counts={};domain.forEach(v=>counts[v]=1e-9);
+    let tot=domain.length*1e-9;
+    nbrs.forEach(nb=>{
+      if(nb.future[h]!==undefined){
+        const v=snap_v(nb.future[h],domain);
+        const w=Math.exp(-nb.d**2/(2*(sigma**2+1e-9)));
+        counts[v]+=w;tot+=w;
+      }
+    });
+    const dist={};domain.forEach(v=>dist[v]=counts[v]/tot*100);
+    return dist;
+  });
+}
+function dtwAll(data,domain,minW,maxW,horizon){
+  const windows=[];
+  for(let w=minW;w<=Math.min(maxW,data.length-horizon-2);w+=Math.max(1,Math.floor(w*0.35)))windows.push(w);
+  if(!windows.length)windows.push(minW);
+  const allPreds=windows.map(w=>{
+    const k=Math.max(1,Math.min(7,Math.floor((data.length-w)/8)));
+    return{w,k,preds:dtwSingle(data,domain,w,k,horizon)};
+  });
+  // ağırlık: en iyi eşleşme (en küçük mesafe) → en yüksek güven
+  const bestDists=allPreds.map(({w})=>{
+    const q=data.slice(-w);let best=Infinity;
+    for(let i=0;i<=data.length-w-1;i++){const d=dtw(q,data.slice(i,i+w));if(d<best)best=d;}
+    return best===Infinity?1e9:best;
+  });
+  const weights=bestDists.map(d=>1/(d+1e-9));
+  const wSum=weights.reduce((a,b)=>a+b,0)||1;
+  const final=Array.from({length:horizon},(_,h)=>{
+    const d={};domain.forEach(v=>d[v]=0);
+    allPreds.forEach(({preds},i)=>domain.forEach(v=>d[v]+=(preds[h][v]||0)*weights[i]/wSum));
+    return d;
+  });
+  return{final,allPreds,weights:weights.map(w=>w/wSum)};
+}
+
+// ════════════════════════════════════════════════════════
+// CV AĞIRLIK
+// ════════════════════════════════════════════════════════
+function cvWeights(data,domain,maxN,maxNbW,minDtw){
+  const testN=Math.max(3,Math.floor(data.length*0.12));
+  if(data.length<testN+8)return{ng:1,nb:1,dtw:1};
+  const train=data.slice(0,-testN),test=data.slice(-testN);
+  let ng=0,nb=0,dtw_s=0,n=0;
+  for(let i=0;i<testN-1;i++){
+    const ctx=[...train,...test.slice(0,i)];
+    if(ctx.length<4)continue;
+    const actual=snap_v(test[i],domain);
+    const ngT=buildNgramTables(ctx,domain,Math.min(maxN,3));
+    const ngP=ngramPredict(ngT,ctx,domain,Math.min(maxN,3),1);
+    if(domain.reduce((b,v)=>ngP[0].dist[v]>ngP[0].dist[b]?v:b,domain[0])===actual)ng++;
+    const nbW2=Math.min(maxNbW,Math.floor(ctx.length/4));
+    const nbP=nbSingle(ctx,domain,Math.max(2,nbW2),1);
+    if(domain.reduce((b,v)=>nbP[0][v]>nbP[0][b]?v:b,domain[0])===actual)nb++;
+    const dw=Math.min(minDtw,ctx.length-2);
+    const dP=dtwSingle(ctx,domain,Math.max(3,dw),3,1);
+    if(domain.reduce((b,v)=>dP[0][v]>dP[0][b]?v:b,domain[0])===actual)dtw_s++;
+    n++;
+  }
+  if(!n)return{ng:1,nb:1,dtw:1};
+  return{ng:ng/n+0.01,nb:nb/n+0.01,dtw:dtw_s/n+0.01};
+}
+
+// ════════════════════════════════════════════════════════
+// CRF (Viterbi, lineer zincir)
+// ════════════════════════════════════════════════════════
+function buildTransMatrix(data,domain){
+  const T={};
+  domain.forEach(a=>{T[a]={};domain.forEach(b=>T[a][b]=1);});
+  for(let i=0;i<data.length-1;i++){
+    const a=snap_v(data[i],domain),b=snap_v(data[i+1],domain);T[a][b]++;
+  }
+  domain.forEach(a=>{const s=Object.values(T[a]).reduce((x,y)=>x+y,0);domain.forEach(b=>T[a][b]/=s);});
+  return T;
+}
+function crfViterbi(unary,trans,domain,lam){
+  const H=unary.length;
+  const V=Array.from({length:H},()=>({}));
+  const B=Array.from({length:H},()=>({}));
+  domain.forEach(v=>V[0][v]=Math.log((unary[0][v]||0.01)/100+1e-12));
+  for(let h=1;h<H;h++){
+    domain.forEach(v=>{
+      let best=-Infinity,bp=domain[0];
+      domain.forEach(pv=>{
+        const sc=V[h-1][pv]+lam*Math.log((trans[pv][v]||1e-9));
+        if(sc>best){best=sc;bp=pv;}
+      });
+      V[h][v]=best+(1-lam)*Math.log((unary[h][v]||0.01)/100+1e-12);
+      B[h][v]=bp;
+    });
+  }
+  const seq=[];
+  let cur=domain.reduce((b,v)=>V[H-1][v]>V[H-1][b]?v:b,domain[0]);
+  seq[H-1]=cur;
+  for(let h=H-1;h>0;h--){cur=B[h][cur];seq[h-1]=cur;}
+  const marginals=unary.map((u,h)=>{
+    if(h===0)return u;
+    const d={};domain.forEach(v=>{d[v]=(u[v]/100)*Math.pow(trans[seq[h-1]][v]+1e-9,lam);});
+    const s=Object.values(d).reduce((a,b)=>a+b,0)||1;
+    const r={};domain.forEach(v=>r[v]=d[v]/s*100);return r;
+  });
+  return{seq,marginals};
+}
+
+// ════════════════════════════════════════════════════════
+// MONTE CARLO
+// ════════════════════════════════════════════════════════
+function monteCarloChunk(probs,domain,n){
+  const counts=Array.from({length:probs.length},()=>{const c={};domain.forEach(v=>c[v]=0);return c;});
+  const paths=[];
+  for(let s=0;s<n;s++){
+    const path=probs.map(dist=>{
+      let r=Math.random()*100,cum=0;
+      for(const v of domain){cum+=dist[v]||0;if(r<cum)return v;}
+      return domain[domain.length-1];
+    });
+    path.forEach((v,h)=>counts[h][v]++);
+    if(paths.length<800)paths.push(path);
+  }
+  return{counts,paths};
+}
+
+// ════════════════════════════════════════════════════════
+// WEIGHTED ENSEMBLE
+// ════════════════════════════════════════════════════════
+function ensemble(preds,weights,domain,horizon){
+  const wSum=weights.reduce((a,b)=>a+b,0)||1;
+  return Array.from({length:horizon},(_,h)=>{
+    const d={};domain.forEach(v=>d[v]=0);
+    preds.forEach((p,i)=>domain.forEach(v=>d[v]+=(p[h][v]||0)*weights[i]/wSum));
+    return d;
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// CANVAS GRAFIKLERI
+// ════════════════════════════════════════════════════════
+const COLORS=['#4f8eff','#ff6b35','#36d399','#f4c842','#b45eff','#ff4757','#00cec9','#fd79a8'];
+
+function drawMainChart(canvas,data){
+  const W=canvas.offsetWidth||800;canvas.width=W;canvas.height=200;
+  const ctx=canvas.getContext('2d');
+  const PL=40,PR=20,PT=16,PB=28;
+  const dw=W-PL-PR,dh=200-PT-PB;
+  const minV=Math.min(...data),maxV=Math.max(...data),rng=maxV-minV||1;
+  const show=data.slice(-Math.min(data.length,120));
+  const N=show.length;
+  const xp=i=>PL+i*(dw/(N-1||1));
+  const yp=v=>PT+dh-((v-minV)/rng)*dh;
+  ctx.clearRect(0,0,W,200);
+  // Grid
+  const steps=5;
+  for(let i=0;i<=steps;i++){
+    const v=minV+(maxV-minV)*i/steps;
+    const y=yp(v);
+    ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=1;ctx.setLineDash([3,4]);
+    ctx.beginPath();ctx.moveTo(PL,y);ctx.lineTo(W-PR,y);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='rgba(122,132,153,0.7)';ctx.font='10px DM Mono';ctx.fillText(v.toFixed(1),2,y+4);
+  }
+  // Line + gradient fill
+  const grad=ctx.createLinearGradient(0,PT,0,PT+dh);
+  grad.addColorStop(0,'rgba(79,142,255,0.18)');grad.addColorStop(1,'rgba(79,142,255,0)');
+  ctx.beginPath();
+  show.forEach((v,i)=>i===0?ctx.moveTo(xp(i),yp(v)):ctx.lineTo(xp(i),yp(v)));
+  ctx.lineTo(xp(N-1),PT+dh);ctx.lineTo(xp(0),PT+dh);ctx.closePath();
+  ctx.fillStyle=grad;ctx.fill();
+  ctx.beginPath();ctx.strokeStyle='#4f8eff';ctx.lineWidth=1.5;ctx.setLineDash([]);
+  show.forEach((v,i)=>i===0?ctx.moveTo(xp(i),yp(v)):ctx.lineTo(xp(i),yp(v)));
+  ctx.stroke();
+  // Dots (son 1)
+  ctx.beginPath();ctx.fillStyle='#4f8eff';ctx.arc(xp(N-1),yp(show[N-1]),4,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#0a0c0f';ctx.lineWidth=1.5;ctx.stroke();
+  // X ekseni
+  const step=Math.ceil(N/8);
+  for(let i=0;i<N;i+=step){
+    ctx.fillStyle='rgba(122,132,153,0.5)';ctx.font='9px DM Mono';
+    ctx.fillText(N-i+' gün önce',xp(i)-18,200-6);
+  }
+}
+
+function drawForecastChart(canvas,data,futureBest,simPaths,domain){
+  const W=canvas.offsetWidth||800;canvas.width=W;canvas.height=220;
+  const ctx=canvas.getContext('2d');
+  const PL=40,PR=20,PT=16,PB=28;
+  const dw=W-PL-PR,dh=220-PT-PB;
+  const show=data.slice(-Math.min(data.length,60));
+  const H=show.length,F=futureBest.length,total=H+F;
+  const allVals=[...show,...futureBest,...simPaths.flat()];
+  const minV=Math.min(...allVals,...DOMAIN),maxV=Math.max(...allVals,...DOMAIN),rng=maxV-minV||1;
+  const xp=i=>PL+i*(dw/(total-1||1));
+  const yp=v=>PT+dh-((v-minV)/rng)*dh;
+  ctx.clearRect(0,0,W,220);
+  // Grid
+  for(let i=0;i<=5;i++){
+    const v=minV+(maxV-minV)*i/5;const y=yp(v);
+    ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=1;ctx.setLineDash([3,4]);
+    ctx.beginPath();ctx.moveTo(PL,y);ctx.lineTo(W-PR,y);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='rgba(122,132,153,0.6)';ctx.font='10px DM Mono';ctx.fillText(v.toFixed(1),2,y+4);
+  }
+  // Divider
+  ctx.strokeStyle='rgba(255,107,53,0.3)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(xp(H-1),PT);ctx.lineTo(xp(H-1),PT+dh);ctx.stroke();ctx.setLineDash([]);
+  // Sim paths
+  simPaths.slice(0,150).forEach(path=>{
+    ctx.beginPath();ctx.strokeStyle='rgba(79,142,255,0.05)';ctx.lineWidth=1;
+    ctx.moveTo(xp(H-1),yp(show[H-1]));
+    path.forEach((v,i)=>ctx.lineTo(xp(H+i),yp(v)));ctx.stroke();
+  });
+  // History
+  const hgrad=ctx.createLinearGradient(0,PT,0,PT+dh);
+  hgrad.addColorStop(0,'rgba(79,142,255,0.12)');hgrad.addColorStop(1,'rgba(79,142,255,0)');
+  ctx.beginPath();show.forEach((v,i)=>i===0?ctx.moveTo(xp(i),yp(v)):ctx.lineTo(xp(i),yp(v)));
+  ctx.lineTo(xp(H-1),PT+dh);ctx.lineTo(xp(0),PT+dh);ctx.closePath();ctx.fillStyle=hgrad;ctx.fill();
+  ctx.beginPath();ctx.strokeStyle='#4f8eff';ctx.lineWidth=2;ctx.setLineDash([]);
+  show.forEach((v,i)=>i===0?ctx.moveTo(xp(i),yp(v)):ctx.lineTo(xp(i),yp(v)));ctx.stroke();
+  // Future
+  ctx.beginPath();ctx.strokeStyle='#ff6b35';ctx.lineWidth=2;ctx.setLineDash([6,3]);
+  ctx.moveTo(xp(H-1),yp(show[H-1]));
+  futureBest.forEach((v,i)=>ctx.lineTo(xp(H+i),yp(v)));ctx.stroke();ctx.setLineDash([]);
+  futureBest.forEach((v,i)=>{
+    ctx.beginPath();ctx.fillStyle='#ff6b35';ctx.arc(xp(H+i),yp(v),4,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#0a0c0f';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.fillStyle='rgba(255,107,53,0.8)';ctx.font='10px DM Mono';
+    ctx.fillText(v,xp(H+i)-6,yp(v)-10);
+  });
+}
+
+function drawSimChart(canvas,simProbs,domain){
+  const W=canvas.offsetWidth||800;canvas.width=W;canvas.height=180;
+  const ctx=canvas.getContext('2d');
+  const PL=40,PR=20,PT=16,PB=28,dw=W-PL-PR,dh=180-PT-PB;
+  const H=simProbs.length,bw=dw/H;
+  ctx.clearRect(0,0,W,180);
+  simProbs.forEach((dist,h)=>{
+    let y=PT+dh;
+    domain.forEach((v,vi)=>{
+      const barH=((dist[v]||0)/100)*dh;
+      ctx.fillStyle=COLORS[vi%COLORS.length];ctx.globalAlpha=0.75;
+      ctx.fillRect(PL+h*bw+3,y-barH,bw-6,barH);
+      ctx.globalAlpha=1;y-=barH;
+    });
+    ctx.fillStyle='rgba(122,132,153,0.6)';ctx.font='9px DM Mono';
+    ctx.fillText('+'+(h+1)+'g',PL+h*bw+bw/2-12,180-6);
+  });
+  // Legend
+  let lx=PL;
+  domain.forEach((v,vi)=>{
+    ctx.fillStyle=COLORS[vi%COLORS.length];ctx.globalAlpha=0.75;ctx.fillRect(lx,PT,8,8);ctx.globalAlpha=1;
+    ctx.fillStyle='rgba(200,208,224,0.7)';ctx.font='9px DM Mono';ctx.fillText(v,lx+10,PT+8);
+    lx+=28;if(lx>W-60){lx=PL;}
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// UI BUILDERS
+// ════════════════════════════════════════════════════════
+function buildProbTable(finalProbs,domain){
+  const tbl=document.getElementById('probTable');tbl.innerHTML='';
+  const hr=tbl.insertRow();
+  const th0=document.createElement('th');th0.textContent='Adım';hr.appendChild(th0);
+  domain.forEach(v=>{const th=document.createElement('th');th.textContent=v;hr.appendChild(th);});
+  const thb=document.createElement('th');thb.textContent='En Olası';hr.appendChild(thb);
+  finalProbs.forEach((dist,h)=>{
+    const tr=tbl.insertRow();
+    const td0=tr.insertCell();td0.textContent='+'+(h+1)+'. gün';
+    const best=domain.reduce((b,v)=>dist[v]>dist[b]?v:b,domain[0]);
+    const bestP=dist[best]||0;
+    domain.forEach((v,vi)=>{
+      const td=tr.insertCell();td.className='bar-cell';
+      const pct=dist[v]||0;
+      const wrap=document.createElement('div');wrap.className='mini-bar-wrap';
+      const bg=document.createElement('div');bg.className='mini-bar-bg';
+      const fill=document.createElement('div');fill.className='mini-bar-fill';
+      fill.style.width=pct+'%';fill.style.background=v===best?'#ff6b35':COLORS[vi%COLORS.length];fill.style.opacity='0.7';
+      bg.appendChild(fill);
+      const pctEl=document.createElement('div');pctEl.className='mini-bar-pct';pctEl.textContent=pct.toFixed(1)+'%';
+      wrap.appendChild(bg);wrap.appendChild(pctEl);td.appendChild(wrap);
+      if(v===best)td.classList.add('winner');
+    });
+    const tdb=tr.insertCell();tdb.className='winner';
+    const conf=bestP>65?'accent3':bestP>40?'accent4':'red';
+    tdb.innerHTML=`<span style="color:var(--${conf})">${best}</span> <span style="font-size:10px;color:var(--text2)">${bestP.toFixed(1)}%</span>`;
+  });
+}
+
+function buildModelDetailNG(ngRes,domain,horizon){
+  let html='<div class="variant-grid">';
+  ngRes.allPreds.forEach(({n,preds},i)=>{
+    const w=(ngRes.weights[i]*100).toFixed(1);
+    html+=`<div class="variant-card"><div class="variant-title">${n}-gram</div>`;
+    preds.forEach((p,h)=>{const best=domain.reduce((b,v)=>p.dist[v]>p.dist[b]?v:b,domain[0]);html+=`<div class="variant-row"><span>+${h+1}g</span><span class="vval">${best} (${p.dist[best].toFixed(1)}%)</span></div>`;});
+    html+=`<div class="variant-weight">ağırlık: ${w}%<div class="w-bar-bg"><div class="w-bar-fill" style="width:${w}%"></div></div></div></div>`;
+  });
+  html+='</div>';document.getElementById('mtp0').innerHTML=html;
+}
+function buildModelDetailNB(nbRes,domain,horizon){
+  let html='<div class="variant-grid">';
+  nbRes.allPreds.forEach(({w,preds},i)=>{
+    const wt=(nbRes.weights[i]*100).toFixed(1);
+    html+=`<div class="variant-card"><div class="variant-title">pencere-${w}</div>`;
+    preds.forEach((dist,h)=>{const best=domain.reduce((b,v)=>dist[v]>dist[b]?v:b,domain[0]);html+=`<div class="variant-row"><span>+${h+1}g</span><span class="vval">${best} (${dist[best].toFixed(1)}%)</span></div>`;});
+    html+=`<div class="variant-weight">ağırlık: ${wt}%<div class="w-bar-bg"><div class="w-bar-fill" style="width:${wt}%"></div></div></div></div>`;
+  });
+  html+='</div>';document.getElementById('mtp1').innerHTML=html;
+}
+function buildModelDetailDTW(dtwRes,domain,horizon){
+  let html='<div class="variant-grid">';
+  dtwRes.allPreds.forEach(({w,k,preds},i)=>{
+    const wt=(dtwRes.weights[i]*100).toFixed(1);
+    html+=`<div class="variant-card"><div class="variant-title">w=${w} k=${k}</div>`;
+    preds.forEach((dist,h)=>{const best=domain.reduce((b,v)=>dist[v]>dist[b]?v:b,domain[0]);html+=`<div class="variant-row"><span>+${h+1}g</span><span class="vval">${best} (${dist[best].toFixed(1)}%)</span></div>`;});
+    html+=`<div class="variant-weight">ağırlık: ${wt}%<div class="w-bar-bg"><div class="w-bar-fill" style="width:${wt}%"></div></div></div></div>`;
+  });
+  html+='</div>';document.getElementById('mtp2').innerHTML=html;
+}
+
+function buildSimDetail(simProbs,simCounts,domain,numSims){
+  let html='';
+  simProbs.forEach((dist,h)=>{
+    html+=`<div style="margin-bottom:14px"><div class="sim-step-title">+${h+1}. gün</div><div class="sim-dist">`;
+    domain.forEach((v,vi)=>{
+      const pct=dist[v]||0,cnt=simCounts[h][v]||0;
+      html+=`<div class="sim-row"><div class="sim-lbl">${v}</div><div class="sim-bar-bg"><div class="sim-bar-fill" style="width:${pct}%;background:${COLORS[vi%COLORS.length]};opacity:.75"></div></div><div class="sim-pct">${pct.toFixed(2)}%</div><div class="sim-cnt">${cnt.toLocaleString('tr-TR')}</div></div>`;
+    });
+    html+='</div></div>';
+  });
+  document.getElementById('simDetail').innerHTML=html;
+}
+
+function buildCrfPanel(crfRes,domain,accs,ngW,nbW,dtwW){
+  let html='';
+  crfRes.seq.forEach((v,h)=>{
+    const prob=(crfRes.marginals[h][v]||0).toFixed(1);
+    if(h>0)html+=`<div class="crf-arrow">→</div>`;
+    html+=`<div class="crf-node"><div class="crf-node-step">+${h+1}g</div><div class="crf-node-val">${v}</div><div class="crf-node-prob">${prob}%</div></div>`;
+  });
+  document.getElementById('crfChain').innerHTML=html;
+  const tot=accs.ng+accs.nb+accs.dtw;
+  document.getElementById('weightRow').innerHTML=
+    `<div class="weight-box"><div class="weight-box-title">N-gram</div><div class="weight-box-val" style="color:var(--accent)">${(ngW*100).toFixed(0)}%</div><div class="weight-box-sub">CV: ${(accs.ng*100).toFixed(1)}%</div></div>`+
+    `<div class="weight-box"><div class="weight-box-title">NaiveBayes</div><div class="weight-box-val" style="color:var(--accent3)">${(nbW*100).toFixed(0)}%</div><div class="weight-box-sub">CV: ${(accs.nb*100).toFixed(1)}%</div></div>`+
+    `<div class="weight-box"><div class="weight-box-title">DTW</div><div class="weight-box-val" style="color:var(--accent2)">${(dtwW*100).toFixed(0)}%</div><div class="weight-box-sub">CV: ${(accs.dtw*100).toFixed(1)}%</div></div>`;
+}
+
+// ════════════════════════════════════════════════════════
+// ANA ANALİZ
+// ════════════════════════════════════════════════════════
+async function runAnalysis(){
+  const horizon=parseInt(document.getElementById('pHorizon').value)||4;
+  const dtwMin=parseInt(document.getElementById('pDtwMin').value)||5;
+  const dtwMax=parseInt(document.getElementById('pDtwMax').value)||20;
+  const ngramMax=parseInt(document.getElementById('pNgramMax').value)||5;
+  const nbMax=parseInt(document.getElementById('pNbMax').value)||5;
+  const crfW=parseFloat(document.getElementById('pCrfW').value)||0.35;
+  const numSims=parseInt(document.getElementById('pSim').value)||10000;
+
+  const data=RAW_DATA;
+  const domain=DOMAIN;
+  if(data.length<10){setSt('Yetersiz veri.');return;}
+
+  document.getElementById('btnRun').disabled=true;
+  document.getElementById('progWrap').style.display='block';
+  document.getElementById('resultsSection').style.display='none';
+  setSt('');
+
+  try{
+    setProg(5,'N-gram tabloları...');await sleep(0);
+    const mxN=Math.min(ngramMax,Math.floor(data.length/3),6);
+    const ngRes=ngramAll(data,domain,mxN,horizon);
+
+    setProg(20,'NaiveBayes modelleri...');await sleep(0);
+    const mxNb=Math.min(nbMax,Math.floor(data.length/5));
+    const nbRes=nbAll(data,domain,Math.max(2,mxNb),horizon);
+
+    setProg(38,'DTW çok ölçekli...');await sleep(0);
+    const mxDtw=Math.min(dtwMax,data.length-horizon-2);
+    const dtwRes=dtwAll(data,domain,dtwMin,mxDtw,horizon);
+
+    setProg(56,'CV ağırlık hesabı...');await sleep(0);
+    const accs=cvWeights(data,domain,mxN,Math.max(2,mxNb),dtwMin);
+    const accTot=accs.ng+accs.nb+accs.dtw;
+    const ngW=accs.ng/accTot,nbW=accs.nb/accTot,dtwW=accs.dtw/accTot;
+
+    setProg(65,'Ensemble birleştirme...');await sleep(0);
+    const ens=ensemble([ngRes.final,nbRes.final,dtwRes.final],[ngW,nbW,dtwW],domain,horizon);
+
+    setProg(72,'CRF Viterbi...');await sleep(0);
+    const trans=buildTransMatrix(data,domain);
+    const crfRes=crfViterbi(ens,trans,domain,crfW);
+
+    setProg(78,`Monte Carlo (${numSims.toLocaleString('tr-TR')})...`);await sleep(0);
+    const CHUNK=40000;
+    const allCounts=Array.from({length:horizon},()=>{const c={};domain.forEach(v=>c[v]=0);return c;});
+    const allPaths=[];let done=0;
+    while(done<numSims){
+      const batch=Math.min(CHUNK,numSims-done);
+      const res=monteCarloChunk(crfRes.marginals,domain,batch);
+      res.counts.forEach((c,h)=>domain.forEach(v=>allCounts[h][v]+=c[v]));
+      if(allPaths.length<800)allPaths.push(...res.paths.slice(0,800-allPaths.length));
+      done+=batch;
+      setProg(78+Math.floor(done/numSims*16),`Monte Carlo: ${done.toLocaleString('tr-TR')} / ${numSims.toLocaleString('tr-TR')}`);
+      await sleep(0);
+    }
+    const simProbs=allCounts.map(c=>{const d={};domain.forEach(v=>d[v]=c[v]/numSims*100);return d;});
+
+    setProg(95,'Görselleştirme...');await sleep(0);
+    // Final: sim %60 + CRF marginals %40
+    const finalProbs=simProbs.map((sp,h)=>{
+      const d={};domain.forEach(v=>d[v]=(sp[v]||0)*0.6+(crfRes.marginals[h][v]||0)*0.4);
+      const s=Object.values(d).reduce((a,b)=>a+b,0)||1;
+      const r={};domain.forEach(v=>r[v]=d[v]/s*100);return r;
+    });
+    const futureBest=finalProbs.map(d=>domain.reduce((b,v)=>d[v]>d[b]?v:b,domain[0]));
+
+    // UI
+    document.getElementById('resultsSection').style.display='flex';
+
+    const fc=document.getElementById('forecastChart');
+    drawForecastChart(fc,data,futureBest,allPaths,domain);
+
+    buildProbTable(finalProbs,domain);
+    document.getElementById('tableSubtitle').textContent=`${numSims.toLocaleString('tr-TR')} simülasyon · CRF λ=${crfW}`;
+
+    buildModelDetailNG(ngRes,domain,horizon);
+    buildModelDetailNB(nbRes,domain,horizon);
+    buildModelDetailDTW(dtwRes,domain,horizon);
+
+    buildSimDetail(simProbs,allCounts,domain,numSims);
+    buildCrfPanel(crfRes,domain,accs,ngW,nbW,dtwW);
+
+    const sc=document.getElementById('simChart');
+    drawSimChart(sc,simProbs,domain);
+
+    document.getElementById('footerRight').textContent=
+      `N-gram:${mxN} · NB pencere:${Math.max(2,mxNb)} · DTW ${dtwMin}-${mxDtw} · sim:${numSims.toLocaleString('tr-TR')}`;
+
+    setProg(100,'Tamamlandı');setSt('✓ Analiz tamamlandı.');
+  }catch(e){setSt('Hata: '+e.message);console.error(e);}
+  document.getElementById('btnRun').disabled=false;
+}
+
+// ════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════
+async function init(){
+  try{
+    await fetchData();
+    setLoad(92,'Arayüz hazırlanıyor...');
+    await sleep(80);
+    const st=calcStats(RAW_DATA);
+    buildStatGrid(st);
+    document.getElementById('headerMeta').textContent=`${RAW_DATA.length} veri · domain [${DOMAIN[0]}..${DOMAIN[DOMAIN.length-1]}] · son: ${RAW_DATA[RAW_DATA.length-1]}`;
+    document.getElementById('chartMeta').textContent=`son ${Math.min(RAW_DATA.length,120)} gün`;
+    document.getElementById('footerLeft').textContent=`VERİ ANALİZİ · ${new Date().toLocaleDateString('tr-TR')}`;
+    document.getElementById('app').style.display='flex';
+    setLoad(100,'Hazır');
+    await sleep(400);
+    hideLoad();
+    const mc=document.getElementById('mainChart');
+    drawMainChart(mc,RAW_DATA);
+    window.addEventListener('resize',()=>{
+      drawMainChart(document.getElementById('mainChart'),RAW_DATA);
+      if(document.getElementById('resultsSection').style.display!=='none'){
+        // grafikleri yeniden çizmek için son analizi hatırlamıyoruz, sadece mainChart yeter
+      }
+    });
+  }catch(e){
+    document.getElementById('loadMsg').textContent='Hata: '+e.message;
+    console.error(e);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
