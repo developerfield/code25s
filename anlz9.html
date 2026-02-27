@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seri Analiz & Tahmin</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&display=swap');
+:root{
+  --bg:#f4efe4;--paper:#faf6ed;--ink:#1c1710;--ink2:#3a3228;--ink3:#6e6050;
+  --rule:#d6c9b4;--red:#b83232;--blue:#1a5c8a;--green:#1f7a45;--amber:#e8a020;--purple:#6b3fa0;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--ink);font-family:'Space Mono',monospace;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:repeating-linear-gradient(transparent,transparent 27px,rgba(180,158,130,.22)27px,rgba(180,158,130,.22)28px);}
+.wrap{position:relative;z-index:1;max-width:1340px;margin:0 auto;padding:28px 22px 80px;}
+header{border-bottom:3px solid var(--ink);padding-bottom:18px;margin-bottom:28px;}
+.eyebrow{font-size:10px;letter-spacing:4px;color:var(--ink3);text-transform:uppercase;margin-bottom:4px;}
+h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(28px,5vw,60px);letter-spacing:3px;line-height:.95;}
+h1 em{color:var(--blue);font-style:normal;}h1 strong{color:var(--red);}
+.sub{margin-top:8px;font-size:11px;color:var(--ink3);line-height:1.85;max-width:680px;}
+.entry-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;}
+@media(max-width:800px){.entry-grid{grid-template-columns:1fr;}}
+.panel{background:var(--paper);border:2px solid var(--ink);padding:20px 20px 14px;position:relative;margin-top:14px;}
+.panel::before{content:attr(data-lbl);position:absolute;top:-12px;left:12px;background:var(--paper);
+  padding:0 8px;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-weight:700;border:2px solid var(--ink);}
+.panel.bl::before{color:var(--blue);border-color:var(--blue);}
+.panel.rd::before{color:var(--red);border-color:var(--red);}
+.hint{font-size:10px;color:var(--ink3);margin-top:7px;line-height:1.75;}
+.hint b{color:var(--blue);}
+textarea{width:100%;height:120px;background:transparent;border:1px solid var(--rule);
+  color:var(--ink);font-family:'Space Mono',monospace;font-size:12px;padding:9px 10px;resize:vertical;outline:none;line-height:1.75;}
+textarea:focus{border-color:var(--ink);}
+#setInput{width:100%;background:transparent;border:1px solid var(--rule);color:var(--ink);
+  font-family:'Space Mono',monospace;font-size:13px;padding:9px 10px;outline:none;margin-bottom:8px;}
+#setInput:focus{border-color:var(--blue);}
+#setPreview{display:flex;flex-wrap:wrap;gap:5px;min-height:24px;margin-bottom:5px;}
+.tag{background:rgba(26,92,138,.12);border:1px solid rgba(26,92,138,.4);color:var(--blue);padding:3px 10px;font-size:11px;font-weight:700;}
+.stat-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));margin-bottom:20px;border:2px solid var(--ink);overflow:hidden;}
+.si{padding:10px 12px;background:var(--paper);border-right:1px solid var(--rule);}
+.si:last-child{border-right:none;}
+.si-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin-bottom:3px;}
+.si-val{font-size:16px;font-weight:700;color:var(--ink);}
+.si-val.ok{color:var(--green);}.si-val.warn{color:var(--amber);}.si-val.err{color:var(--red);}
+.si-sub{font-size:9px;color:var(--ink3);margin-top:2px;}
+.ctrl-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;
+  margin-bottom:20px;padding:14px 18px;background:var(--paper);border:2px solid var(--ink);}
+.ctrl{display:flex;flex-direction:column;gap:4px;}
+.ctrl label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);}
+.ctrl .vv{font-size:14px;font-weight:700;color:var(--ink);}
+.ctrl input[type=range]{-webkit-appearance:none;width:100px;height:3px;background:var(--rule);outline:none;cursor:pointer;}
+.ctrl input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;background:var(--ink);border-radius:50%;cursor:pointer;}
+.ctrl select{background:var(--paper);border:1px solid var(--rule);color:var(--ink);
+  padding:5px 8px;font-family:'Space Mono',monospace;font-size:11px;outline:none;cursor:pointer;}
+.btn{padding:9px 16px;background:var(--ink);color:var(--bg);border:2px solid var(--ink);
+  font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
+  cursor:pointer;transition:all .15s;white-space:nowrap;}
+.btn:hover{background:transparent;color:var(--ink);}
+.btn.g{background:var(--green);border-color:var(--green);}
+.btn.g:hover{background:transparent;color:var(--green);}
+.btn.r{background:var(--red);border-color:var(--red);}
+.btn.r:hover{background:transparent;color:var(--red);}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+/* ENSEMBLE PANEL */
+.ens-panel{background:var(--paper);border:2px solid var(--ink);padding:16px 18px;margin-bottom:20px;display:none;}
+.ens-title{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;
+  margin-bottom:10px;border-bottom:1px solid var(--rule);padding-bottom:6px;}
+.ens-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px 24px;}
+.ens-chk{display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer;user-select:none;padding:3px 0;}
+.ens-chk input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--green);}
+.ens-chk .badge{font-size:9px;color:var(--ink3);font-style:italic;}
+/* PROGRESS */
+.prog-wrap{display:none;background:var(--paper);border:2px solid var(--ink);padding:14px 18px;margin-bottom:18px;}
+.prog-lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin-bottom:6px;}
+.prog-outer{width:100%;height:5px;background:var(--rule);}
+.prog-inner{height:100%;background:var(--green);transition:width .08s linear;}
+.prog-txt{font-size:12px;font-weight:700;margin-top:5px;}
+/* RESULTS */
+.rc{background:var(--paper);border:2px solid var(--ink);padding:18px;margin-bottom:18px;}
+.rc-title{font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;
+  border-bottom:1px solid var(--rule);padding-bottom:6px;margin-bottom:12px;display:flex;align-items:baseline;gap:12px;}
+.rc-sub{font-size:10px;font-family:'Space Mono',monospace;font-weight:400;color:var(--ink3);letter-spacing:0;}
+.results-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+@media(max-width:700px){.results-grid{grid-template-columns:1fr;}}
+.fr{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:1px dotted var(--rule);font-size:11px;}
+.fr:last-child{border-bottom:none;}
+.fr-l{color:var(--ink3);}.fr-r{font-weight:700;}
+.fr-r.ok{color:var(--green);}.fr-r.warn{color:var(--amber);}.fr-r.err{color:var(--red);}
+/* CHART */
+.chart-card{background:var(--paper);border:2px solid var(--ink);padding:18px 20px;margin-bottom:20px;}
+.chart-card.fullscreen{position:fixed!important;inset:0!important;z-index:9999!important;
+  margin:0!important;border:none!important;display:flex;flex-direction:column;
+  padding:16px 20px;background:var(--paper)!important;}
+.chart-card.fullscreen .cw{flex:1;height:auto!important;}
+.chart-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;}
+.chart-ttl{font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:2px;}
+.cbts{display:flex;gap:5px;}
+.cbt{background:var(--paper);border:2px solid var(--ink);color:var(--ink);font-size:14px;
+  width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all .12s;}
+.cbt:hover{background:var(--ink);color:var(--bg);}
+.leg-row{display:flex;gap:14px;flex-wrap:wrap;font-size:10px;margin-bottom:10px;align-items:center;}
+.leg{display:flex;align-items:center;gap:5px;}
+.ll{width:22px;height:3px;border-radius:1px;}
+.cw{position:relative;width:100%;height:340px;}
+.cw canvas{position:absolute;inset:0;width:100%!important;height:100%!important;}
+/* 2D TABLE */
+.p2d-outer{overflow-x:auto;margin-top:4px;}
+.p2d{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;}
+.p2d th{padding:7px 10px;background:var(--ink);color:var(--bg);font-size:9px;letter-spacing:2px;
+  text-transform:uppercase;border:1px solid var(--ink2);white-space:nowrap;text-align:center;}
+.p2d th.rh{background:var(--ink2);}
+.p2d td{padding:6px 9px;border:1px solid var(--rule);text-align:center;white-space:nowrap;font-size:11px;font-weight:700;}
+.p2d tr:hover td{filter:brightness(.96);}
+.p2d td.sh{background:var(--paper)!important;color:var(--ink3);font-size:10px;text-align:left;}
+.p2d td.bt{color:var(--green);font-weight:700;}
+.p2d td.bs{color:var(--amber);font-weight:700;}
+.tbl-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:10px;align-items:center;}
+.tll{display:flex;align-items:center;gap:5px;}
+.tlb{width:15px;height:15px;border:1px solid #aaa;}
+/* INFO BOX */
+.info-box{background:var(--paper);border-left:4px solid var(--blue);
+  padding:16px 18px;font-size:11px;line-height:1.9;color:var(--ink2);margin-bottom:18px;}
+.info-box h4{font-size:13px;font-family:'Bebas Neue',sans-serif;letter-spacing:2px;margin-bottom:6px;margin-top:12px;}
+.info-box h4:first-child{margin-top:0;}
+.mrow{padding:3px 0;border-bottom:1px dotted var(--rule);}
+.mrow:last-child{border:none;}
+.mn{color:var(--blue);font-weight:700;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">// Adım Kümesi · Seri Analiz · 9 Yöntem · Ensemble · 2B Isı Tablosu</div>
+  <h1><em>SERİ</em> <strong>TAHMİN</strong></h1>
+  <p class="sub">Naive Bayes · N-HiTS · DTW+KNN · DTW+K-Means · DTW · HMM · KNN · K-Means · CRF — isteğe bağlı birleştir</p>
+</header>
+
+<!-- VERİ GİRİŞİ -->
+<div class="entry-grid">
+  <div class="panel bl" data-lbl="adım kümesi">
+    <input id="setInput" placeholder="Örnek: 3, 3.2, 3.4, 3.6" oninput="parseSetInput()" autocomplete="off">
+    <div id="setPreview"></div>
+    <div class="hint">Virgülle ayır. <b>Örnek: 3, 3.2, 3.4, 3.6</b><br>Seri yalnızca bu değerlerden oluşabilir.</div>
+  </div>
+  <div class="panel rd" data-lbl="veri serisi">
+    <textarea id="seriesInput" placeholder="3,3,3.2,3.2,3.4,3.4,3.2,3,3,3.2&#10;Virgül, noktalı virgül veya yeni satırla ayır."></textarea>
+    <div class="hint">Ham adım değerleri (kümülatif değil).</div>
+  </div>
+</div>
+
+<!-- İSTATİSTİK BAR -->
+<div class="stat-bar">
+  <div class="si"><div class="si-lbl">Uzunluk</div><div class="si-val" id="stLen">—</div></div>
+  <div class="si"><div class="si-lbl">Küme</div><div class="si-val" id="stSetN">—</div></div>
+  <div class="si"><div class="si-lbl">Geçersiz</div><div class="si-val" id="stBad">—</div></div>
+  <div class="si"><div class="si-lbl">Ortalama</div><div class="si-val" id="stMean">—</div></div>
+  <div class="si"><div class="si-lbl">Std Dev</div><div class="si-val" id="stStd">—</div></div>
+  <div class="si"><div class="si-lbl">ACF(1)</div><div class="si-val" id="stAcf">—</div></div>
+  <div class="si"><div class="si-lbl">Trend</div><div class="si-val" id="stTrend">—</div></div>
+  <div class="si"><div class="si-lbl">Entropi</div><div class="si-val" id="stEnt">—</div><div class="si-sub">bit</div></div>
+</div>
+
+<!-- KONTROLLER -->
+<div class="ctrl-row">
+  <div class="ctrl">
+    <label>Tahmin Adımı</label>
+    <span class="vv" id="vN">8</span>
+    <input type="range" id="rN" min="1" max="24" value="8" oninput="document.getElementById('vN').textContent=this.value">
+  </div>
+  <div class="ctrl">
+    <label>Yöntem</label>
+    <select id="method" onchange="onMethodChange()">
+      <option value="nbwin">Naive Bayes</option>
+      <option value="nhits">N-HiTS</option>
+      <option value="dtw_knn">DTW + KNN</option>
+      <option value="dtw_km">DTW + K-Means</option>
+      <option value="dtw">DTW (saf)</option>
+      <option value="hmm">HMM</option>
+      <option value="knn">KNN</option>
+      <option value="kmeans">K-Means</option>
+      <option value="crf">CRF</option>
+      <option value="combined" selected>Ensemble (Seçilebilir)</option>
+    </select>
+  </div>
+  <div class="ctrl">
+    <label>Simülasyon</label>
+    <span class="vv" id="vMC">2000</span>
+    <input type="range" id="rMC" min="500" max="8000" step="500" value="2000" oninput="document.getElementById('vMC').textContent=this.value">
+  </div>
+  <div class="ctrl">
+    <label>Güven Bandı</label>
+    <select id="bandConf">
+      <option value="0.8">%80</option>
+      <option value="0.9" selected>%90</option>
+      <option value="0.95">%95</option>
+    </select>
+  </div>
+  <div style="flex:1"></div>
+  <button class="btn g" onclick="runAnalysis()">&#9654; ANALİZ ET</button>
+  <button class="btn r" onclick="loadExample()">ÖRNEK</button>
+</div>
+
+<!-- ENSEMBLE PANEL -->
+<div class="ens-panel" id="ensPanel">
+  <div class="ens-title">ENSEMBLE — Hangi Yöntemler Dahil Edilsin?</div>
+  <div class="ens-grid">
+    <label class="ens-chk"><input type="checkbox" id="ec_nbwin" checked> Naive Bayes <span class="badge">pencere-3</span></label>
+    <label class="ens-chk"><input type="checkbox" id="ec_nhits" checked> N-HiTS <span class="badge">hiyerarşik</span></label>
+    <label class="ens-chk"><input type="checkbox" id="ec_dtw_knn"> DTW + KNN <span class="badge">örüntü mesafe</span></label>
+    <label class="ens-chk"><input type="checkbox" id="ec_dtw_km"> DTW + K-Means <span class="badge">küme + mesafe</span></label>
+    <label class="ens-chk"><input type="checkbox" id="ec_dtw"> DTW <span class="badge">1-NN</span></label>
+    <label class="ens-chk"><input type="checkbox" id="ec_hmm"> HMM <span class="badge">gizli markov</span></label>
+    <label class="ens-chk"><input type="checkbox" id="ec_knn"> KNN <span class="badge">öklid</span></label>
+    <label class="ens-chk"><input type="checkbox" id="ec_kmeans"> K-Means <span class="badge">küme medyanı</span></label>
+    <label class="ens-chk"><input type="checkbox" id="ec_crf"> CRF <span class="badge">koşullu rastsal alan</span></label>
+  </div>
+  <div class="hint" style="margin-top:8px;">En az 1 yöntem seçili olmalı. Varsayılan: Naive Bayes + N-HiTS.</div>
+</div>
+
+<!-- PROGRESS -->
+<div class="prog-wrap" id="progWrap">
+  <div class="prog-lbl" id="progLbl">Baslatiliyor...</div>
+  <div class="prog-outer"><div class="prog-inner" id="progBar" style="width:0%"></div></div>
+  <div class="prog-txt" id="progTxt">0%</div>
+</div>
+
+<!-- 2B TABLO -->
+<div class="rc" id="sec_table" style="display:none">
+  <div class="rc-title">2B OLASILIK TABLOSU<span class="rc-sub" style="margin-left:12px;">Satir=adim · Sutun=deger · Hucre=% olasilik</span></div>
+  <div class="p2d-outer" id="p2dWrap"></div>
+  <div class="tbl-legend" id="tblLeg"></div>
+</div>
+
+<!-- GRAFIK 1 -->
+<div class="chart-card" id="sec_chart1" style="display:none">
+  <div class="chart-top">
+    <div class="chart-ttl">VERİ + TAHMİN</div>
+    <div class="cbts">
+      <button class="cbt" onclick="c1zi()">+</button>
+      <button class="cbt" onclick="c1zo()">-</button>
+      <button class="cbt" onclick="c1zr()">O</button>
+      <button class="cbt" id="fs1btn" onclick="toggleFS('sec_chart1','fs1btn')">[]</button>
+    </div>
+  </div>
+  <div class="leg-row">
+    <div class="leg"><div class="ll" style="background:var(--blue)"></div>Gozlem</div>
+    <div class="leg"><div class="ll" style="border-top:2px dashed var(--green);height:0;width:22px"></div>Medyan</div>
+    <div class="leg"><div class="ll" style="height:10px;width:22px;background:rgba(31,122,69,.12);border:1px solid rgba(31,122,69,.35)"></div>Bant</div>
+    <div class="leg"><div class="ll" style="background:var(--red)"></div>Gecersiz</div>
+    <span style="font-size:9px;color:var(--ink3);margin-left:auto;">scroll zoom · surukle pan · ESC tam ekran</span>
+  </div>
+  <div class="cw"><canvas id="chart1"></canvas></div>
+</div>
+
+<!-- BULGULAR -->
+<div class="results-grid" id="sec_results" style="display:none">
+  <div class="rc"><div class="rc-title">ANALİZ BULGULARI</div><div id="findings"></div></div>
+  <div class="rc"><div class="rc-title">TAHMİN ÖZETİ</div><div id="predSummary"></div></div>
+</div>
+
+<!-- KÜMÜLATİF GRAFİK -->
+<div class="chart-card" id="sec_chart2" style="display:none">
+  <div class="chart-top">
+    <div class="chart-ttl">KÜMÜLATİF SERİ <span style="font-size:12px;font-weight:400;font-family:'Space Mono',monospace;letter-spacing:0;color:var(--ink3)">gozlem + tahmin</span></div>
+    <div class="cbts">
+      <button class="cbt" onclick="c2zi()">+</button>
+      <button class="cbt" onclick="c2zo()">-</button>
+      <button class="cbt" onclick="c2zr()">O</button>
+      <button class="cbt" id="fs2btn" onclick="toggleFS('sec_chart2','fs2btn')">[]</button>
+    </div>
+  </div>
+  <div class="leg-row">
+    <div class="leg"><div class="ll" style="background:var(--blue)"></div>Gozlem (kumulatif)</div>
+    <div class="leg"><div class="ll" style="background:var(--amber)"></div>Tahmin medyani (kumulatif)</div>
+    <div class="leg"><div class="ll" style="height:10px;width:22px;background:rgba(232,160,32,.15);border:1px solid rgba(232,160,32,.4)"></div>Guven bandi</div>
+  </div>
+  <div class="cw"><canvas id="chart2"></canvas></div>
+</div>
+
+<!-- ACIKLAMALAR -->
+<div class="info-box" id="sec_info" style="display:none"></div>
+
+</div>
+<script>
+'use strict';
+var _set=[],_data=[],_chart1=null,_chart2=null,_lstmMdl=null;
+
+function $(id){return document.getElementById(id);}
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+function setP(p,lbl,txt){
+  $('progBar').style.width=Math.min(100,p)+'%';
+  $('progTxt').textContent=txt||Math.round(p)+'%';
+  if(lbl)$('progLbl').textContent=lbl;
+}
+function show(id){$(id).style.display='block';}
+function hide(id){$(id).style.display='none';}
+
+/* ── MATH ── */
+function mean(a){if(!a||!a.length)return 0;var s=0;for(var i=0;i<a.length;i++)s+=a[i];return s/a.length;}
+function vari(a){if(!a||a.length<2)return 0;var m=mean(a),s=0;for(var i=0;i<a.length;i++)s+=(a[i]-m)*(a[i]-m);return s/a.length;}
+function std(a){return Math.sqrt(vari(a));}
+function acf1(a){
+  var n=a.length,m=mean(a),num=0,den=0;
+  for(var i=1;i<n;i++)num+=(a[i]-m)*(a[i-1]-m);
+  for(var i=0;i<n;i++)den+=(a[i]-m)*(a[i]-m);
+  return den<1e-12?0:num/den;
+}
+function pct(a,p){var s=a.slice().sort(function(x,y){return x-y;});return s[Math.max(0,Math.min(s.length-1,Math.floor(p*(s.length-1))))];}
+function linTrend(a){var n=a.length,sx=0,sy=0,sxy=0,sxx=0;for(var i=0;i<n;i++){sx+=i;sy+=a[i];sxy+=i*a[i];sxx+=i*i;}var d=n*sxx-sx*sx;return d<1e-12?0:(n*sxy-sx*sy)/d;}
+function entropy(data,set){
+  if(!set.length)return 0;
+  var cnt={},n=data.length;
+  for(var i=0;i<set.length;i++)cnt[set[i]]=0;
+  for(var i=0;i<n;i++){var k=snap(data[i],set);cnt[k]=(cnt[k]||0)+1;}
+  var h=0;for(var k in cnt){var p=cnt[k]/n;if(p>0)h-=p*Math.log2(p);}return h;
+}
+function grnd(){var u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function snap(v,set){if(!set||!set.length)return v;var best=set[0];for(var i=1;i<set.length;i++)if(Math.abs(set[i]-v)<Math.abs(best-v))best=set[i];return best;}
+
+/* ── INPUT ── */
+function parseSetInput(){
+  var parts=$('setInput').value.split(/[,;\s]+/);
+  var seen={},vals=[];
+  for(var i=0;i<parts.length;i++){var n=parseFloat(parts[i]);if(!isNaN(n)&&!seen[n]){seen[n]=true;vals.push(n);}}
+  vals.sort(function(a,b){return a-b;});_set=vals;
+  $('setPreview').innerHTML=_set.map(function(v){return '<span class="tag">'+v+'</span>';}).join('');
+  $('stSetN').textContent=_set.length||'—';
+}
+function parseSeries(){
+  var parts=$('seriesInput').value.split(/[\n,;]+/),out=[];
+  for(var i=0;i<parts.length;i++){var n=parseFloat(parts[i].trim());if(!isNaN(n))out.push(n);}
+  return out;
+}
+function onMethodChange(){$('ensPanel').style.display=($('method').value==='combined')?'block':'none';}
+
+/* ── TRANSITION ── */
+function buildTrans(data,set){
+  var n=set.length;if(!n)return null;
+  function idx(v){for(var i=0;i<set.length;i++)if(Math.abs(set[i]-v)<1e-9)return i;return -1;}
+  var T=[];
+  for(var i=0;i<n;i++){T.push([]);for(var j=0;j<n;j++)T[i].push(0.1);}
+  for(var i=1;i<data.length;i++){var fi=idx(data[i-1]),ti=idx(data[i]);if(fi>=0&&ti>=0)T[fi][ti]++;}
+  for(var i=0;i<n;i++){var s=0;for(var j=0;j<n;j++)s+=T[i][j];for(var j=0;j<n;j++)T[i][j]/=s;}
+  return T;
+}
+
+/* ════ 1. NAIVE BAYES (pencere) ════ */
+function nbPredict(data,steps,set){
+  var es=set.length?set:Array.from(new Set(data)).sort(function(a,b){return a-b;});
+  var win=3;
+  if(!es.length||data.length<win+1){var T2=buildTrans(data,es);return mcFallback(data,steps,es,T2);}
+  function idx(v){for(var i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i;return 0;}
+  function key(w){return w.map(function(v){return Math.max(0,idx(v));}).join('-');}
+  var cnt={};
+  for(var i=win;i<data.length;i++){
+    var k=key(data.slice(i-win,i)),ni=idx(data[i]);
+    if(!cnt[k]){cnt[k]=[];for(var j=0;j<es.length;j++)cnt[k].push(0.05);}cnt[k][ni]++;
+  }
+  var w=data.slice(-win),path=[];
+  for(var i=0;i<steps;i++){
+    var k=key(w),row=cnt[k]||(function(){var r=[];for(var j=0;j<es.length;j++)r.push(1);return r;})();
+    var tot=0;for(var j=0;j<row.length;j++)tot+=row[j];
+    var r=Math.random()*tot,cum=0,ch=0;
+    for(var j=0;j<es.length;j++){cum+=row[j];if(r<=cum){ch=j;break;}}
+    w=w.slice(1);w.push(es[ch]);path.push(es[ch]);
+  }
+  return path;
+}
+
+/* ════ 2. N-HiTS ════ */
+function nhitsPredict(data,steps,set){
+  var n=data.length,dm=mean(data),ds=std(data)||1;
+  var norm=data.map(function(v){return(v-dm)/ds;});
+  function basis(t,H,nP,nF){
+    var b=[1];for(var p=1;p<=nP;p++)b.push(Math.pow(t/H,p));
+    for(var k=1;k<=nF;k++){b.push(Math.sin(2*Math.PI*k*t/H));b.push(Math.cos(2*Math.PI*k*t/H));}return b;
+  }
+  function ols(X,y){
+    var nb=X[0].length,ns=X.length,XtX=[],Xty=[];
+    for(var i=0;i<nb;i++){XtX.push([]);for(var j=0;j<nb;j++)XtX[i].push(0);Xty.push(0);}
+    for(var r=0;r<ns;r++)for(var i=0;i<nb;i++){Xty[i]+=X[r][i]*y[r];for(var j=0;j<nb;j++)XtX[i][j]+=X[r][i]*X[r][j];}
+    for(var i=0;i<nb;i++)XtX[i][i]+=1e-4;
+    var aug=XtX.map(function(row,i){return row.concat([Xty[i]]);});
+    for(var col=0;col<nb;col++){
+      var piv=col;for(var row=col+1;row<nb;row++)if(Math.abs(aug[row][col])>Math.abs(aug[piv][col]))piv=row;
+      var tmp=aug[col];aug[col]=aug[piv];aug[piv]=tmp;
+      var d=aug[col][col]||1e-12;
+      for(var row=0;row<nb;row++)if(row!==col){var f=aug[row][col]/d;for(var k=0;k<=nb;k++)aug[row][k]-=f*aug[col][k];}
+      for(var k=0;k<=nb;k++)aug[col][k]/=d;
+    }
+    return aug.map(function(row){return row[nb];});
+  }
+  var cfgs=[[1,2,3],[2,1,2],[4,1,1]],res=norm.slice(),outs=[];
+  for(var sc=0;sc<cfgs.length;sc++){
+    var pool=cfgs[sc][0],nPoly=cfgs[sc][1],nFreq=cfgs[sc][2];
+    var pooled=[],rDown=[];
+    for(var i=0;i<n;i+=pool){
+      var chunk=norm.slice(i,Math.min(i+pool,n));var rchunk=res.slice(i,Math.min(i+pool,n));
+      pooled.push(mean(chunk));rDown.push(mean(rchunk));
+    }
+    var np2=pooled.length;if(np2<3)continue;
+    var lb=Math.min(np2,Math.max(4,Math.floor(np2*0.5)));
+    var rw=rDown.slice(-lb),H=steps;
+    var Xlb=[];for(var t=0;t<lb;t++)Xlb.push(basis(t,lb,nPoly,nFreq));
+    var beta=ols(Xlb,rw);
+    var Xfw=[];for(var t=0;t<H;t++)Xfw.push(basis(t,H,nPoly,nFreq));
+    var fc=Xfw.map(function(b){var s=0;for(var i=0;i<b.length;i++)s+=b[i]*beta[i];return s;});
+    outs.push(fc);
+    var bc=Xlb.map(function(b){var s=0;for(var i=0;i<b.length;i++)s+=b[i]*beta[i];return s;});
+    var start=n-lb*pool;
+    for(var i=0;i<lb*pool&&start+i<n;i++){var bi=Math.floor(i/pool);if(bi<bc.length)res[start+i]-=bc[bi];}
+  }
+  if(!outs.length){var phi2=fitAR(data,3);return arPredict(data,phi2,steps,ds*0.3,set);}
+  var rStd=std(res)||0.01;
+  return Array.from({length:steps},function(_,s){
+    var sum=0;for(var i=0;i<outs.length;i++)sum+=(outs[i][s]||0);
+    var v=sum*ds+dm+grnd()*rStd*ds;if(set.length)v=snap(v,set);return v;
+  });
+}
+
+/* ════ 3. DTW yardimcisi ════ */
+function dtwDist(a,b){
+  var n=a.length,m=b.length;
+  var dtw=[];for(var i=0;i<=n;i++){dtw.push([]);for(var j=0;j<=m;j++)dtw[i].push(Infinity);}
+  dtw[0][0]=0;
+  for(var i=1;i<=n;i++)for(var j=1;j<=m;j++){
+    var cost=Math.abs(a[i-1]-b[j-1]);
+    dtw[i][j]=cost+Math.min(dtw[i-1][j],dtw[i][j-1],dtw[i-1][j-1]);
+  }
+  return dtw[n][m];
+}
+
+/* ════ 4. DTW (saf 1-NN) ════ */
+function dtwPredict(data,steps,set){
+  var wlen=Math.min(8,Math.max(3,Math.floor(data.length*0.3)));
+  var query=data.slice(-wlen);
+  var best=null,bestD=Infinity;
+  for(var i=0;i<=data.length-wlen-steps;i++){
+    var cand=data.slice(i,i+wlen);
+    var d=dtwDist(query,cand);
+    if(d<bestD){bestD=d;best=i;}
+  }
+  if(best===null){var T3=buildTrans(data,set);return mcFallback(data,steps,set,T3);}
+  var path=[];
+  for(var s=0;s<steps;s++){
+    var v=data[best+wlen+s]!==undefined?data[best+wlen+s]:data[data.length-1];
+    if(set.length)v=snap(v,set);path.push(v);
+  }
+  return path;
+}
+
+/* ════ 5. DTW + KNN ════ */
+function dtwKnnPredict(data,steps,set,K){
+  K=K||3;
+  var wlen=Math.min(8,Math.max(3,Math.floor(data.length*0.3)));
+  var query=data.slice(-wlen);
+  var dists=[];
+  for(var i=0;i<=data.length-wlen-1;i++){
+    var cand=data.slice(i,i+wlen);
+    dists.push({d:dtwDist(query,cand),i:i});
+  }
+  dists.sort(function(a,b){return a.d-b.d;});
+  var neighbors=dists.slice(0,Math.min(K,dists.length));
+  if(!neighbors.length){var T4=buildTrans(data,set);return mcFallback(data,steps,set,T4);}
+  var path=[];
+  for(var s=0;s<steps;s++){
+    var vals=[];
+    for(var ki=0;ki<neighbors.length;ki++){
+      var idx2=neighbors[ki].i+wlen+s;
+      if(idx2<data.length)vals.push(data[idx2]);
+    }
+    if(!vals.length)vals=[data[data.length-1]];
+    var v=mean(vals);if(set.length)v=snap(v,set);path.push(v);
+  }
+  return path;
+}
+
+/* ════ 6. DTW + K-Means ════ */
+function dtwKmeansPredict(data,steps,set,K){
+  K=Math.min(K||3,Math.floor(data.length/4)||1);
+  var wlen=Math.min(8,Math.max(3,Math.floor(data.length*0.3)));
+  if(data.length<wlen+steps+K){var T5=buildTrans(data,set);return mcFallback(data,steps,set,T5);}
+  /* build subsequences */
+  var seqs=[];
+  for(var i=0;i<=data.length-wlen;i++)seqs.push(data.slice(i,i+wlen));
+  /* init centroids: first K */
+  var centroids=seqs.slice(0,K).map(function(s){return s.slice();});
+  /* iterate k-means with DTW distances */
+  for(var iter=0;iter<10;iter++){
+    var clusters=[];for(var k=0;k<K;k++)clusters.push([]);
+    for(var si=0;si<seqs.length;si++){
+      var bd=Infinity,bc=0;
+      for(var k=0;k<K;k++){var d=dtwDist(seqs[si],centroids[k]);if(d<bd){bd=d;bc=k;}}
+      clusters[bc].push(si);
+    }
+    /* update centroids = mean of members */
+    for(var k=0;k<K;k++){
+      if(!clusters[k].length)continue;
+      var newC=Array(wlen).fill(0);
+      for(var ci=0;ci<clusters[k].length;ci++)for(var j=0;j<wlen;j++)newC[j]+=seqs[clusters[k][ci]][j];
+      centroids[k]=newC.map(function(v){return v/clusters[k].length;});
+    }
+  }
+  /* find which cluster the query belongs to */
+  var query2=data.slice(-wlen),bd2=Infinity,bc2=0;
+  for(var k=0;k<K;k++){var d=dtwDist(query2,centroids[k]);if(d<bd2){bd2=d;bc2=k;}}
+  /* collect follow-up sequences from that cluster */
+  var followups=[];
+  var lastCluster=clusters[bc2]||[0];
+  for(var ci=0;ci<lastCluster.length;ci++){
+    var startIdx=lastCluster[ci]+wlen;
+    if(startIdx+steps<=data.length)followups.push(data.slice(startIdx,startIdx+steps));
+  }
+  if(!followups.length){var T6=buildTrans(data,set);return mcFallback(data,steps,set,T6);}
+  return Array.from({length:steps},function(_,s){
+    var vals=followups.map(function(f){return f[s]!==undefined?f[s]:data[data.length-1];});
+    var v=mean(vals);if(set.length)v=snap(v,set);return v;
+  });
+}
+
+/* ════ 7. HMM (Baum-Welch lite) ════ */
+function hmmPredict(data,steps,set){
+  var es=set.length?set:Array.from(new Set(data)).sort(function(a,b){return a-b;});
+  var N=es.length;if(!N){return Array(steps).fill(data[data.length-1]);}
+  function idx(v){for(var i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i;return 0;}
+  /* number of hidden states = min(3, N) */
+  var S=Math.min(3,N);
+  /* init: uniform transition + emission biased toward matching obs */
+  var A=[];for(var i=0;i<S;i++){A.push([]);for(var j=0;j<S;j++)A[i].push(1/S);}
+  var B=[];
+  for(var i=0;i<S;i++){
+    B.push([]);for(var j=0;j<N;j++)B[i].push(1/N);
+  }
+  var pi=Array(S).fill(1/S);
+  /* simple Baum-Welch: 10 iterations */
+  var obs=data.map(idx);
+  var T7=obs.length;
+  for(var iter=0;iter<10;iter++){
+    /* forward */
+    var alpha=[];
+    alpha.push(Array.from({length:S},function(_,i){return pi[i]*B[i][obs[0]];}));
+    for(var t=1;t<T7;t++){
+      var at=[];
+      for(var j=0;j<S;j++){var s2=0;for(var i=0;i<S;i++)s2+=alpha[t-1][i]*A[i][j];at.push(s2*B[j][obs[t]]);}
+      /* scale */
+      var sc=at.reduce(function(a,b){return a+b;},0)||1e-300;
+      alpha.push(at.map(function(v){return v/sc;}));
+    }
+    /* backward */
+    var beta=[];for(var t=0;t<T7;t++)beta.push(Array(S).fill(0));
+    beta[T7-1]=Array(S).fill(1);
+    for(var t=T7-2;t>=0;t--){
+      for(var i=0;i<S;i++){var s2=0;for(var j=0;j<S;j++)s2+=A[i][j]*B[j][obs[t+1]]*beta[t+1][j];beta[t][i]=s2;}
+      var sc=beta[t].reduce(function(a,b){return a+b;},0)||1e-300;
+      beta[t]=beta[t].map(function(v){return v/sc;});
+    }
+    /* gamma */
+    var gamma=[];
+    for(var t=0;t<T7;t++){
+      var g=Array.from({length:S},function(_,i){return alpha[t][i]*beta[t][i];});
+      var sc=g.reduce(function(a,b){return a+b;},0)||1e-300;
+      gamma.push(g.map(function(v){return v/sc;}));
+    }
+    /* xi */
+    var xi=[];
+    for(var t=0;t<T7-1;t++){
+      var x=[];for(var i=0;i<S;i++){x.push([]);for(var j=0;j<S;j++)x[i].push(alpha[t][i]*A[i][j]*B[j][obs[t+1]]*beta[t+1][j]);}
+      var sc=x.reduce(function(a,b){return a+b.reduce(function(c,d){return c+d;},0);},0)||1e-300;
+      xi.push(x.map(function(r){return r.map(function(v){return v/sc;});}));
+    }
+    /* update A, B, pi */
+    for(var i=0;i<S;i++){
+      pi[i]=gamma[0][i];
+      for(var j=0;j<S;j++){
+        var n2=0,d2=0;for(var t=0;t<T7-1;t++){n2+=xi[t][i][j];d2+=gamma[t][i];}
+        A[i][j]=d2>1e-14?n2/d2:1/S;
+      }
+      for(var k2=0;k2<N;k2++){
+        var n2=0,d2=0;for(var t=0;t<T7;t++){if(obs[t]===k2)n2+=gamma[t][i];d2+=gamma[t][i];}
+        B[i][k2]=d2>1e-14?Math.max(n2/d2,1e-6):1/N;
+      }
+      /* re-normalize B row */
+      var bs=B[i].reduce(function(a,b){return a+b;},0)||1;
+      B[i]=B[i].map(function(v){return v/bs;});
+    }
+  }
+  /* Viterbi to find current state */
+  var delta=[Array.from({length:S},function(_,i){return Math.log(pi[i]+1e-300)+Math.log(B[i][obs[0]]+1e-300);})];
+  for(var t=1;t<T7;t++){
+    var row=[];
+    for(var j=0;j<S;j++){
+      var best=-Infinity;
+      for(var i=0;i<S;i++){var v2=delta[t-1][i]+Math.log(A[i][j]+1e-300);if(v2>best)best=v2;}
+      row.push(best+Math.log(B[j][obs[t]]+1e-300));
+    }
+    delta.push(row);
+  }
+  var curSt=0,bestV=-Infinity;
+  for(var i=0;i<S;i++)if(delta[T7-1][i]>bestV){bestV=delta[T7-1][i];curSt=i;}
+  /* generate steps */
+  var path=[];var st=curSt;
+  for(var s=0;s<steps;s++){
+    /* next state: sample from A[st] */
+    var r=Math.random(),cum2=0,ns=0;
+    for(var j=0;j<S;j++){cum2+=A[st][j];if(r<=cum2){ns=j;break;}}
+    /* emit: sample from B[ns] */
+    var r2=Math.random(),cum3=0,em=0;
+    for(var k3=0;k3<N;k3++){cum3+=B[ns][k3];if(r2<=cum3){em=k3;break;}}
+    path.push(es[em]);st=ns;
+  }
+  return path;
+}
+
+/* ════ 8. KNN (Öklid) ════ */
+function knnPredict(data,steps,set,K){
+  K=K||5;
+  var wlen=Math.min(8,Math.max(3,Math.floor(data.length*0.3)));
+  var query=data.slice(-wlen);
+  var dists=[];
+  for(var i=0;i<=data.length-wlen-1;i++){
+    var d=0;for(var j=0;j<wlen;j++)d+=(data[i+j]-query[j])*(data[i+j]-query[j]);
+    dists.push({d:Math.sqrt(d),i:i});
+  }
+  dists.sort(function(a,b){return a.d-b.d;});
+  var neighbors=dists.slice(0,Math.min(K,dists.length));
+  if(!neighbors.length){var T8=buildTrans(data,set);return mcFallback(data,steps,set,T8);}
+  return Array.from({length:steps},function(_,s){
+    var vals=[];
+    for(var ki=0;ki<neighbors.length;ki++){var idx3=neighbors[ki].i+wlen+s;if(idx3<data.length)vals.push(data[idx3]);}
+    if(!vals.length)vals=[data[data.length-1]];
+    var v=mean(vals);if(set.length)v=snap(v,set);return v;
+  });
+}
+
+/* ════ 9. K-MEANS ════ */
+function kmeansPredict(data,steps,set,K){
+  K=Math.min(K||4,Math.max(2,Math.floor(data.length/5)));
+  var wlen=Math.min(8,Math.max(3,Math.floor(data.length*0.3)));
+  if(data.length<wlen+steps+K){var T9=buildTrans(data,set);return mcFallback(data,steps,set,T9);}
+  var seqs=[];for(var i=0;i<=data.length-wlen;i++)seqs.push(data.slice(i,i+wlen));
+  /* init centroids via k-means++ */
+  var centroids=[seqs[Math.floor(Math.random()*seqs.length)].slice()];
+  while(centroids.length<K){
+    var dists2=seqs.map(function(s){var md=Infinity;centroids.forEach(function(c){var d=0;for(var j=0;j<s.length;j++)d+=(s[j]-c[j])*(s[j]-c[j]);if(d<md)md=d;});return md;});
+    var total=dists2.reduce(function(a,b){return a+b;},0),r=Math.random()*total,cum=0;
+    for(var si=0;si<seqs.length;si++){cum+=dists2[si];if(r<=cum){centroids.push(seqs[si].slice());break;}}
+  }
+  var clusters=[];
+  for(var iter=0;iter<15;iter++){
+    clusters=[];for(var k=0;k<K;k++)clusters.push([]);
+    for(var si=0;si<seqs.length;si++){
+      var bd=Infinity,bc=0;
+      for(var k=0;k<K;k++){var d=0;for(var j=0;j<wlen;j++)d+=(seqs[si][j]-centroids[k][j])*(seqs[si][j]-centroids[k][j]);if(d<bd){bd=d;bc=k;}}
+      clusters[bc].push(si);
+    }
+    for(var k=0;k<K;k++){
+      if(!clusters[k].length)continue;
+      var newC=Array(wlen).fill(0);
+      for(var ci=0;ci<clusters[k].length;ci++)for(var j=0;j<wlen;j++)newC[j]+=seqs[clusters[k][ci]][j];
+      centroids[k]=newC.map(function(v){return v/clusters[k].length;});
+    }
+  }
+  var query3=data.slice(-wlen),bd3=Infinity,bc3=0;
+  for(var k=0;k<K;k++){var d=0;for(var j=0;j<wlen;j++)d+=(query3[j]-centroids[k][j])*(query3[j]-centroids[k][j]);if(d<bd3){bd3=d;bc3=k;}}
+  var followups2=[];
+  var cl=clusters[bc3]||[0];
+  for(var ci=0;ci<cl.length;ci++){var si2=cl[ci]+wlen;if(si2+steps<=data.length)followups2.push(data.slice(si2,si2+steps));}
+  if(!followups2.length){var T10=buildTrans(data,set);return mcFallback(data,steps,set,T10);}
+  return Array.from({length:steps},function(_,s){
+    var vals=followups2.map(function(f){return f[s]!==undefined?f[s]:data[data.length-1];});
+    var sorted=vals.slice().sort(function(a,b){return a-b;});
+    var v=sorted[Math.floor(sorted.length/2)];if(set.length)v=snap(v,set);return v;
+  });
+}
+
+/* ════ 10. CRF (linear-chain, viterbi) ════ */
+function crfPredict(data,steps,set){
+  var es=set.length?set:Array.from(new Set(data)).sort(function(a,b){return a-b;});
+  var N=es.length;if(!N)return Array(steps).fill(data[data.length-1]);
+  function idx(v){for(var i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i;return 0;}
+  /* feature weights: transition (NxN) + emission (NxN) learned from data */
+  /* We use log-linear model: score(y_t | y_{t-1}, x_t) = w_trans[y_{t-1}][y_t] + w_emit[x_t][y_t] */
+  /* Training: pseudo-likelihood (1 pass gradient) */
+  var wT=[];for(var i=0;i<N;i++){wT.push([]);for(var j=0;j<N;j++)wT[i].push(0.0);}
+  var wE=[];for(var i=0;i<N;i++){wE.push([]);for(var j=0;j<N;j++)wE[i].push(0.0);}
+  var lr=0.1,obs2=data.map(idx);
+  /* assume labels = observations (sequence labeling of self) */
+  for(var pass=0;pass<5;pass++){
+    for(var t=1;t<obs2.length;t++){
+      var xt=obs2[t-1],yt=obs2[t];
+      /* softmax over labels */
+      var scores=[];for(var j=0;j<N;j++)scores.push(wT[xt][j]+wE[xt][j]);
+      var mx=Math.max.apply(null,scores);
+      var exps=scores.map(function(s){return Math.exp(s-mx);});
+      var Z=exps.reduce(function(a,b){return a+b;},0)||1;
+      var probs=exps.map(function(e){return e/Z;});
+      for(var j=0;j<N;j++){
+        var delta=(j===yt?1:0)-probs[j];
+        wT[xt][j]+=lr*delta;wE[xt][j]+=lr*delta;
+      }
+    }
+  }
+  /* Viterbi decoding for forecast */
+  var path=[];var prev=obs2[obs2.length-1];
+  for(var s=0;s<steps;s++){
+    var scores2=[];for(var j=0;j<N;j++)scores2.push(wT[prev][j]+wE[prev][j]);
+    var best2=-Infinity,bc4=0;for(var j=0;j<N;j++)if(scores2[j]>best2){best2=scores2[j];bc4=j;}
+    /* add stochasticity via softmax sampling */
+    var mx2=Math.max.apply(null,scores2);
+    var ex=scores2.map(function(s){return Math.exp(s-mx2);});
+    var Z2=ex.reduce(function(a,b){return a+b;},0)||1;
+    var pr=ex.map(function(e){return e/Z2;});
+    var r=Math.random(),cum4=0,chosen=bc4;
+    for(var j=0;j<N;j++){cum4+=pr[j];if(r<=cum4){chosen=j;break;}}
+    path.push(es[chosen]);prev=chosen;
+  }
+  return path;
+}
+
+/* ════ FALLBACK (Markov) ════ */
+function mcFallback(data,steps,set,T){
+  if(!set.length||!T){
+    var s=std(data),m=mean(data),a=acf1(data),last=data[data.length-1],path=[];
+    for(var i=0;i<steps;i++){last=last*a+m*(1-Math.abs(a))+s*grnd()*(1-Math.abs(a));path.push(last);}
+    return path;
+  }
+  function idx(v){for(var i=0;i<set.length;i++)if(Math.abs(set[i]-v)<1e-9)return i;return -1;}
+  var cur=idx(data[data.length-1]);if(cur<0)cur=Math.floor(set.length/2);
+  var path=[];
+  for(var i=0;i<steps;i++){
+    var row=T[cur],r=Math.random(),cum=0;
+    for(var j=0;j<set.length;j++){cum+=row[j];if(r<=cum){cur=j;break;}}
+    path.push(set[cur]);
+  }
+  return path;
+}
+
+/* ── AR utils (used by nhits fallback) ── */
+function fitAR(data,p){
+  var n=data.length;if(n<=p||p<1)return [0];
+  var m=mean(data),c=[];
+  for(var k=0;k<=p;k++){var s=0;for(var i=k;i<n;i++)s+=(data[i]-m)*(data[i-k]-m);c.push(s/(n-k));}
+  var phi=[c[1]/(c[0]||1e-10)],V=c[0]*(1-phi[0]*phi[0]);
+  for(var lag=2;lag<=p;lag++){
+    var num=c[lag];for(var j=0;j<phi.length;j++)num-=phi[j]*(c[lag-1-j]||0);
+    var kk=num/(V||1e-10),phi2=[];
+    for(var j=0;j<phi.length;j++)phi2.push(phi[j]-kk*(phi[phi.length-2-j]||0));
+    phi2.push(kk);phi=phi2;V*=(1-kk*kk);if(isNaN(V)||V<=0)break;
+  }
+  return phi;
+}
+function arPredict(data,phi,steps,nStd,set){
+  var m=mean(data),hist=data.map(function(v){return v-m;}),path=[];
+  for(var i=0;i<steps;i++){
+    var pred=0;for(var j=0;j<phi.length;j++)pred+=phi[j]*(hist[hist.length-1-j]||0);
+    pred+=m+nStd*grnd();if(set.length)pred=snap(pred,set);hist.push(pred-m);path.push(pred);
+  }
+  return path;
+}
+
+/* ════ DISPATCH ════ */
+function callMethod(name,data,steps,set,T){
+  if(name==='nbwin')      return nbPredict(data,steps,set);
+  else if(name==='nhits') return nhitsPredict(data,steps,set);
+  else if(name==='dtw_knn') return dtwKnnPredict(data,steps,set,5);
+  else if(name==='dtw_km')  return dtwKmeansPredict(data,steps,set,4);
+  else if(name==='dtw')   return dtwPredict(data,steps,set);
+  else if(name==='hmm')   return hmmPredict(data,steps,set);
+  else if(name==='knn')   return knnPredict(data,steps,set,5);
+  else if(name==='kmeans')return kmeansPredict(data,steps,set,4);
+  else if(name==='crf')   return crfPredict(data,steps,set);
+  return mcFallback(data,steps,set,T);
+}
+
+/* ════ ENSEMBLE ════ */
+function getEnsMethods(){
+  var all=['nbwin','nhits','dtw_knn','dtw_km','dtw','hmm','knn','kmeans','crf'];
+  var sel=all.filter(function(m){var el=$('ec_'+m);return el&&el.checked;});
+  return sel.length?sel:['nbwin','nhits'];
+}
+function ensemblePath(data,steps,set,T,methods){
+  var paths=methods.map(function(m){return callMethod(m,data,steps,set,T);});
+  return Array.from({length:steps},function(_,s){
+    var vals=paths.map(function(p){return p[s];});
+    if(set.length){
+      var freq={};vals.forEach(function(v){var k=snap(v,set).toString();freq[k]=(freq[k]||0)+1;});
+      return parseFloat(Object.entries(freq).sort(function(a,b){return b[1]-a[1];})[0][0]);
+    }
+    return mean(vals);
+  });
+}
+
+/* ════ MAIN ════ */
+async function runAnalysis(){
+  _data=parseSeries();
+  if(_data.length<6){alert('En az 6 veri noktasi gerekli.');return;}
+  var nPred=+$('rN').value,method=$('method').value;
+  var mcRep=+$('rMC').value,conf=+$('bandConf').value,alpha=(1-conf)/2;
+  var effSet=_set.length?_set:[...new Set(_data)].sort(function(a,b){return a-b;});
+  var bad=_set.length?_data.filter(function(v){return!_set.some(function(s){return Math.abs(s-v)<1e-9;});}).length:0;
+  var m=mean(_data),s=std(_data),a1=acf1(_data),tr=linTrend(_data),ent=entropy(_data,effSet);
+
+  $('stLen').textContent=_data.length;
+  $('stSetN').textContent=_set.length||'—';
+  var bEl=$('stBad');bEl.textContent=bad;bEl.className='si-val'+(bad>0?' err':'');
+  $('stMean').textContent=m.toFixed(3);$('stStd').textContent=s.toFixed(3);
+  $('stAcf').textContent=a1.toFixed(3);$('stEnt').textContent=ent.toFixed(2);
+  var tEl=$('stTrend');
+  if(Math.abs(tr)<0.0005){tEl.textContent='Sabit';tEl.className='si-val';}
+  else if(tr>0){tEl.textContent='Yukseliyor';tEl.className='si-val ok';}
+  else{tEl.textContent='Dusuyor';tEl.className='si-val err';}
+
+  ['sec_table','sec_chart1','sec_results','sec_chart2','sec_info'].forEach(hide);
+  show('progWrap');setP(4,'Modeller hazirlaniyor...');await sleep(20);
+
+  var T=buildTrans(_data,effSet);
+  var ensMethods=getEnsMethods();
+  var simPaths=[];
+
+  try{
+    setP(10,'Simulasyonlar basliyor...');await sleep(10);
+    var bSz=60;
+    for(var i=0;i<mcRep;i+=bSz){
+      var nb2=Math.min(bSz,mcRep-i);
+      for(var b=0;b<nb2;b++){
+        var path=(method==='combined')
+          ?ensemblePath(_data,nPred,effSet,T,ensMethods)
+          :callMethod(method,_data,nPred,effSet,T);
+        simPaths.push(path);
+      }
+      setP(10+((i+bSz)/mcRep)*80,'Simulasyon: '+Math.min(i+bSz,mcRep)+'/'+mcRep);
+      await sleep(0);
+    }
+  }catch(e){console.error(e);alert('Hata: '+e.message);hide('progWrap');return;}
+
+  if(!simPaths.length){alert('Simulasyon uretilemedi.');hide('progWrap');return;}
+  setP(92,'Sonuclar...');await sleep(10);
+
+  var predMed=[],predLo=[],predHi=[];
+  for(var st=0;st<nPred;st++){
+    var vals=simPaths.map(function(p){return p[st];});
+    predMed.push(pct(vals,.5));predLo.push(pct(vals,alpha));predHi.push(pct(vals,1-alpha));
+  }
+  var prob2d=Array.from({length:nPred},function(_,step){
+    var vals=simPaths.map(function(p){return p[step];});
+    var cnt={};effSet.forEach(function(v){cnt[v]=0;});
+    vals.forEach(function(v){var k=snap(v,effSet);cnt[k]=(cnt[k]||0)+1;});
+    return effSet.map(function(v){return(cnt[v]||0)/vals.length;});
+  });
+
+  setP(97,'Grafikler ciziliyor...');await sleep(10);
+  drawChart1(predMed,predLo,predHi,bad);
+  drawChart2(predMed,predLo,predHi);
+  renderTable(prob2d,effSet,nPred);
+  renderResults(predMed,predLo,predHi,nPred,bad,m,s,a1,tr,method,simPaths.length,conf,ent,effSet,ensMethods);
+
+  setP(100,'Tamamlandi','100%');
+  ['sec_table','sec_chart1','sec_info'].forEach(show);
+  show('sec_chart2');
+  $('sec_results').style.display='grid';
+  hide('progWrap');
+}
+
+/* ── CHART 1 ── */
+function drawChart1(predMed,predLo,predHi,bad){
+  if(_chart1){_chart1.destroy();_chart1=null;}
+  var oLen=_data.length;
+  var labels=Array.from({length:oLen+predMed.length},function(_,i){return i;});
+  var obs=[].concat(_data,Array(predMed.length).fill(null));
+  var med=[].concat(Array(oLen-1).fill(null),[_data[oLen-1]],predMed);
+  var lo=[].concat(Array(oLen-1).fill(null),[_data[oLen-1]],predLo);
+  var hi=[].concat(Array(oLen-1).fill(null),[_data[oLen-1]],predHi);
+  var inv=_set.length?_data.map(function(v){return _set.some(function(s){return Math.abs(s-v)<1e-9;})?null:v;}):_data.map(function(){return null;});
+  inv=inv.concat(Array(predMed.length).fill(null));
+  _chart1=new Chart($('chart1').getContext('2d'),{type:'line',data:{labels:labels,datasets:[
+    {label:'Hi',data:hi,borderColor:'transparent',backgroundColor:'rgba(31,122,69,.10)',pointRadius:0,fill:'+1',tension:.35},
+    {label:'Lo',data:lo,borderColor:'rgba(31,122,69,.25)',borderWidth:1,borderDash:[3,2],backgroundColor:'rgba(31,122,69,.10)',pointRadius:0,fill:false,tension:.35},
+    {label:'Medyan',data:med,borderColor:'#1f7a45',borderWidth:2.5,borderDash:[6,3],pointRadius:0,fill:false,tension:.35},
+    {label:'Gozlem',data:obs,borderColor:'#1a5c8a',borderWidth:2,pointRadius:2.5,pointBackgroundColor:'#1a5c8a',fill:false,tension:.2},
+    {label:'Gecersiz',type:'scatter',data:inv,backgroundColor:'rgba(184,50,50,.8)',borderColor:'transparent',pointRadius:5,pointStyle:'crossRot',fill:false},
+  ]},options:{animation:false,responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false},
+      zoom:{pan:{enabled:true,mode:'x'},zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}}},
+    scales:{
+      x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6e6050',font:{family:'Space Mono',size:9},maxTicksLimit:14}},
+      y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6e6050',font:{family:'Space Mono',size:9},maxTicksLimit:8}}
+    },elements:{point:{radius:0}}
+  }});
+}
+function c1zi(){if(_chart1)_chart1.zoom(1.35);}
+function c1zo(){if(_chart1)_chart1.zoom(0.75);}
+function c1zr(){if(_chart1)_chart1.resetZoom();}
+
+/* ── CHART 2 ── */
+function drawChart2(predMed,predLo,predHi){
+  if(_chart2){_chart2.destroy();_chart2=null;}
+  var oLen=_data.length,cumObs=[],acc=0;
+  for(var i=0;i<oLen;i++){acc+=_data[i];cumObs.push(acc);}
+  var cumMed=[],cumLo=[],cumHi=[],accM=acc,accL=acc,accH=acc;
+  for(var i=0;i<predMed.length;i++){accM+=predMed[i];cumMed.push(accM);accL+=predLo[i];cumLo.push(accL);accH+=predHi[i];cumHi.push(accH);}
+  var labels=Array.from({length:oLen+predMed.length},function(_,i){return i;});
+  var obsDs=[].concat(cumObs,Array(predMed.length).fill(null));
+  var medDs=[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumMed);
+  var loDs=[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumLo);
+  var hiDs=[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumHi);
+  _chart2=new Chart($('chart2').getContext('2d'),{type:'line',data:{labels:labels,datasets:[
+    {label:'TahHi',data:hiDs,borderColor:'transparent',backgroundColor:'rgba(232,160,32,.12)',pointRadius:0,fill:'+1',tension:.35},
+    {label:'TahLo',data:loDs,borderColor:'rgba(232,160,32,.3)',borderWidth:1,borderDash:[3,2],backgroundColor:'rgba(232,160,32,.12)',pointRadius:0,fill:false,tension:.35},
+    {label:'Tah Medyan',data:medDs,borderColor:'#e8a020',borderWidth:2.5,borderDash:[6,3],pointRadius:0,fill:false,tension:.35},
+    {label:'Gozlem Kumulatif',data:obsDs,borderColor:'#1a5c8a',borderWidth:2,pointRadius:2,pointBackgroundColor:'#1a5c8a',fill:false,tension:.2},
+  ]},options:{animation:false,responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false},
+      zoom:{pan:{enabled:true,mode:'x'},zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}}},
+    scales:{
+      x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6e6050',font:{family:'Space Mono',size:9},maxTicksLimit:14}},
+      y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6e6050',font:{family:'Space Mono',size:9},maxTicksLimit:8},title:{display:true,text:'Kumulatif Toplam',color:'#6e6050',font:{family:'Space Mono',size:9}}}
+    },elements:{point:{radius:0}}
+  }});
+}
+function c2zi(){if(_chart2)_chart2.zoom(1.35);}
+function c2zo(){if(_chart2)_chart2.zoom(0.75);}
+function c2zr(){if(_chart2)_chart2.resetZoom();}
+
+/* ── FULLSCREEN ── */
+function toggleFS(cardId,btnId){
+  var c=$(cardId),isFs=c.classList.toggle('fullscreen');
+  $(btnId).textContent=isFs?'X':'[]';
+  var ch=cardId==='sec_chart1'?_chart1:_chart2;
+  setTimeout(function(){if(ch)ch.resize();},50);
+}
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    ['sec_chart1','sec_chart2'].forEach(function(id,i){
+      var c=$(id);if(c&&c.classList.contains('fullscreen')){
+        c.classList.remove('fullscreen');
+        $(i===0?'fs1btn':'fs2btn').textContent='[]';
+        var ch=i===0?_chart1:_chart2;setTimeout(function(){if(ch)ch.resize();},50);
+      }
+    });
+  }
+});
+
+/* ── 2D TABLE ── */
+function renderTable(prob2d,effSet,nPred){
+  var nC=effSet.length;
+  var colMax=Array.from({length:nC},function(_,ci){
+    return Math.max.apply(null,prob2d.map(function(row){return row[ci];}))||1e-9;
+  });
+  var rowBest=prob2d.map(function(row){var b=0;row.forEach(function(p,i){if(p>row[b])b=i;});return b;});
+  var colBest=Array.from({length:nC},function(_,ci){
+    var b=0;prob2d.forEach(function(row,ri){if(row[ci]>prob2d[b][ci])b=ri;});return b;
+  });
+  var hdr='<tr><th class="rh" style="min-width:60px;text-align:left;padding-left:10px;">Adim / Deger</th>'+
+    effSet.map(function(v){return '<th>'+v+'</th>';}).join('')+
+    '<th class="rh">En Olasi</th><th class="rh">2. Olasi</th></tr>';
+  var rows=prob2d.map(function(row,ri){
+    var ranked=row.map(function(p,i){return{p:p,i:i};}).sort(function(a,b){return b.p-a.p;});
+    var best=ranked[0],sec=ranked[1]||ranked[0];
+    var cells=row.map(function(p,ci){
+      var pStr=(p*100).toFixed(1);
+      var norm=colMax[ci]>0?p/colMax[ci]:0;
+      var r=Math.round(248-norm*118),g=Math.round(245-norm*100),b=Math.round(255-norm*50);
+      var bg='rgb('+r+','+g+','+b+')';
+      var tc=norm>0.58?'#fff':'var(--ink)';
+      var isRB=(ci===rowBest[ri]),isCB=(ri===colBest[ci]);
+      var extra='';
+      /* amber acik sari: #e8b84b */
+      if(isRB&&isCB) extra='outline:3px solid #1f7a45;outline-offset:-1px;box-shadow:inset 0 0 0 3px #e8b84b;';
+      else if(isRB)  extra='outline:3px solid #1f7a45;outline-offset:-1px;';
+      else if(isCB)  extra='outline:3px solid #e8b84b;outline-offset:-1px;';
+      return '<td style="background:'+bg+';color:'+tc+';'+extra+'">'+pStr+'%</td>';
+    }).join('');
+    return '<tr><td class="sh">t+'+(ri+1)+'</td>'+cells+
+      '<td class="bt">'+effSet[best.i]+' <span style="font-size:10px;color:var(--ink3);font-weight:400">('+  (best.p*100).toFixed(1)+'%)</span></td>'+
+      '<td class="bs">'+effSet[sec.i]+' <span style="font-size:10px;color:var(--ink3);font-weight:400">('+(sec.p*100).toFixed(1)+'%)</span></td></tr>';
+  }).join('');
+  $('p2dWrap').innerHTML='<table class="p2d"><thead>'+hdr+'</thead><tbody>'+rows+'</tbody></table>';
+  $('tblLeg').innerHTML=
+    '<div class="tll"><div class="tlb" style="background:rgb(130,145,205)"></div><span><b>Koyu mavi</b> = o sutunda en yuksek gorunme (sutun normalize)</span></div>'+
+    '<div class="tll"><div class="tlb" style="outline:3px solid #1f7a45;outline-offset:-1px"></div><span><b>Yesil cerceve</b> = o satirda en yuksek %</span></div>'+
+    '<div class="tll"><div class="tlb" style="outline:3px solid #e8b84b;outline-offset:-1px"></div><span><b>Acik sari cerceve</b> = o sutunda en yuksek %</span></div>'+
+    '<div class="tll"><div class="tlb" style="outline:3px solid #1f7a45;outline-offset:-1px;box-shadow:inset 0 0 0 3px #e8b84b"></div><span><b>Ic ice</b> = her ikisinde de zirve</span></div>';
+}
+
+/* ── RESULTS ── */
+function renderResults(predMed,predLo,predHi,nPred,bad,m,s,a1,tr,method,nSim,conf,ent,effSet,ensMethods){
+  var last=_data[_data.length-1],fMed=predMed[nPred-1],fLo=predLo[nPred-1],fHi=predHi[nPred-1];
+  var acfI=Math.abs(a1)>0.5?'Guclu':Math.abs(a1)>0.2?'Orta':'Zayif';
+  var freq={};_data.forEach(function(v){var k=v.toString();freq[k]=(freq[k]||0)+1;});
+  var top=Object.entries(freq).sort(function(a,b){return b[1]-a[1];})[0];
+  var mnames={nbwin:'Naive Bayes',nhits:'N-HiTS',dtw_knn:'DTW+KNN',dtw_km:'DTW+K-Means',
+    dtw:'DTW',hmm:'HMM',knn:'KNN',kmeans:'K-Means',crf:'CRF',combined:'Ensemble'};
+  var mStr=mnames[method]||method;
+  if(method==='combined')mStr='Ensemble ['+ensMethods.map(function(x){return mnames[x]||x;}).join(', ')+']';
+
+  $('findings').innerHTML=
+    '<div class="fr"><span class="fr-l">En sik deger</span><span class="fr-r ok">'+top[0]+' (%'+((top[1]/_data.length)*100).toFixed(1)+')</span></div>'+
+    '<div class="fr"><span class="fr-l">ACF(1)</span><span class="fr-r '+(Math.abs(a1)>0.3?'ok':'warn')+'">'+a1.toFixed(4)+' — '+acfI+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Entropi</span><span class="fr-r '+(ent>2?'warn':'')+'">'+ent.toFixed(3)+' / '+Math.log2(effSet.length||1).toFixed(2)+' bit</span></div>'+
+    '<div class="fr"><span class="fr-l">Trend</span><span class="fr-r">'+tr.toFixed(5)+'/adim</span></div>'+
+    '<div class="fr"><span class="fr-l">Gecersiz</span><span class="fr-r '+(bad>0?'err':'')+'">'+bad+(bad>0?' !':''  )+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Yontem</span><span class="fr-r">'+mStr+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Simulasyon</span><span class="fr-r">'+nSim.toLocaleString()+' yol</span></div>';
+
+  $('predSummary').innerHTML=
+    '<div class="fr"><span class="fr-l">Son gozlem</span><span class="fr-r">'+last+'</span></div>'+
+    '<div class="fr"><span class="fr-l">t+'+nPred+' medyan</span><span class="fr-r ok">'+(typeof fMed==='number'?fMed.toFixed(4):fMed)+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Alt %'+(conf*100).toFixed(0)+'</span><span class="fr-r warn">'+(typeof fLo==='number'?fLo.toFixed(4):fLo)+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Ust %'+(conf*100).toFixed(0)+'</span><span class="fr-r warn">'+(typeof fHi==='number'?fHi.toFixed(4):fHi)+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Yon</span><span class="fr-r '+(fMed>last?'ok':fMed<last?'err':'')+'">'+  (fMed>last?'Yukseliyor':fMed<last?'Dusuyor':'Sabit')+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Belirsizlik +/-</span><span class="fr-r">'+((fHi-fLo)/2).toFixed(4)+'</span></div>';
+
+  var bestM=ent<0.8?'Naive Bayes':ent<1.8?'DTW+KNN':ent>2.5?'K-Means':'Ensemble';
+  $('sec_info').innerHTML=
+    '<h4>2B TABLO NASIL OKUNUR?</h4>'+
+    '<div class="mrow"><b>Mavi yogunlugu sutun bazli normalize edilir.</b> Her sutunun kendi icindeki en yuksek deger en koyu mavi alir.</div>'+
+    '<div class="mrow"><b>% sayisi:</b> o adimda o degerin simulasyonlardaki gorulme orani. Ornek: %65 = 2000 simulasyonun 1300\'u o adimda o degeri verdi.</div>'+
+    '<div class="mrow"><b>Yesil cerceve</b> = o satir (adim) icinde en yuksek %. <b>Acik sari cerceve</b> = o sutun (deger) icinde en yuksek %. <b>Ic ice</b> = her ikisinde de zirve.</div>'+
+    '<h4>YONTEMLER</h4>'+
+    '<div class="mrow"><span class="mn">Naive Bayes</span> — son 3 adim penceresi ile kosullu olasilik. Kisa oruntu tekrarlayan seriler icin guclu.</div>'+
+    '<div class="mrow"><span class="mn">N-HiTS</span> — 3 stack hiyerarsik basis expansion (polinom + Fourier). Trend ve periyodik bilesenleri ayristirir.</div>'+
+    '<div class="mrow"><span class="mn">DTW (saf)</span> — Dynamic Time Warping 1-NN: en benzer gecmis pencereyi bulur, ardindan gelen degerleri tahmin olarak kullanir.</div>'+
+    '<div class="mrow"><span class="mn">DTW + KNN</span> — DTW mesafesiyle K en yakin komsu; tahminler komsu devamlarinin ortalamasi.</div>'+
+    '<div class="mrow"><span class="mn">DTW + K-Means</span> — Alt dizileri DTW ile K kureye ayirir; sorgu kuresinin devam degerlerini kullanir.</div>'+
+    '<div class="mrow"><span class="mn">HMM</span> — Gizli Markov Modeli: Baum-Welch ile durum gecisi ve yayim parametrelerini ogrenir, Viterbi ile tahmin uretir.</div>'+
+    '<div class="mrow"><span class="mn">KNN</span> — Oklid mesafesiyle K en yakin komsu penceresi; sonraki degerler orneklem ortalamasi.</div>'+
+    '<div class="mrow"><span class="mn">K-Means</span> — k-means++ ile kure olusturur; sorgunun kuresindeki gelecek degerler medyan ile ozetlenir.</div>'+
+    '<div class="mrow"><span class="mn">CRF</span> — Lineer zincir Kosullu Rastsal Alan: log-dogrusal katsayilar pseudo-likelihood ile ogrenilir, Viterbi + sicaklik ile tahmin.</div>'+
+    '<div class="mrow"><span class="mn">Ensemble</span> — Secilen yontemlerin cogunluk oylamasi. Hangi yontemlerin dahil edilecegi kullanici tarafindan belirlenir.</div>'+
+    '<br>Entropi = <b>'+ent.toFixed(3)+' bit</b>. Onerilen: <b>'+bestM+'</b>.'+
+    (bad>0?'<br><br><span style="color:var(--red)">! '+bad+' nokta adim kumesi disinda.</span>':'');
+}
+
+/* ── EXAMPLE ── */
+function loadExample(){
+  $('setInput').value='3, 3.2, 3.4, 3.6';parseSetInput();
+  $('seriesInput').value='3,3,3.2,3.2,3.4,3.4,3.4,3.2,3.2,3,3,3,3.2,3.4,3.6,3.6,3.4,3.4,3.2,3.2,3,3,3.2,3.4,3.4,3.2,3.2,3,3,3.2';
+  $('rN').value=8;$('vN').textContent='8';
+  $('method').value='combined';onMethodChange();
+}
+</script>
+</body>
+</html>
