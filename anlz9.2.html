@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seri Analiz & Tahmin</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&display=swap');
+:root{
+  --bg:#f4efe4;--paper:#faf6ed;--ink:#1c1710;--ink2:#3a3228;--ink3:#6e6050;
+  --rule:#d6c9b4;--red:#b83232;--blue:#1a5c8a;--green:#1f7a45;--amber:#e8a020;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--ink);font-family:'Space Mono',monospace;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:repeating-linear-gradient(transparent,transparent 27px,rgba(180,158,130,.22)27px,rgba(180,158,130,.22)28px);}
+.wrap{position:relative;z-index:1;max-width:1340px;margin:0 auto;padding:28px 22px 80px;}
+header{border-bottom:3px solid var(--ink);padding-bottom:18px;margin-bottom:28px;}
+.eyebrow{font-size:10px;letter-spacing:4px;color:var(--ink3);text-transform:uppercase;margin-bottom:4px;}
+h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(28px,5vw,60px);letter-spacing:3px;line-height:.95;}
+h1 em{color:var(--blue);font-style:normal;}
+h1 strong{color:var(--red);}
+/* PANEL */
+.panel{background:var(--paper);border:2px solid var(--ink);padding:22px 22px 18px;position:relative;margin-bottom:20px;}
+.panel::before{content:attr(data-lbl);position:absolute;top:-12px;left:12px;background:var(--paper);
+  padding:0 8px;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-weight:700;border:2px solid var(--ink);}
+.panel.rd::before{color:var(--red);border-color:var(--red);}
+textarea{width:100%;height:120px;background:transparent;border:1px solid var(--rule);
+  color:var(--ink);font-family:'Space Mono',monospace;font-size:12px;padding:9px 10px;resize:vertical;outline:none;line-height:1.75;}
+textarea:focus{border-color:var(--ink);}
+/* ADIM KÜMESİ */
+.set-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin:10px 0 6px;}
+#setPreview{display:flex;flex-wrap:wrap;gap:5px;min-height:22px;margin-bottom:14px;}
+.tag{background:rgba(26,92,138,.12);border:1px solid rgba(26,92,138,.4);color:var(--blue);padding:3px 10px;font-size:11px;font-weight:700;}
+/* BUTONLAR */
+.btn-row{display:flex;gap:10px;align-items:center;}
+.btn{padding:10px 20px;background:var(--ink);color:var(--bg);border:2px solid var(--ink);
+  font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
+  cursor:pointer;transition:all .15s;white-space:nowrap;}
+.btn:hover{background:transparent;color:var(--ink);}
+.btn.g{background:var(--green);border-color:var(--green);}
+.btn.g:hover{background:transparent;color:var(--green);}
+.btn.r{background:var(--red);border-color:var(--red);}
+.btn.r:hover{background:transparent;color:var(--red);}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+/* STAT BAR */
+.stat-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));margin-bottom:20px;border:2px solid var(--ink);overflow:hidden;}
+.si{padding:10px 12px;background:var(--paper);border-right:1px solid var(--rule);}
+.si:last-child{border-right:none;}
+.si-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin-bottom:3px;}
+.si-val{font-size:16px;font-weight:700;color:var(--ink);}
+.si-val.ok{color:var(--green);}.si-val.warn{color:var(--amber);}.si-val.err{color:var(--red);}
+.si-sub{font-size:9px;color:var(--ink3);margin-top:2px;}
+/* PROGRESS */
+.prog-wrap{display:none;background:var(--paper);border:2px solid var(--ink);padding:14px 18px;margin-bottom:18px;}
+.prog-lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin-bottom:6px;}
+.prog-outer{width:100%;height:5px;background:var(--rule);}
+.prog-inner{height:100%;background:var(--green);transition:width .08s linear;}
+.prog-txt{font-size:12px;font-weight:700;margin-top:5px;}
+/* CARDS */
+.rc{background:var(--paper);border:2px solid var(--ink);padding:18px;margin-bottom:18px;}
+.rc-title{font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;
+  border-bottom:1px solid var(--rule);padding-bottom:6px;margin-bottom:12px;display:flex;align-items:baseline;gap:12px;}
+.rc-sub{font-size:10px;font-family:'Space Mono',monospace;font-weight:400;color:var(--ink3);letter-spacing:0;}
+.results-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+@media(max-width:700px){.results-grid{grid-template-columns:1fr;}}
+.fr{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:1px dotted var(--rule);font-size:11px;}
+.fr:last-child{border-bottom:none;}
+.fr-l{color:var(--ink3);}.fr-r{font-weight:700;}
+.fr-r.ok{color:var(--green);}.fr-r.warn{color:var(--amber);}.fr-r.err{color:var(--red);}
+/* CHART */
+.chart-card{background:var(--paper);border:2px solid var(--ink);padding:18px 20px;margin-bottom:20px;}
+.chart-card.fullscreen{position:fixed!important;inset:0!important;z-index:9999!important;
+  margin:0!important;border:none!important;display:flex;flex-direction:column;
+  padding:16px 20px;background:var(--paper)!important;}
+.chart-card.fullscreen .cw{flex:1;height:auto!important;}
+.chart-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;}
+.chart-ttl{font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:2px;}
+.cbts{display:flex;gap:5px;}
+.cbt{background:var(--paper);border:2px solid var(--ink);color:var(--ink);font-size:14px;
+  width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all .12s;}
+.cbt:hover{background:var(--ink);color:var(--bg);}
+.leg-row{display:flex;gap:14px;flex-wrap:wrap;font-size:10px;margin-bottom:10px;align-items:center;}
+.leg{display:flex;align-items:center;gap:5px;}
+.ll{width:22px;height:3px;border-radius:1px;}
+.cw{position:relative;width:100%;height:340px;}
+.cw canvas{position:absolute;inset:0;width:100%!important;height:100%!important;}
+/* 2D TABLE
+   SATIRLAR = değerler  (mavi etiket)
+   SÜTUNLAR = adımlar   (t+1 … t+N)
+   Mavi yoğunluk  → sütun bazlı normalize (her adımın kendi max'ı)
+   Yeşil çerçeve  → o SÜTUNDA (adımda) en yüksek %
+   Sarı çerçeve   → o SATIRDA (değerde) en yüksek % olan adım
+*/
+.p2d-outer{overflow-x:auto;margin-top:4px;}
+.p2d{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;}
+.p2d th{padding:7px 10px;background:var(--ink);color:var(--bg);font-size:9px;letter-spacing:2px;
+  text-transform:uppercase;border:1px solid var(--ink2);white-space:nowrap;text-align:center;}
+.p2d th.rh{background:var(--ink2);}
+.p2d td{padding:6px 9px;border:1px solid var(--rule);text-align:center;white-space:nowrap;font-size:11px;font-weight:700;}
+.p2d tr:hover td{filter:brightness(.96);}
+.p2d td.sh{background:var(--paper)!important;color:var(--blue);font-size:11px;font-weight:700;text-align:left;padding-left:10px;}
+.tbl-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:10px;align-items:center;}
+.tll{display:flex;align-items:center;gap:5px;}
+.tlb{width:15px;height:15px;border:1px solid #aaa;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">// Ensemble · Naive Bayes + N-HiTS + DTW+KNN + CRF · 8000 Simülasyon · %90 Güven Bandı · 15 Adım</div>
+  <h1><em>SERİ</em> <strong>TAHMİN</strong></h1>
+</header>
+
+<!-- VERİ SERİSİ: textarea → adım kümesi önizleme → analiz butonu -->
+<div class="panel rd" data-lbl="veri serisi">
+  <textarea id="seriesInput"
+    placeholder="3,3,3.2,3.2,3.4,3.4,3.2,3,3,3.2&#10;Virgül, noktalı virgül veya yeni satırla ayır."
+    oninput="onSeriesInput()"></textarea>
+
+  <div class="set-lbl">Otomatik Adım Kümesi</div>
+  <div id="setPreview"></div>
+
+  <div class="btn-row">
+    <button class="btn g" onclick="runAnalysis()">&#9654; ANALİZ ET</button>
+    <button class="btn r" onclick="loadExample()">ÖRNEK</button>
+  </div>
+</div>
+
+<!-- İSTATİSTİK BARI -->
+<div class="stat-bar">
+  <div class="si"><div class="si-lbl">Uzunluk</div><div class="si-val" id="stLen">—</div></div>
+  <div class="si"><div class="si-lbl">Küme</div><div class="si-val" id="stSetN">—</div></div>
+  <div class="si"><div class="si-lbl">Geçersiz</div><div class="si-val" id="stBad">—</div></div>
+  <div class="si"><div class="si-lbl">Ortalama</div><div class="si-val" id="stMean">—</div></div>
+  <div class="si"><div class="si-lbl">Std Dev</div><div class="si-val" id="stStd">—</div></div>
+  <div class="si"><div class="si-lbl">ACF(1)</div><div class="si-val" id="stAcf">—</div></div>
+  <div class="si"><div class="si-lbl">Trend</div><div class="si-val" id="stTrend">—</div></div>
+  <div class="si"><div class="si-lbl">Entropi</div><div class="si-val" id="stEnt">—</div><div class="si-sub">bit</div></div>
+</div>
+
+<!-- PROGRESS BAR (yükleme sırasında görünür, biter bitmez kaybolur) -->
+<div class="prog-wrap" id="progWrap">
+  <div class="prog-lbl" id="progLbl">Başlatılıyor...</div>
+  <div class="prog-outer"><div class="prog-inner" id="progBar" style="width:0%"></div></div>
+  <div class="prog-txt" id="progTxt">0%</div>
+</div>
+
+<!-- 2B OLASILIK TABLOSU -->
+<div class="rc" id="sec_table" style="display:none">
+  <div class="rc-title">2B OLASILIK TABLOSU
+    <span class="rc-sub">Satır=değer · Sütun=adım · Hücre=% olasılık</span>
+  </div>
+  <div class="p2d-outer" id="p2dWrap"></div>
+  <div class="tbl-legend" id="tblLeg"></div>
+</div>
+
+<!-- HAM VERİ + TAHMİN GRAFİĞİ -->
+<div class="chart-card" id="sec_chart1" style="display:none">
+  <div class="chart-top">
+    <div class="chart-ttl">VERİ + TAHMİN</div>
+    <div class="cbts">
+      <button class="cbt" onclick="c1zi()">+</button>
+      <button class="cbt" onclick="c1zo()">-</button>
+      <button class="cbt" onclick="c1zr()">O</button>
+      <button class="cbt" id="fs1btn" onclick="toggleFS('sec_chart1','fs1btn')">[]</button>
+    </div>
+  </div>
+  <div class="leg-row">
+    <div class="leg"><div class="ll" style="background:var(--blue)"></div>Gözlem</div>
+    <div class="leg"><div class="ll" style="border-top:2px dashed var(--green);height:0;width:22px"></div>Medyan</div>
+    <div class="leg"><div class="ll" style="height:10px;width:22px;background:rgba(31,122,69,.12);border:1px solid rgba(31,122,69,.35)"></div>%90 Bant</div>
+    <span style="font-size:9px;color:var(--ink3);margin-left:auto;">scroll zoom · sürükle pan · ESC tam ekran</span>
+  </div>
+  <div class="cw"><canvas id="chart1"></canvas></div>
+</div>
+
+<!-- KÜMÜLATİF GRAFİK -->
+<div class="chart-card" id="sec_chart2" style="display:none">
+  <div class="chart-top">
+    <div class="chart-ttl">KÜMÜLATİF SERİ
+      <span style="font-size:12px;font-weight:400;font-family:'Space Mono',monospace;letter-spacing:0;color:var(--ink3)">gözlem + tahmin</span>
+    </div>
+    <div class="cbts">
+      <button class="cbt" onclick="c2zi()">+</button>
+      <button class="cbt" onclick="c2zo()">-</button>
+      <button class="cbt" onclick="c2zr()">O</button>
+      <button class="cbt" id="fs2btn" onclick="toggleFS('sec_chart2','fs2btn')">[]</button>
+    </div>
+  </div>
+  <div class="leg-row">
+    <div class="leg"><div class="ll" style="background:var(--blue)"></div>Gözlem (kümülatif)</div>
+    <div class="leg"><div class="ll" style="background:var(--amber)"></div>Tahmin medyanı (kümülatif)</div>
+    <div class="leg"><div class="ll" style="height:10px;width:22px;background:rgba(232,160,32,.15);border:1px solid rgba(232,160,32,.4)"></div>Güven bandı</div>
+  </div>
+  <div class="cw"><canvas id="chart2"></canvas></div>
+</div>
+
+<!-- ANALİZ BULGULARI + TAHMİN ÖZETİ -->
+<div class="results-grid" id="sec_results" style="display:none">
+  <div class="rc"><div class="rc-title">ANALİZ BULGULARI</div><div id="findings"></div></div>
+  <div class="rc"><div class="rc-title">TAHMİN ÖZETİ</div><div id="predSummary"></div></div>
+</div>
+
+</div>
+<script>
+'use strict';
+
+/* ══ SABİT PARAMETRELER (arayüzden değiştirilemez) ══ */
+var N_SIM    = 8000;
+var N_STEPS  = 15;
+var CONF     = 0.90;
+var ALPHA    = (1 - CONF) / 2;
+/* Sabit ensemble bileşimi */
+var ENS_METHODS = ['nbwin','nhits','dtw_knn','crf'];
+
+var _set=[], _data=[], _chart1=null, _chart2=null;
+
+function $(id){return document.getElementById(id);}
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+function setP(p,lbl,txt){
+  $('progBar').style.width=Math.min(100,p)+'%';
+  $('progTxt').textContent=txt||Math.round(p)+'%';
+  if(lbl)$('progLbl').textContent=lbl;
+}
+function show(id){$(id).style.display='block';}
+function hide(id){$(id).style.display='none';}
+
+/* ── MATH ── */
+function mean(a){if(!a||!a.length)return 0;var s=0;for(var i=0;i<a.length;i++)s+=a[i];return s/a.length;}
+function vari(a){if(!a||a.length<2)return 0;var m=mean(a),s=0;for(var i=0;i<a.length;i++)s+=(a[i]-m)*(a[i]-m);return s/a.length;}
+function std(a){return Math.sqrt(vari(a));}
+function acf1(a){
+  var n=a.length,m=mean(a),num=0,den=0;
+  for(var i=1;i<n;i++)num+=(a[i]-m)*(a[i-1]-m);
+  for(var i=0;i<n;i++)den+=(a[i]-m)*(a[i]-m);
+  return den<1e-12?0:num/den;
+}
+function pct(a,p){var s=a.slice().sort(function(x,y){return x-y;});return s[Math.max(0,Math.min(s.length-1,Math.floor(p*(s.length-1))))];}
+function linTrend(a){var n=a.length,sx=0,sy=0,sxy=0,sxx=0;for(var i=0;i<n;i++){sx+=i;sy+=a[i];sxy+=i*a[i];sxx+=i*i;}var d=n*sxx-sx*sx;return d<1e-12?0:(n*sxy-sx*sy)/d;}
+function entropy(data,set){
+  if(!set.length)return 0;
+  var cnt={},n=data.length;
+  for(var i=0;i<set.length;i++)cnt[set[i]]=0;
+  for(var i=0;i<n;i++){var k=snap(data[i],set);cnt[k]=(cnt[k]||0)+1;}
+  var h=0;for(var k in cnt){var p=cnt[k]/n;if(p>0)h-=p*Math.log2(p);}return h;
+}
+function grnd(){var u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function snap(v,set){if(!set||!set.length)return v;var best=set[0];for(var i=1;i<set.length;i++)if(Math.abs(set[i]-v)<Math.abs(best-v))best=set[i];return best;}
+
+/* ── INPUT & OTOMATİK ADIM KÜMESİ ── */
+function parseSeries(){
+  var parts=$('seriesInput').value.split(/[\n,;]+/),out=[];
+  for(var i=0;i<parts.length;i++){var n=parseFloat(parts[i].trim());if(!isNaN(n))out.push(n);}
+  return out;
+}
+function buildAutoSet(data){
+  var seen={},vals=[];
+  for(var i=0;i<data.length;i++){var k=data[i].toString();if(!seen[k]){seen[k]=true;vals.push(data[i]);}}
+  vals.sort(function(a,b){return a-b;});
+  return vals;
+}
+function onSeriesInput(){
+  var data=parseSeries();
+  if(data.length>0){
+    _set=buildAutoSet(data);
+    $('setPreview').innerHTML=_set.map(function(v){return '<span class="tag">'+v+'</span>';}).join('');
+  }else{
+    _set=[];
+    $('setPreview').innerHTML='';
+  }
+}
+
+/* ── TRANSITION / FALLBACK ── */
+function buildTrans(data,set){
+  var n=set.length;if(!n)return null;
+  function idx(v){for(var i=0;i<set.length;i++)if(Math.abs(set[i]-v)<1e-9)return i;return -1;}
+  var T=[];
+  for(var i=0;i<n;i++){T.push([]);for(var j=0;j<n;j++)T[i].push(0.1);}
+  for(var i=1;i<data.length;i++){var fi=idx(data[i-1]),ti=idx(data[i]);if(fi>=0&&ti>=0)T[fi][ti]++;}
+  for(var i=0;i<n;i++){var s=0;for(var j=0;j<n;j++)s+=T[i][j];for(var j=0;j<n;j++)T[i][j]/=s;}
+  return T;
+}
+function mcFallback(data,steps,set,T){
+  if(!set.length||!T){
+    var s=std(data),m=mean(data),a=acf1(data),last=data[data.length-1],path=[];
+    for(var i=0;i<steps;i++){last=last*a+m*(1-Math.abs(a))+s*grnd()*(1-Math.abs(a));path.push(last);}
+    return path;
+  }
+  function idx(v){for(var i=0;i<set.length;i++)if(Math.abs(set[i]-v)<1e-9)return i;return -1;}
+  var cur=idx(data[data.length-1]);if(cur<0)cur=Math.floor(set.length/2);
+  var path=[];
+  for(var i=0;i<steps;i++){
+    var row=T[cur],r=Math.random(),cum=0;
+    for(var j=0;j<set.length;j++){cum+=row[j];if(r<=cum){cur=j;break;}}
+    path.push(set[cur]);
+  }
+  return path;
+}
+
+/* ════ 1. NAIVE BAYES (pencere-3) ════ */
+function nbPredict(data,steps,set){
+  var es=set.length?set:buildAutoSet(data);
+  var win=3;
+  if(!es.length||data.length<win+1){var T2=buildTrans(data,es);return mcFallback(data,steps,es,T2);}
+  function idx(v){for(var i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i;return 0;}
+  function key(w){return w.map(function(v){return Math.max(0,idx(v));}).join('-');}
+  var cnt={};
+  for(var i=win;i<data.length;i++){
+    var k=key(data.slice(i-win,i)),ni=idx(data[i]);
+    if(!cnt[k]){cnt[k]=[];for(var j=0;j<es.length;j++)cnt[k].push(0.05);}
+    cnt[k][ni]++;
+  }
+  var w=data.slice(-win),path=[];
+  for(var i=0;i<steps;i++){
+    var k=key(w),row=cnt[k]||(function(){var r=[];for(var j=0;j<es.length;j++)r.push(1);return r;})();
+    var tot=0;for(var j=0;j<row.length;j++)tot+=row[j];
+    var r=Math.random()*tot,cum=0,ch=0;
+    for(var j=0;j<es.length;j++){cum+=row[j];if(r<=cum){ch=j;break;}}
+    w=w.slice(1);w.push(es[ch]);path.push(es[ch]);
+  }
+  return path;
+}
+
+/* ════ 2. N-HiTS ════ */
+function fitAR(data,p){
+  var n=data.length;if(n<=p||p<1)return[0];
+  var m=mean(data),c=[];
+  for(var k=0;k<=p;k++){var s=0;for(var i=k;i<n;i++)s+=(data[i]-m)*(data[i-k]-m);c.push(s/(n-k));}
+  var phi=[c[1]/(c[0]||1e-10)],V=c[0]*(1-phi[0]*phi[0]);
+  for(var lag=2;lag<=p;lag++){
+    var num=c[lag];for(var j=0;j<phi.length;j++)num-=phi[j]*(c[lag-1-j]||0);
+    var kk=num/(V||1e-10),phi2=[];
+    for(var j=0;j<phi.length;j++)phi2.push(phi[j]-kk*(phi[phi.length-2-j]||0));
+    phi2.push(kk);phi=phi2;V*=(1-kk*kk);if(isNaN(V)||V<=0)break;
+  }
+  return phi;
+}
+function arPredict(data,phi,steps,nStd,set){
+  var m=mean(data),hist=data.map(function(v){return v-m;}),path=[];
+  for(var i=0;i<steps;i++){
+    var pred=0;for(var j=0;j<phi.length;j++)pred+=phi[j]*(hist[hist.length-1-j]||0);
+    pred+=m+nStd*grnd();if(set.length)pred=snap(pred,set);hist.push(pred-m);path.push(pred);
+  }
+  return path;
+}
+function nhitsPredict(data,steps,set){
+  var n=data.length,dm=mean(data),ds=std(data)||1;
+  var norm=data.map(function(v){return(v-dm)/ds;});
+  function basis(t,H,nP,nF){
+    var b=[1];for(var p=1;p<=nP;p++)b.push(Math.pow(t/H,p));
+    for(var k=1;k<=nF;k++){b.push(Math.sin(2*Math.PI*k*t/H));b.push(Math.cos(2*Math.PI*k*t/H));}
+    return b;
+  }
+  function ols(X,y){
+    var nb=X[0].length,ns=X.length,XtX=[],Xty=[];
+    for(var i=0;i<nb;i++){XtX.push([]);for(var j=0;j<nb;j++)XtX[i].push(0);Xty.push(0);}
+    for(var r2=0;r2<ns;r2++)for(var i=0;i<nb;i++){Xty[i]+=X[r2][i]*y[r2];for(var j=0;j<nb;j++)XtX[i][j]+=X[r2][i]*X[r2][j];}
+    for(var i=0;i<nb;i++)XtX[i][i]+=1e-4;
+    var aug=XtX.map(function(row,i){return row.concat([Xty[i]]);});
+    for(var col=0;col<nb;col++){
+      var piv=col;for(var row=col+1;row<nb;row++)if(Math.abs(aug[row][col])>Math.abs(aug[piv][col]))piv=row;
+      var tmp=aug[col];aug[col]=aug[piv];aug[piv]=tmp;
+      var d=aug[col][col]||1e-12;
+      for(var row=0;row<nb;row++)if(row!==col){var f=aug[row][col]/d;for(var k=0;k<=nb;k++)aug[row][k]-=f*aug[col][k];}
+      for(var k=0;k<=nb;k++)aug[col][k]/=d;
+    }
+    return aug.map(function(row){return row[nb];});
+  }
+  var cfgs=[[1,2,3],[2,1,2],[4,1,1]],res=norm.slice(),outs=[];
+  for(var sc=0;sc<cfgs.length;sc++){
+    var pool=cfgs[sc][0],nPoly=cfgs[sc][1],nFreq=cfgs[sc][2];
+    var pooled=[],rDown=[];
+    for(var i=0;i<n;i+=pool){
+      var chunk=norm.slice(i,Math.min(i+pool,n));
+      var rchunk=res.slice(i,Math.min(i+pool,n));
+      pooled.push(mean(chunk));rDown.push(mean(rchunk));
+    }
+    var np2=pooled.length;if(np2<3)continue;
+    var lb=Math.min(np2,Math.max(4,Math.floor(np2*0.5)));
+    var rw=rDown.slice(-lb),H=steps;
+    var Xlb=[];for(var t=0;t<lb;t++)Xlb.push(basis(t,lb,nPoly,nFreq));
+    var beta=ols(Xlb,rw);
+    var Xfw=[];for(var t=0;t<H;t++)Xfw.push(basis(t,H,nPoly,nFreq));
+    var fc=Xfw.map(function(b){var s=0;for(var i=0;i<b.length;i++)s+=b[i]*beta[i];return s;});
+    outs.push(fc);
+    var bc=Xlb.map(function(b){var s=0;for(var i=0;i<b.length;i++)s+=b[i]*beta[i];return s;});
+    var start=n-lb*pool;
+    for(var i=0;i<lb*pool&&start+i<n;i++){var bi=Math.floor(i/pool);if(bi<bc.length)res[start+i]-=bc[bi];}
+  }
+  if(!outs.length){var phi2=fitAR(data,3);return arPredict(data,phi2,steps,ds*0.3,set);}
+  var rStd=std(res)||0.01;
+  return Array.from({length:steps},function(_,s){
+    var sum=0;for(var i=0;i<outs.length;i++)sum+=(outs[i][s]||0);
+    var v=sum*ds+dm+grnd()*rStd*ds;if(set.length)v=snap(v,set);return v;
+  });
+}
+
+/* ════ 3. DTW yardımcısı ════ */
+function dtwDist(a,b){
+  var n=a.length,m=b.length;
+  var dtw=[];for(var i=0;i<=n;i++){dtw.push([]);for(var j=0;j<=m;j++)dtw[i].push(Infinity);}
+  dtw[0][0]=0;
+  for(var i=1;i<=n;i++)for(var j=1;j<=m;j++){
+    var cost=Math.abs(a[i-1]-b[j-1]);
+    dtw[i][j]=cost+Math.min(dtw[i-1][j],dtw[i][j-1],dtw[i-1][j-1]);
+  }
+  return dtw[n][m];
+}
+
+/* ════ 4. DTW + KNN ════ */
+function dtwKnnPredict(data,steps,set,K){
+  K=K||5;
+  var wlen=Math.min(8,Math.max(3,Math.floor(data.length*0.3)));
+  var query=data.slice(-wlen);
+  var dists=[];
+  for(var i=0;i<=data.length-wlen-1;i++){
+    dists.push({d:dtwDist(query,data.slice(i,i+wlen)),i:i});
+  }
+  dists.sort(function(a,b){return a.d-b.d;});
+  var neighbors=dists.slice(0,Math.min(K,dists.length));
+  if(!neighbors.length){var T4=buildTrans(data,set);return mcFallback(data,steps,set,T4);}
+  var path=[];
+  for(var s=0;s<steps;s++){
+    var vals=[];
+    for(var ki=0;ki<neighbors.length;ki++){
+      var ix=neighbors[ki].i+wlen+s;
+      if(ix<data.length)vals.push(data[ix]);
+    }
+    if(!vals.length)vals=[data[data.length-1]];
+    var v=mean(vals);if(set.length)v=snap(v,set);path.push(v);
+  }
+  return path;
+}
+
+/* ════ 5. CRF (linear-chain, pseudo-likelihood + softmax sampling) ════ */
+function crfPredict(data,steps,set){
+  var es=set.length?set:buildAutoSet(data);
+  var N=es.length;if(!N)return Array(steps).fill(data[data.length-1]);
+  function idx(v){for(var i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i;return 0;}
+  var wT=[];for(var i=0;i<N;i++){wT.push([]);for(var j=0;j<N;j++)wT[i].push(0.0);}
+  var wE=[];for(var i=0;i<N;i++){wE.push([]);for(var j=0;j<N;j++)wE[i].push(0.0);}
+  var lr=0.1,obs2=data.map(idx);
+  for(var pass=0;pass<5;pass++){
+    for(var t=1;t<obs2.length;t++){
+      var xt=obs2[t-1],yt=obs2[t];
+      var scores=[];for(var j=0;j<N;j++)scores.push(wT[xt][j]+wE[xt][j]);
+      var mx=Math.max.apply(null,scores);
+      var exps=scores.map(function(s){return Math.exp(s-mx);});
+      var Z=exps.reduce(function(a,b){return a+b;},0)||1;
+      var probs=exps.map(function(e){return e/Z;});
+      for(var j=0;j<N;j++){
+        var delta=(j===yt?1:0)-probs[j];
+        wT[xt][j]+=lr*delta;wE[xt][j]+=lr*delta;
+      }
+    }
+  }
+  var path=[],prev=obs2[obs2.length-1];
+  for(var s=0;s<steps;s++){
+    var sc2=[];for(var j=0;j<N;j++)sc2.push(wT[prev][j]+wE[prev][j]);
+    var mx2=Math.max.apply(null,sc2);
+    var ex=sc2.map(function(s){return Math.exp(s-mx2);});
+    var Z2=ex.reduce(function(a,b){return a+b;},0)||1;
+    var pr=ex.map(function(e){return e/Z2;});
+    var r=Math.random(),cum4=0,chosen=0;
+    for(var j=0;j<N;j++){cum4+=pr[j];if(r<=cum4){chosen=j;break;}}
+    path.push(es[chosen]);prev=chosen;
+  }
+  return path;
+}
+
+/* ════ ENSEMBLE: nbwin + nhits + dtw_knn + crf — çoğunluk oylaması ════ */
+function callMethod(name,data,steps,set,T){
+  if(name==='nbwin')   return nbPredict(data,steps,set);
+  if(name==='nhits')   return nhitsPredict(data,steps,set);
+  if(name==='dtw_knn') return dtwKnnPredict(data,steps,set,5);
+  if(name==='crf')     return crfPredict(data,steps,set);
+  return mcFallback(data,steps,set,T);
+}
+function ensemblePath(data,steps,set,T){
+  var paths=ENS_METHODS.map(function(m){return callMethod(m,data,steps,set,T);});
+  return Array.from({length:steps},function(_,s){
+    var vals=paths.map(function(p){return p[s];});
+    if(set.length){
+      var freq={};
+      vals.forEach(function(v){var k=snap(v,set).toString();freq[k]=(freq[k]||0)+1;});
+      return parseFloat(Object.entries(freq).sort(function(a,b){return b[1]-a[1];})[0][0]);
+    }
+    return mean(vals);
+  });
+}
+
+/* ════ MAIN ════ */
+async function runAnalysis(){
+  _data=parseSeries();
+  if(_data.length<6){alert('En az 6 veri noktası gerekli.');return;}
+
+  /* Adım kümesini veriden otomatik oluştur */
+  _set=buildAutoSet(_data);
+  $('setPreview').innerHTML=_set.map(function(v){return '<span class="tag">'+v+'</span>';}).join('');
+
+  var effSet=_set;
+  var m=mean(_data),s=std(_data),a1=acf1(_data),tr=linTrend(_data),ent=entropy(_data,effSet);
+
+  $('stLen').textContent=_data.length;
+  $('stSetN').textContent=_set.length;
+  $('stBad').textContent=0;$('stBad').className='si-val';
+  $('stMean').textContent=m.toFixed(3);
+  $('stStd').textContent=s.toFixed(3);
+  $('stAcf').textContent=a1.toFixed(3);
+  $('stEnt').textContent=ent.toFixed(2);
+  var tEl=$('stTrend');
+  if(Math.abs(tr)<0.0005){tEl.textContent='Sabit';tEl.className='si-val';}
+  else if(tr>0){tEl.textContent='Yükseliyor';tEl.className='si-val ok';}
+  else{tEl.textContent='Düşüyor';tEl.className='si-val err';}
+
+  ['sec_table','sec_chart1','sec_results','sec_chart2'].forEach(hide);
+  show('progWrap');setP(4,'Modeller hazırlanıyor...');await sleep(20);
+
+  var T=buildTrans(_data,effSet);
+  var simPaths=[];
+
+  try{
+    setP(10,'Simülasyonlar başlıyor...');await sleep(10);
+    var bSz=80;
+    for(var i=0;i<N_SIM;i+=bSz){
+      var nb2=Math.min(bSz,N_SIM-i);
+      for(var b=0;b<nb2;b++) simPaths.push(ensemblePath(_data,N_STEPS,effSet,T));
+      setP(10+((i+bSz)/N_SIM)*82,'Simülasyon: '+Math.min(i+bSz,N_SIM)+'/'+N_SIM);
+      await sleep(0);
+    }
+  }catch(e){console.error(e);alert('Hata: '+e.message);hide('progWrap');return;}
+
+  if(!simPaths.length){alert('Simülasyon üretilemedi.');hide('progWrap');return;}
+  setP(93,'Sonuçlar hesaplanıyor...');await sleep(10);
+
+  var predMed=[],predLo=[],predHi=[];
+  for(var st=0;st<N_STEPS;st++){
+    var vals=simPaths.map(function(p){return p[st];});
+    predMed.push(pct(vals,.5));
+    predLo.push(pct(vals,ALPHA));
+    predHi.push(pct(vals,1-ALPHA));
+  }
+
+  /* prob2d[adım][değer_idx] */
+  var prob2d=Array.from({length:N_STEPS},function(_,step){
+    var vals=simPaths.map(function(p){return p[step];});
+    var cnt={};effSet.forEach(function(v){cnt[v]=0;});
+    vals.forEach(function(v){var k=snap(v,effSet);cnt[k]=(cnt[k]||0)+1;});
+    return effSet.map(function(v){return(cnt[v]||0)/vals.length;});
+  });
+
+  setP(97,'Grafikler çiziliyor...');await sleep(10);
+  drawChart1(predMed,predLo,predHi);
+  drawChart2(predMed,predLo,predHi);
+  renderTable(prob2d,effSet,N_STEPS);
+  renderResults(predMed,predLo,predHi,m,s,a1,tr,simPaths.length,ent,effSet);
+
+  setP(100,'Tamamlandı','100%');
+  show('sec_table');
+  show('sec_chart1');
+  show('sec_chart2');
+  $('sec_results').style.display='grid';
+  hide('progWrap');
+}
+
+/* ── CHART 1 ── */
+function drawChart1(predMed,predLo,predHi){
+  if(_chart1){_chart1.destroy();_chart1=null;}
+  var oLen=_data.length;
+  var labels=Array.from({length:oLen+predMed.length},function(_,i){return i;});
+  var obs=[].concat(_data,Array(predMed.length).fill(null));
+  var med=[].concat(Array(oLen-1).fill(null),[_data[oLen-1]],predMed);
+  var lo=[].concat(Array(oLen-1).fill(null),[_data[oLen-1]],predLo);
+  var hi=[].concat(Array(oLen-1).fill(null),[_data[oLen-1]],predHi);
+  _chart1=new Chart($('chart1').getContext('2d'),{type:'line',data:{labels:labels,datasets:[
+    {label:'Hi',data:hi,borderColor:'transparent',backgroundColor:'rgba(31,122,69,.10)',pointRadius:0,fill:'+1',tension:.35},
+    {label:'Lo',data:lo,borderColor:'rgba(31,122,69,.25)',borderWidth:1,borderDash:[3,2],backgroundColor:'rgba(31,122,69,.10)',pointRadius:0,fill:false,tension:.35},
+    {label:'Medyan',data:med,borderColor:'#1f7a45',borderWidth:2.5,borderDash:[6,3],pointRadius:0,fill:false,tension:.35},
+    {label:'Gözlem',data:obs,borderColor:'#1a5c8a',borderWidth:2,pointRadius:2.5,pointBackgroundColor:'#1a5c8a',fill:false,tension:.2},
+  ]},options:{animation:false,responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false},
+      zoom:{pan:{enabled:true,mode:'x'},zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}}},
+    scales:{
+      x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6e6050',font:{family:'Space Mono',size:9},maxTicksLimit:14}},
+      y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6e6050',font:{family:'Space Mono',size:9},maxTicksLimit:8}}
+    },elements:{point:{radius:0}}
+  }});
+}
+function c1zi(){if(_chart1)_chart1.zoom(1.35);}
+function c1zo(){if(_chart1)_chart1.zoom(0.75);}
+function c1zr(){if(_chart1)_chart1.resetZoom();}
+
+/* ── CHART 2 ── */
+function drawChart2(predMed,predLo,predHi){
+  if(_chart2){_chart2.destroy();_chart2=null;}
+  var oLen=_data.length,cumObs=[],acc=0;
+  for(var i=0;i<oLen;i++){acc+=_data[i];cumObs.push(acc);}
+  var cumMed=[],cumLo=[],cumHi=[],accM=acc,accL=acc,accH=acc;
+  for(var i=0;i<predMed.length;i++){
+    accM+=predMed[i];cumMed.push(accM);
+    accL+=predLo[i];cumLo.push(accL);
+    accH+=predHi[i];cumHi.push(accH);
+  }
+  var labels=Array.from({length:oLen+predMed.length},function(_,i){return i;});
+  var obsDs=[].concat(cumObs,Array(predMed.length).fill(null));
+  var medDs=[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumMed);
+  var loDs=[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumLo);
+  var hiDs=[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumHi);
+  _chart2=new Chart($('chart2').getContext('2d'),{type:'line',data:{labels:labels,datasets:[
+    {label:'TahHi',data:hiDs,borderColor:'transparent',backgroundColor:'rgba(232,160,32,.12)',pointRadius:0,fill:'+1',tension:.35},
+    {label:'TahLo',data:loDs,borderColor:'rgba(232,160,32,.3)',borderWidth:1,borderDash:[3,2],backgroundColor:'rgba(232,160,32,.12)',pointRadius:0,fill:false,tension:.35},
+    {label:'Tah Medyan',data:medDs,borderColor:'#e8a020',borderWidth:2.5,borderDash:[6,3],pointRadius:0,fill:false,tension:.35},
+    {label:'Gözlem Kümülatif',data:obsDs,borderColor:'#1a5c8a',borderWidth:2,pointRadius:2,pointBackgroundColor:'#1a5c8a',fill:false,tension:.2},
+  ]},options:{animation:false,responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false},
+      zoom:{pan:{enabled:true,mode:'x'},zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}}},
+    scales:{
+      x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6e6050',font:{family:'Space Mono',size:9},maxTicksLimit:14}},
+      y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6e6050',font:{family:'Space Mono',size:9},maxTicksLimit:8},
+        title:{display:true,text:'Kümülatif Toplam',color:'#6e6050',font:{family:'Space Mono',size:9}}}
+    },elements:{point:{radius:0}}
+  }});
+}
+function c2zi(){if(_chart2)_chart2.zoom(1.35);}
+function c2zo(){if(_chart2)_chart2.zoom(0.75);}
+function c2zr(){if(_chart2)_chart2.resetZoom();}
+
+/* ── FULLSCREEN ── */
+function toggleFS(cardId,btnId){
+  var c=$(cardId),isFs=c.classList.toggle('fullscreen');
+  $(btnId).textContent=isFs?'X':'[]';
+  var ch=cardId==='sec_chart1'?_chart1:_chart2;
+  setTimeout(function(){if(ch)ch.resize();},50);
+}
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    ['sec_chart1','sec_chart2'].forEach(function(id,ix){
+      var c=$(id);if(c&&c.classList.contains('fullscreen')){
+        c.classList.remove('fullscreen');
+        $(ix===0?'fs1btn':'fs2btn').textContent='[]';
+        var ch=ix===0?_chart1:_chart2;setTimeout(function(){if(ch)ch.resize();},50);
+      }
+    });
+  }
+});
+
+/* ════════════════════════════════════════════════
+   2D TABLE — TRANSPOZE
+   prob2d[adım][değerIdx]
+
+   Satırlar  = değerler  (mavi etiket sütunu)
+   Sütunlar  = adımlar   (t+1 … t+N) — mavi renk gösterir
+
+   Mavi yoğunluk: SÜTUN bazlı normalize (her adım kendi içinde)
+   Yeşil çerçeve: o SÜTUNDA (adımda) en yüksek %  → sütunlara bakar
+   Sarı çerçeve : o SATIRDA (değerde) en yüksek adım → satırlara bakar
+   ════════════════════════════════════════════════ */
+function renderTable(prob2d,effSet,nPred){
+  var nSteps=nPred, nVals=effSet.length;
+
+  /* Her sütun (adım) için max olasılık — mavi normalize için */
+  var colMax=Array.from({length:nSteps},function(_,ci){
+    var mx=0;
+    for(var ri=0;ri<nVals;ri++) if(prob2d[ci][ri]>mx) mx=prob2d[ci][ri];
+    return mx||1e-9;
+  });
+
+  /* Her sütunda hangi satır (değer) en yüksek → YEŞİL çerçeve */
+  var colBest=Array.from({length:nSteps},function(_,ci){
+    var best=0;
+    for(var ri=0;ri<nVals;ri++) if(prob2d[ci][ri]>prob2d[ci][best]) best=ri;
+    return best;
+  });
+
+  /* Her satırda hangi sütun (adım) en yüksek → SARI çerçeve */
+  var rowBest=Array.from({length:nVals},function(_,ri){
+    var best=0;
+    for(var ci=0;ci<nSteps;ci++) if(prob2d[ci][ri]>prob2d[best][ri]) best=ci;
+    return best;
+  });
+
+  /* BAŞLIK SATIRI: "Değer" etiketi + t+1 … t+N */
+  var hdr='<tr>'
+    +'<th class="rh" style="min-width:72px;text-align:left;padding-left:10px;">Değer</th>'
+    +Array.from({length:nSteps},function(_,ci){return '<th>t+'+(ci+1)+'</th>';}).join('')
+    +'</tr>';
+
+  /* GÖVDEi: her satır bir değer */
+  var rows=effSet.map(function(val,ri){
+    var cells=Array.from({length:nSteps},function(_,ci){
+      var p=prob2d[ci][ri];
+      var pStr=(p*100).toFixed(1);
+      /* Mavi renk — sütun normalize */
+      var norm=colMax[ci]>0?p/colMax[ci]:0;
+      var rr=Math.round(248-norm*118),gg=Math.round(245-norm*100),bb=Math.round(255-norm*50);
+      var bg='rgb('+rr+','+gg+','+bb+')';
+      var tc=norm>0.58?'#fff':'var(--ink)';
+      /* Çerçeveler */
+      var isGreen=(colBest[ci]===ri);   /* bu adımda en yüksek değer → YEŞİL */
+      var isAmber=(rowBest[ri]===ci);   /* bu değerin en yüksek göründüğü adım → SARI */
+      var extra='';
+      if(isGreen&&isAmber) extra='outline:3px solid #1f7a45;outline-offset:-1px;box-shadow:inset 0 0 0 3px #e8b84b;';
+      else if(isGreen)     extra='outline:3px solid #1f7a45;outline-offset:-1px;';
+      else if(isAmber)     extra='outline:3px solid #e8b84b;outline-offset:-1px;';
+      return '<td style="background:'+bg+';color:'+tc+';'+extra+'">'+pStr+'%</td>';
+    }).join('');
+    return '<tr><td class="sh">'+val+'</td>'+cells+'</tr>';
+  }).join('');
+
+  $('p2dWrap').innerHTML='<table class="p2d"><thead>'+hdr+'</thead><tbody>'+rows+'</tbody></table>';
+
+  $('tblLeg').innerHTML=
+    '<div class="tll"><div class="tlb" style="background:rgb(130,145,205)"></div>'
+    +'<span><b>Koyu mavi</b> = o sütunda (adımda) en yüksek görünme — sütun normalize</span></div>'
+    +'<div class="tll"><div class="tlb" style="outline:3px solid #1f7a45;outline-offset:-1px"></div>'
+    +'<span><b>Yeşil çerçeve</b> = o sütunda (adımda) en yüksek %</span></div>'
+    +'<div class="tll"><div class="tlb" style="outline:3px solid #e8b84b;outline-offset:-1px"></div>'
+    +'<span><b>Sarı çerçeve</b> = o satırda (değerde) en yüksek % olan adım</span></div>'
+    +'<div class="tll"><div class="tlb" style="outline:3px solid #1f7a45;outline-offset:-1px;box-shadow:inset 0 0 0 3px #e8b84b"></div>'
+    +'<span><b>İç içe</b> = her ikisinde de zirve</span></div>';
+}
+
+/* ── RESULTS ── */
+function renderResults(predMed,predLo,predHi,m,s,a1,tr,nSim,ent,effSet){
+  var last=_data[_data.length-1],fMed=predMed[N_STEPS-1],fLo=predLo[N_STEPS-1],fHi=predHi[N_STEPS-1];
+  var acfI=Math.abs(a1)>0.5?'Güçlü':Math.abs(a1)>0.2?'Orta':'Zayıf';
+  var freq={};_data.forEach(function(v){var k=v.toString();freq[k]=(freq[k]||0)+1;});
+  var top=Object.entries(freq).sort(function(a,b){return b[1]-a[1];})[0];
+
+  $('findings').innerHTML=
+    '<div class="fr"><span class="fr-l">En sık değer</span><span class="fr-r ok">'+top[0]+' (%'+((top[1]/_data.length)*100).toFixed(1)+')</span></div>'+
+    '<div class="fr"><span class="fr-l">ACF(1)</span><span class="fr-r '+(Math.abs(a1)>0.3?'ok':'warn')+'">'+a1.toFixed(4)+' — '+acfI+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Entropi</span><span class="fr-r '+(ent>2?'warn':'')+'">'+ent.toFixed(3)+' / '+Math.log2(effSet.length||1).toFixed(2)+' bit</span></div>'+
+    '<div class="fr"><span class="fr-l">Trend</span><span class="fr-r">'+tr.toFixed(5)+'/adım</span></div>'+
+    '<div class="fr"><span class="fr-l">Yöntem</span><span class="fr-r">Ensemble [NB · NHiTS · DTW+KNN · CRF]</span></div>'+
+    '<div class="fr"><span class="fr-l">Simülasyon</span><span class="fr-r">'+nSim.toLocaleString()+' yol</span></div>';
+
+  $('predSummary').innerHTML=
+    '<div class="fr"><span class="fr-l">Son gözlem</span><span class="fr-r">'+last+'</span></div>'+
+    '<div class="fr"><span class="fr-l">t+'+N_STEPS+' medyan</span><span class="fr-r ok">'+(typeof fMed==='number'?fMed.toFixed(4):fMed)+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Alt %90</span><span class="fr-r warn">'+(typeof fLo==='number'?fLo.toFixed(4):fLo)+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Üst %90</span><span class="fr-r warn">'+(typeof fHi==='number'?fHi.toFixed(4):fHi)+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Yön</span><span class="fr-r '+(fMed>last?'ok':fMed<last?'err':'')+'">'+
+      (fMed>last?'Yükseliyor':fMed<last?'Düşüyor':'Sabit')+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Belirsizlik +/-</span><span class="fr-r">'+((fHi-fLo)/2).toFixed(4)+'</span></div>';
+}
+
+/* ── ÖRNEK ── */
+function loadExample(){
+  $('seriesInput').value='3,3,3.2,3.2,3.4,3.4,3.4,3.2,3.2,3,3,3,3.2,3.4,3.6,3.6,3.4,3.4,3.2,3.2,3,3,3.2,3.4,3.4,3.2,3.2,3,3,3.2';
+  onSeriesInput();
+}
+</script>
+</body>
+</html>
