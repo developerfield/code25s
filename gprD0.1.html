@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+</head>
+<body>
+
+    <div id="raw-values">Yükleniyor...</div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",
+            authDomain: "paralayici.firebaseapp.com",
+            projectId: "paralayici",
+            storageBucket: "paralayici.firebasestorage.app",
+            messagingSenderId: "980843550614",
+            appId: "1:980843550614:web:93dd5bda4ddc377b20efb7"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        db.collection("cumulative_daily_data")
+            .orderBy("date", "asc")
+            .get()
+            .then(snapshot => {
+                const rawValues = [];
+                snapshot.forEach(doc => {
+                    rawValues.push(doc.data().value);
+                });
+                // Sadece virgülle ayrılmış ham değerleri yazdırır
+                document.getElementById('raw-values').textContent = rawValues.join(", ");
+            })
+            .catch(err => {
+                document.getElementById('raw-values').textContent = "Hata: " + err.message;
+            });
+    </script>
+
+</body>
+</html>
