@@ -65,14 +65,7 @@ textarea:focus{border-color:var(--ink);}
 .btn.r:hover{background:transparent;color:var(--red);}
 .btn:disabled{opacity:.35;cursor:not-allowed;}
 
-/* STAT BAR — Uzunluk kutusu KALDIRILDI */
-.stat-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));margin-bottom:20px;border:2px solid var(--ink);overflow:hidden;}
-.si{padding:10px 12px;background:var(--paper);border-right:1px solid var(--rule);}
-.si:last-child{border-right:none;}
-.si-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin-bottom:3px;}
-.si-val{font-size:16px;font-weight:700;color:var(--ink);}
-.si-val.ok{color:var(--green);}.si-val.warn{color:var(--amber);}.si-val.err{color:var(--red);}
-.si-sub{font-size:9px;color:var(--ink3);margin-top:2px;}
+/* STAT BAR — KALDIRILDI */
 
 /* PROGRESS */
 .prog-wrap{display:none;background:var(--paper);border:2px solid var(--ink);padding:14px 18px;margin-bottom:18px;}
@@ -166,6 +159,7 @@ textarea:focus{border-color:var(--ink);}
     <button class="btn r" onclick="loadExample()">ÖRNEK</button>
   </div>
 </div>
+
 
 
 <!-- PROGRESS BAR -->
@@ -575,17 +569,7 @@ async function runAnalysis(){
   var bad=_data.filter(function(v){return!effSet.some(function(s){return Math.abs(s-v)<1e-9;});}).length;
   var m=mean(_data),s=std(_data),a1=acf1(_data),tr=linTrend(_data),ent=entropy(_data,effSet);
 
-  /* Stat bar */
-  $('stSetN').textContent=effSet.length;
-  var bEl=$('stBad');bEl.textContent=bad;bEl.className='si-val'+(bad>0?' err':'');
-  $('stMean').textContent=m.toFixed(3);
-  $('stStd').textContent=s.toFixed(3);
-  $('stAcf').textContent=a1.toFixed(3);
-  $('stEnt').textContent=ent.toFixed(2);
-  var tEl=$('stTrend');
-  if(Math.abs(tr)<0.0005){tEl.textContent='Sabit';tEl.className='si-val';}
-  else if(tr>0){tEl.textContent='Yükseliyor';tEl.className='si-val ok';}
-  else{tEl.textContent='Düşüyor';tEl.className='si-val err';}
+  /* Stat bar kaldırıldı — değerleri sadece bulgularda gösteriyoruz */
 
   ['sec_table','sec_chart1','sec_results','sec_chart2'].forEach(hide);
   show('progWrap');setP(4,'Modeller hazırlanıyor...');await sleep(20);
@@ -719,125 +703,162 @@ document.addEventListener('keydown',function(e){
 });
 
 /* ════════════════════════════════════════════════════
-   2D TABLE — TRANSPOZE
+   2D TABLE — TRANSPOZE + ÇİFT RENK KANALI
    prob2d[adım][değerIdx]
 
-   Satırlar  = değerler (mavi etiket)
+   Satırlar  = değerler — BÜYÜKTEN KÜÇÜĞE sıralı
    Sütunlar  = adımlar  (t+1 … t+N)
 
-   Alt satır 1: En Olası  (yeşil)
-   Alt satır 2: 2. Olası  (amber)
+   RENK SİSTEMİ:
+   ─ Yeşil kanalı  → SÜTUN bazlı normalize: o adımda bu değer ne kadar yüksek?
+                     (0=krem, 1=koyu --green)
+   ─ Mavi kanalı   → SATIR bazlı normalize: bu değer adımlar içinde ne kadar yüksek?
+                     (0=krem, 1=koyu --blue)
+   ─ İki kanal aynı anda aktifse hücre karışık tona gider (hem satır hem sütunda zirve)
+   ─ İkisi de düşükse krem/beyaza yakın
 
-   Mavi yoğunluk → sütun bazlı normalize
-   Yeşil çerçeve → o SÜTUNDA en yüksek %
-   Sarı çerçeve  → o SATIRDA en yüksek % olan adım
+   Alt satır 1: EN OLASI (sütun bazında)
+   Alt satır 2: 2. OLASI (sütun bazında)
    ════════════════════════════════════════════════════ */
 function renderTable(prob2d,effSet,nPred){
   var nSteps=nPred, nVals=effSet.length;
 
-  /* Sütun max (mavi normalize) */
+  /* Değerleri büyükten küçüğe sıralanmış index listesi */
+  var sortedIdx=Array.from({length:nVals},function(_,i){return i;})
+    .sort(function(a,b){return effSet[b]-effSet[a];});
+  var sortedVals=sortedIdx.map(function(i){return effSet[i];});
+
+  /* SÜTUN MAX — yeşil kanal için */
   var colMax=Array.from({length:nSteps},function(_,ci){
     var mx=0;
     for(var ri=0;ri<nVals;ri++) if(prob2d[ci][ri]>mx) mx=prob2d[ci][ri];
     return mx||1e-9;
   });
 
-  /* Her sütunda hangi değer en yüksek → YEŞİL çerçeve */
-  var colBest=Array.from({length:nSteps},function(_,ci){
-    var best=0;
-    for(var ri=0;ri<nVals;ri++) if(prob2d[ci][ri]>prob2d[ci][best]) best=ri;
-    return best;
+  /* SATIR MAX — mavi kanal için */
+  var rowMax=Array.from({length:nVals},function(_,ri){
+    var mx=0;
+    for(var ci=0;ci<nSteps;ci++) if(prob2d[ci][ri]>mx) mx=prob2d[ci][ri];
+    return mx||1e-9;
   });
 
-  /* Her satırda hangi adım en yüksek → SARI çerçeve */
-  var rowBest=Array.from({length:nVals},function(_,ri){
-    var best=0;
-    for(var ci=0;ci<nSteps;ci++) if(prob2d[ci][ri]>prob2d[best][ri]) best=ci;
-    return best;
-  });
-
-  /* Her sütun için En Olası ve 2. Olası değer+yüzde */
+  /* Her sütun için sıralı değer listesi (En Olası / 2. Olası) */
   var colRanked=Array.from({length:nSteps},function(_,ci){
-    var ranked=effSet.map(function(v,ri){return{v:v,p:prob2d[ci][ri]};})
+    return effSet.map(function(v,ri){return{v:v,p:prob2d[ci][ri]};})
       .sort(function(a,b){return b.p-a.p;});
-    return ranked;
   });
+
+  /* Tema renkleri (RGB sayısal) */
+  /* --paper: #faf6ed  → base (düşük olasılık) */
+  /* --blue:  #1a5c8a  → satır kanalı zirve  */
+  /* --green: #1f7a45  → sütun kanalı zirve  */
+  /* Karışım: her kanalı bağımsız hesapla, sonra RGB interpolasyonu */
+  function cellBg(gN, bN){
+    /* gN = yeşil normalize [0,1],  bN = mavi normalize [0,1] */
+    /* Base = paper: 250,246,237 */
+    /* Green peak = 31,122,69  */
+    /* Blue peak  = 26,92,138  */
+    /* Her kanal paper'dan kendi peak'ine doğru gidiyor, sonra topluyoruz */
+    var pr=250, pg=246, pb_=237;
+    var gr_r=31,  gr_g=122, gr_b=69;
+    var bl_r=26,  bl_g=92,  bl_b=138;
+
+    /* Katkılar — iki kanal birbirinden bağımsız rengi paperdan çeker */
+    var r=Math.round(pr + gN*(gr_r-pr) + bN*(bl_r-pr));
+    var g=Math.round(pg + gN*(gr_g-pg) + bN*(bl_g-pg));
+    var b=Math.round(pb_ + gN*(gr_b-pb_) + bN*(bl_b-pb_));
+
+    /* Clamp */
+    r=Math.max(0,Math.min(255,r));
+    g=Math.max(0,Math.min(255,g));
+    b=Math.max(0,Math.min(255,b));
+
+    /* Metin rengi: toplam koyuluğa bakarak seç */
+    var lum=(r*0.299+g*0.587+b*0.114);
+    var tc=lum<148?'#faf6ed':'#1c1710';
+    return {bg:'rgb('+r+','+g+','+b+')',tc:tc};
+  }
 
   /* BAŞLIK */
   var hdr='<tr>'
-    +'<th class="rh" style="min-width:72px;text-align:left;padding-left:10px;">Değer</th>'
+    +'<th class="rh" style="min-width:72px;text-align:left;padding-left:10px;">Değer ↓</th>'
     +Array.from({length:nSteps},function(_,ci){return '<th>t+'+(ci+1)+'</th>';}).join('')
     +'</tr>';
 
-  /* GÖVDEi: her satır bir değer */
-  var rows=effSet.map(function(val,ri){
+  /* GÖVDE — satırlar büyükten küçüğe */
+  var rows=sortedIdx.map(function(ri){
+    var val=effSet[ri];
     var cells=Array.from({length:nSteps},function(_,ci){
       var p=prob2d[ci][ri];
       var pStr=(p*100).toFixed(1);
-      var norm=colMax[ci]>0?p/colMax[ci]:0;
-      var rr=Math.round(248-norm*118),gg=Math.round(245-norm*100),bb=Math.round(255-norm*50);
-      var bg='rgb('+rr+','+gg+','+bb+')';
-      var tc=norm>0.58?'#fff':'var(--ink)';
-      var isGreen=(colBest[ci]===ri);
-      var isAmber=(rowBest[ri]===ci);
-      var extra='';
-      if(isGreen&&isAmber) extra='outline:3px solid #1f7a45;outline-offset:-1px;box-shadow:inset 0 0 0 3px #e8b84b;';
-      else if(isGreen)     extra='outline:3px solid #1f7a45;outline-offset:-1px;';
-      else if(isAmber)     extra='outline:3px solid #e8b84b;outline-offset:-1px;';
-      return '<td style="background:'+bg+';color:'+tc+';'+extra+'">'+pStr+'%</td>';
+      var gN=colMax[ci]>0?p/colMax[ci]:0;   /* sütun normalize → yeşil */
+      var bN=rowMax[ri]>0?p/rowMax[ri]:0;   /* satır normalize → mavi  */
+      var col=cellBg(gN,bN);
+      return '<td style="background:'+col.bg+';color:'+col.tc+';">'+pStr+'%</td>';
     }).join('');
     return '<tr><td class="sh">'+val+'</td>'+cells+'</tr>';
   }).join('');
 
-  /* ALT SATIR 1: En Olası */
+  /* ALT SATIR 1: EN OLASI */
   var footBest='<tr class="foot-row">'
     +'<td class="sh" style="font-size:9px;color:var(--green);letter-spacing:1px;">EN OLASI</td>'
     +Array.from({length:nSteps},function(_,ci){
       var best=colRanked[ci][0];
-      return '<td class="bt">'+best.v+'<br><span style="font-size:9px;font-weight:400;color:var(--ink3)">('+
+      return '<td class="bt">'+best.v
+        +'<br><span style="font-size:9px;font-weight:400;color:var(--ink3)">('+
         (best.p*100).toFixed(1)+'%)</span></td>';
-    }).join('')
-    +'</tr>';
+    }).join('')+'</tr>';
 
-  /* ALT SATIR 2: 2. Olası */
+  /* ALT SATIR 2: 2. OLASI */
   var footSec='<tr class="foot-row">'
     +'<td class="sh" style="font-size:9px;color:var(--amber);letter-spacing:1px;">2. OLASI</td>'
     +Array.from({length:nSteps},function(_,ci){
       var sec=colRanked[ci][1]||colRanked[ci][0];
-      return '<td class="bs">'+sec.v+'<br><span style="font-size:9px;font-weight:400;color:var(--ink3)">('+
+      return '<td class="bs">'+sec.v
+        +'<br><span style="font-size:9px;font-weight:400;color:var(--ink3)">('+
         (sec.p*100).toFixed(1)+'%)</span></td>';
-    }).join('')
-    +'</tr>';
+    }).join('')+'</tr>';
 
   $('p2dWrap').innerHTML='<table class="p2d"><thead>'+hdr+'</thead><tbody>'+rows+footBest+footSec+'</tbody></table>';
 
+  /* LEGEND */
   $('tblLeg').innerHTML=
-    '<div class="tll"><div class="tlb" style="background:rgb(130,145,205)"></div>'
-    +'<span><b>Koyu mavi</b> = o sütunda en yüksek görünme (sütun normalize)</span></div>'
-    +'<div class="tll"><div class="tlb" style="outline:3px solid #1f7a45;outline-offset:-1px"></div>'
-    +'<span><b>Yeşil çerçeve</b> = o sütunda (adımda) en yüksek %</span></div>'
-    +'<div class="tll"><div class="tlb" style="outline:3px solid #e8b84b;outline-offset:-1px"></div>'
-    +'<span><b>Sarı çerçeve</b> = o satırda (değerde) en yüksek % olan adım</span></div>'
-    +'<div class="tll"><div class="tlb" style="outline:3px solid #1f7a45;outline-offset:-1px;box-shadow:inset 0 0 0 3px #e8b84b"></div>'
-    +'<span><b>İç içe</b> = her ikisinde de zirve</span></div>';
+    '<div class="tll">'
+      +'<div class="tlb" style="background:linear-gradient(135deg,#1f7a45,#faf6ed)"></div>'
+      +'<span><b>Yeşil yoğunluk</b> = o sütunda (adımda) ne kadar baskın — sütun normalize</span>'
+    +'</div>'
+    +'<div class="tll">'
+      +'<div class="tlb" style="background:linear-gradient(135deg,#1a5c8a,#faf6ed)"></div>'
+      +'<span><b>Mavi yoğunluk</b> = o satırda (değerde) ne kadar baskın — satır normalize</span>'
+    +'</div>'
+    +'<div class="tll">'
+      +'<div class="tlb" style="background:linear-gradient(135deg,#0d3d3a,#faf6ed)"></div>'
+      +'<span><b>Koyu karışık ton</b> = hem satırda hem sütunda yüksek (çift baskınlık)</span>'
+    +'</div>'
+    +'<div class="tll">'
+      +'<div class="tlb" style="background:#faf6ed;border:1px solid #d6c9b4"></div>'
+      +'<span><b>Krem/boş</b> = her iki eksende de düşük olasılık</span>'
+    +'</div>';
 }
 
 /* ── RESULTS ── */
 function renderResults(predMed,predLo,predHi,m,s,a1,tr,nSim,ent,effSet,bad){
   var last=_data[_data.length-1],fMed=predMed[N_STEPS-1],fLo=predLo[N_STEPS-1],fHi=predHi[N_STEPS-1];
   var acfI=Math.abs(a1)>0.5?'Güçlü':Math.abs(a1)>0.2?'Orta':'Zayıf';
+  var trendStr=Math.abs(tr)<0.0005?'Sabit':(tr>0?'↑ Yükseliyor':'↓ Düşüyor');
   var freq={};_data.forEach(function(v){var k=v.toString();freq[k]=(freq[k]||0)+1;});
   var top=Object.entries(freq).sort(function(a,b){return b[1]-a[1];})[0];
 
   $('findings').innerHTML=
-    /* Uzunluk buraya taşındı */
     '<div class="fr"><span class="fr-l">Veri uzunluğu</span><span class="fr-r">'+_data.length+' nokta</span></div>'+
+    '<div class="fr"><span class="fr-l">Küme boyutu</span><span class="fr-r">'+effSet.length+' değer</span></div>'+
+    (bad>0?'<div class="fr"><span class="fr-l">Geçersiz nokta</span><span class="fr-r err">'+bad+' !</span></div>':'')+
+    '<div class="fr"><span class="fr-l">Ortalama / Std</span><span class="fr-r">'+m.toFixed(3)+' / '+s.toFixed(3)+'</span></div>'+
     '<div class="fr"><span class="fr-l">En sık değer</span><span class="fr-r ok">'+top[0]+' (%'+((top[1]/_data.length)*100).toFixed(1)+')</span></div>'+
     '<div class="fr"><span class="fr-l">ACF(1)</span><span class="fr-r '+(Math.abs(a1)>0.3?'ok':'warn')+'">'+a1.toFixed(4)+' — '+acfI+'</span></div>'+
     '<div class="fr"><span class="fr-l">Entropi</span><span class="fr-r '+(ent>2?'warn':'')+'">'+ent.toFixed(3)+' / '+Math.log2(effSet.length||1).toFixed(2)+' bit</span></div>'+
-    '<div class="fr"><span class="fr-l">Trend</span><span class="fr-r">'+tr.toFixed(5)+'/adım</span></div>'+
-    (bad>0?'<div class="fr"><span class="fr-l">Geçersiz nokta</span><span class="fr-r err">'+bad+' !</span></div>':'')+
-    '<div class="fr"><span class="fr-l">Yöntem</span><span class="fr-r">NB(hiyerarşik) · NHiTS · DTW(1-NN) · CRF</span></div>'+
+    '<div class="fr"><span class="fr-l">Trend</span><span class="fr-r '+(Math.abs(tr)<0.0005?'':'tr>0?\'ok\':\'err\'')+'"">'+trendStr+' ('+tr.toFixed(5)+')</span></div>'+
+    '<div class="fr"><span class="fr-l">Yöntem</span><span class="fr-r">NB · NHiTS · DTW(1-NN) · CRF</span></div>'+
     '<div class="fr"><span class="fr-l">Simülasyon</span><span class="fr-r">'+nSim.toLocaleString()+' yol</span></div>';
 
   $('predSummary').innerHTML=
