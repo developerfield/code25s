@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kümülatif Hedef Analizi</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap');
+:root{
+  --paper:#f7f3e9;--paper2:#f0ead8;--ink:#2c1f0e;--ink2:#5a3e28;--ink3:#8c7355;--ink4:#b8a48a;
+  --rule:rgba(92,62,40,.18);--red:#8b2020;--blue:#1a4a6e;--green:#1a5c30;--amber:#8b5e00;
+  --redl:rgba(139,32,32,.12);--bluel:rgba(26,74,110,.12);--greenl:rgba(26,92,48,.12);--amberl:rgba(139,94,0,.12);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  background:var(--paper);color:var(--ink);font-family:'Space Mono',monospace;min-height:100vh;
+  background-image:
+    linear-gradient(90deg,transparent 52px,rgba(180,60,60,.22) 52px,rgba(180,60,60,.22) 54px,transparent 54px),
+    repeating-linear-gradient(transparent,transparent 31px,rgba(100,140,200,.18) 31px,rgba(100,140,200,.18) 32px);
+}
+body::before{
+  content:'';position:fixed;left:18px;top:0;bottom:0;width:22px;pointer-events:none;z-index:0;
+  background-image:repeating-radial-gradient(circle at 11px 0,transparent 0,transparent 9px,
+    rgba(0,0,0,.06) 9px,rgba(0,0,0,.06) 11px,var(--paper2) 11px,var(--paper2) 13px,transparent 13px);
+  background-size:22px 80px;
+}
+.wrap{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:40px 36px 100px 72px;}
+header{margin-bottom:36px;padding-bottom:10px;border-bottom:2px solid var(--ink2);}
+.hand-title{font-family:'Caveat',cursive;font-size:clamp(30px,5vw,52px);font-weight:700;color:var(--ink);line-height:1.05;}
+.hand-title em{color:var(--blue);font-style:normal;}
+.hand-title strong{color:var(--red);}
+.hand-sub{font-family:'Caveat',cursive;font-size:15px;color:var(--ink3);margin-top:4px;}
+.slbl{font-family:'Caveat',cursive;font-size:13px;color:var(--ink3);letter-spacing:2px;
+  text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+.slbl::after{content:'';flex:1;height:1px;background:var(--rule);}
+.panel{background:rgba(255,255,255,.35);border:1.5px solid var(--ink4);border-radius:2px;
+  padding:20px 22px 18px;margin-bottom:24px;position:relative;box-shadow:2px 3px 0 rgba(0,0,0,.04);}
+.panel-lbl{position:absolute;top:-10px;left:14px;background:var(--paper);padding:0 7px;
+  font-family:'Caveat',cursive;font-size:13px;color:var(--ink2);letter-spacing:1px;border:1px solid var(--ink4);}
+textarea{width:100%;height:88px;background:transparent;border:1px solid var(--rule);
+  color:var(--ink);font-family:'Space Mono',monospace;font-size:11px;padding:8px 10px;
+  resize:vertical;outline:none;line-height:2;}
+textarea:focus{border-color:var(--blue);}
+.set-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin:10px 0 5px;}
+#setPreview{display:flex;flex-wrap:wrap;gap:4px;min-height:20px;margin-bottom:8px;}
+.tag-wrap{display:inline-flex;align-items:center;background:var(--bluel);border:1px solid rgba(26,74,110,.3);}
+.tag-val{color:var(--blue);padding:2px 7px;font-size:10px;font-weight:700;}
+.tag-btn{background:transparent;border:none;border-left:1px solid rgba(26,74,110,.25);
+  color:var(--blue);font-size:12px;padding:1px 5px;cursor:pointer;line-height:1;}
+.set-add-row{display:flex;align-items:center;gap:6px;margin-bottom:12px;}
+.set-add-row input{background:transparent;border:1px solid var(--rule);color:var(--ink);
+  font-family:'Space Mono',monospace;font-size:11px;padding:4px 8px;width:100px;outline:none;}
+.set-add-row input:focus{border-color:var(--blue);}
+.add-btn{padding:4px 10px;background:var(--bluel);border:1px solid rgba(26,74,110,.3);
+  color:var(--blue);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;}
+.target-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:4px;}
+@media(max-width:580px){.target-row{grid-template-columns:1fr;}}
+.tgt-field label{display:block;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin-bottom:4px;}
+.tgt-field input{width:100%;background:transparent;border:1px solid var(--rule);
+  color:var(--ink);font-family:'Space Mono',monospace;font-size:12px;padding:7px 9px;outline:none;}
+.tgt-field input:focus{border-color:var(--amber);}
+.tgt-hint{font-size:9px;color:var(--ink3);margin-top:3px;font-style:italic;}
+.btn-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px;}
+.btn{padding:9px 20px;background:var(--ink);color:var(--paper);border:2px solid var(--ink);
+  font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all .15s;}
+.btn:hover{background:transparent;color:var(--ink);}
+.btn.g{background:var(--green);border-color:var(--green);}
+.btn.g:hover{background:transparent;color:var(--green);}
+.btn.r{background:var(--red);border-color:var(--red);}
+.btn.r:hover{background:transparent;color:var(--red);}
+.prog-wrap{display:none;background:rgba(255,255,255,.35);border:1.5px solid var(--ink4);padding:14px 18px;margin-bottom:20px;}
+.prog-lbl{font-family:'Caveat',cursive;font-size:14px;color:var(--ink3);margin-bottom:6px;}
+.prog-outer{width:100%;height:4px;background:var(--rule);}
+.prog-inner{height:100%;background:var(--green);transition:width .08s;}
+.prog-txt{font-size:11px;font-weight:700;margin-top:5px;color:var(--ink2);}
+.tgt-block{display:none;margin-bottom:24px;}
+.hero-kpis{display:grid;grid-template-columns:repeat(4,1fr);border:2px solid var(--ink2);margin-bottom:2px;background:rgba(255,255,255,.3);}
+@media(max-width:640px){.hero-kpis{grid-template-columns:1fr 1fr;}}
+.kpi{padding:16px 12px;border-right:1px solid var(--rule);text-align:center;}
+.kpi:last-child{border-right:none;}
+.kpi-lbl{font-size:8px;letter-spacing:2.5px;text-transform:uppercase;color:var(--ink3);margin-bottom:6px;}
+.kpi-val{font-family:'Caveat',cursive;font-size:38px;line-height:1;font-weight:700;color:var(--ink);}
+.kpi-val.ok{color:var(--green);}.kpi-val.warn{color:var(--amber);}.kpi-val.err{color:var(--red);}
+.kpi-sub{font-size:8px;color:var(--ink3);margin-top:4px;}
+.verdict-strip{padding:8px 16px;background:var(--ink2);color:var(--paper);font-size:10px;letter-spacing:2px;text-transform:uppercase;
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.vd-badge{font-family:'Caveat',cursive;font-size:16px;font-weight:700;letter-spacing:1px;}
+.vd-badge.ok{color:#7fd8a0;}.vd-badge.warn{color:#f5c842;}.vd-badge.err{color:#f07070;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+@media(max-width:740px){.two-col{grid-template-columns:1fr;}}
+.info-card{background:rgba(255,255,255,.35);border:1.5px solid var(--ink4);padding:16px;}
+.ic-title{font-family:'Caveat',cursive;font-size:15px;font-weight:700;color:var(--ink2);border-bottom:1px solid var(--rule);padding-bottom:5px;margin-bottom:10px;}
+.fr{display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;border-bottom:1px dotted var(--rule);font-size:10px;}
+.fr:last-child{border-bottom:none;}
+.fr-l{color:var(--ink3);}.fr-r{font-weight:700;}
+.fr-r.ok{color:var(--green);}.fr-r.warn{color:var(--amber);}.fr-r.err{color:var(--red);}
+.path-bars{display:flex;flex-direction:column;gap:8px;}
+.pb-row{display:flex;align-items:center;gap:8px;}
+.pb-lbl{font-size:9px;color:var(--ink3);min-width:118px;}
+.pb-track{flex:1;height:12px;background:var(--paper2);border:1px solid var(--rule);overflow:hidden;}
+.pb-fill{height:100%;transition:width .5s ease;}
+.pb-pct{font-size:10px;font-weight:700;min-width:34px;text-align:right;}
+.step-hist{display:flex;gap:2px;align-items:flex-end;height:56px;padding:0 2px;}
+.sh-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;}
+.sh-bar{width:100%;min-height:1px;border-radius:1px 1px 0 0;}
+.sh-lbl{font-size:7px;color:var(--ink4);margin-top:2px;}
+.sh-note{font-size:9px;color:var(--ink3);margin-top:5px;font-style:italic;}
+.waypoint-box{background:var(--amberl);border:1.5px solid rgba(139,94,0,.3);padding:12px 14px;margin-bottom:16px;}
+.wp-title{font-family:'Caveat',cursive;font-size:14px;font-weight:700;color:var(--amber);margin-bottom:8px;}
+.wp-item{font-size:10px;color:var(--ink2);padding:3px 0;border-bottom:1px dotted rgba(139,94,0,.2);display:flex;justify-content:space-between;}
+.wp-item:last-child{border-bottom:none;}
+.wp-item strong{color:var(--amber);}
+.dist-bar-wrap{margin:10px 0 4px;}
+.dist-bar-row{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.dist-bar-lbl{font-size:9px;color:var(--ink3);min-width:80px;text-align:right;}
+.dist-bar-track{flex:1;height:10px;background:var(--paper2);border:1px solid var(--rule);overflow:hidden;}
+.dist-bar-fill{height:100%;}
+.dist-bar-pct{font-size:9px;font-weight:700;min-width:32px;}
+.regime-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border:1.5px solid currentColor;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;}
+.regime-pill.sakin{color:var(--blue);}.regime-pill.gecis{color:var(--amber);}.regime-pill.aktif{color:var(--red);}
+.regime-dot{width:7px;height:7px;border-radius:50%;background:currentColor;}
+.chart-card{background:rgba(255,255,255,.35);border:1.5px solid var(--ink4);padding:18px 20px;margin-bottom:20px;}
+.chart-card.fullscreen{position:fixed!important;inset:0!important;z-index:9999!important;margin:0!important;border:none!important;display:flex;flex-direction:column;padding:16px 20px;background:var(--paper)!important;}
+.chart-card.fullscreen .cw{flex:1;height:auto!important;}
+.chart-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
+.chart-ttl{font-family:'Caveat',cursive;font-size:20px;font-weight:700;color:var(--ink2);}
+.cbts{display:flex;gap:4px;}
+.cbt{background:transparent;border:1.5px solid var(--ink4);color:var(--ink2);font-size:12px;width:26px;height:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.cbt:hover{background:var(--ink2);color:var(--paper);}
+.leg-row{display:flex;gap:12px;flex-wrap:wrap;font-size:9px;margin-bottom:8px;align-items:center;}
+.leg{display:flex;align-items:center;gap:5px;}
+.ll{width:20px;height:2.5px;border-radius:1px;}
+.cw{position:relative;width:100%;height:320px;}
+.cw canvas{position:absolute;inset:0;width:100%!important;height:100%!important;}
+.chart-note{font-family:'Caveat',cursive;font-size:12px;color:var(--ink3);margin-top:6px;text-align:right;}
+.findings-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+@media(max-width:700px){.findings-grid{grid-template-columns:1fr;}}
+
+/* PARAMETRE PANELİ */
+.param-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px;}
+@media(max-width:780px){.param-grid{grid-template-columns:1fr;}}
+.param-group{background:rgba(255,255,255,.25);border:1px solid var(--rule);padding:14px 14px 10px;}
+.param-group-title{font-family:'Caveat',cursive;font-size:14px;font-weight:700;color:var(--ink2);
+  margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid var(--rule);}
+.param-row{margin-bottom:10px;}
+.param-row:last-child{margin-bottom:0;}
+.param-meta{margin-bottom:3px;}
+.param-lbl{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink2);font-weight:700;display:block;}
+.param-desc{font-size:8.5px;color:var(--ink3);font-style:italic;}
+.param-ctrl{display:flex;align-items:center;gap:8px;margin-top:4px;}
+.param-ctrl input[type=range]{
+  flex:1;-webkit-appearance:none;appearance:none;height:3px;background:var(--rule);outline:none;cursor:pointer;
+}
+.param-ctrl input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--blue);cursor:pointer;border:2px solid var(--paper);box-shadow:0 0 0 1px var(--blue);
+}
+.param-ctrl input[type=range]::-moz-range-thumb{
+  width:13px;height:13px;border-radius:50%;background:var(--blue);cursor:pointer;border:2px solid var(--paper);
+}
+.param-ctrl input[type=number]{
+  width:62px;background:transparent;border:1px solid var(--rule);color:var(--ink);
+  font-family:'Space Mono',monospace;font-size:10px;padding:3px 5px;outline:none;text-align:right;
+}
+.param-ctrl input[type=number]:focus{border-color:var(--blue);}
+.param-note{font-size:8.5px;color:var(--ink3);margin-top:2px;font-style:italic;}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="hand-title"><em>Kümülatif</em> <strong>Hedef</strong> Analizi</div>
+  <div class="hand-sub">// Trend ayrıştırma · Laplace · Çapraz doğrulama · Viterbi CRF · DTW 1/N-NN · Veri boyutu belirsizliği · 8000 sim</div>
+</header>
+
+<div class="slbl">veri & hedef</div>
+<div class="panel">
+  <div class="panel-lbl">veri serisi</div>
+  <textarea id="seriesInput" placeholder="3, 3.2, 3, 3.4, 3.2 ... (virgül / noktalı virgül / satır)" oninput="onSeriesInput()"></textarea>
+  <div class="set-lbl">Adım Kümesi</div>
+  <div id="setPreview"></div>
+  <div class="set-add-row">
+    <input id="newValInput" type="number" step="any" placeholder="Ekle...">
+    <button class="add-btn" onclick="addSetVal()">+ ekle</button>
+  </div>
+  <div class="set-lbl" style="margin-top:6px;">Hedef</div>
+  <div class="target-row">
+    <div class="tgt-field">
+      <label>Hedef Adım (x)</label>
+      <input id="tgtStep" type="number" min="1" max="300" value="50">
+      <div class="tgt-hint">Kaç adım sonra?</div>
+    </div>
+    <div class="tgt-field">
+      <label>Alt Sınır (y₁)</label>
+      <input id="tgtLo" type="number" step="any" placeholder="otomatik">
+      <div class="tgt-hint">Boş = otomatik tahmin</div>
+    </div>
+    <div class="tgt-field">
+      <label>Üst Sınır (y₂)</label>
+      <input id="tgtHi" type="number" step="any" placeholder="otomatik">
+      <div class="tgt-hint">Boş = otomatik tahmin</div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn g" onclick="runAnalysis()">▶ ANALİZ ET</button>
+    <button class="btn r" onclick="loadExample()">ÖRNEK</button>
+    <button class="btn" onclick="toggleParams()" id="paramToggleBtn" style="background:var(--amber);border-color:var(--amber);">⚙ PARAMETRELER</button>
+  </div>
+</div>
+
+<!-- PARAMETRE PANELİ -->
+<div class="panel" id="paramPanel" style="display:none;">
+  <div class="panel-lbl">⚙ Motor Parametreleri</div>
+
+  <div class="param-grid">
+
+    <!-- GRUP 1: Simülasyon -->
+    <div class="param-group">
+      <div class="param-group-title">🎲 Simülasyon</div>
+
+      <div class="param-row">
+        <div class="param-meta">
+          <label class="param-lbl">Simülasyon Sayısı</label>
+          <span class="param-desc">Daha fazla = daha güvenilir ama yavaş</span>
+        </div>
+        <div class="param-ctrl">
+          <input type="range" id="p_nsim" min="1000" max="20000" step="1000" value="8000" oninput="syncParam('p_nsim','p_nsim_n')">
+          <input type="number" id="p_nsim_n" min="1000" max="20000" step="1000" value="8000" oninput="syncParam('p_nsim_n','p_nsim')">
+        </div>
+      </div>
+
+      <div class="param-row">
+        <div class="param-meta">
+          <label class="param-lbl">Güven Bandı (%)</label>
+          <span class="param-desc">Grafikteki gölgeli alan genişliği</span>
+        </div>
+        <div class="param-ctrl">
+          <input type="range" id="p_conf" min="50" max="99" step="1" value="90" oninput="syncParam('p_conf','p_conf_n')">
+          <input type="number" id="p_conf_n" min="50" max="99" step="1" value="90" oninput="syncParam('p_conf_n','p_conf')">
+        </div>
+      </div>
+    </div>
+
+    <!-- GRUP 2: Belirsizlik -->
+    <div class="param-group">
+      <div class="param-group-title">🌫 Belirsizlik Kontrolü</div>
+
+      <div class="param-row">
+        <div class="param-meta">
+          <label class="param-lbl">Veri Öncesi Düzleştirme (%)</label>
+          <span class="param-desc">Manuel override. 0 = modele güven, 100 = tamamen rastgele</span>
+        </div>
+        <div class="param-ctrl">
+          <input type="range" id="p_prior" min="0" max="99" step="1" value="-1" oninput="syncParam('p_prior','p_prior_n')">
+          <input type="number" id="p_prior_n" min="-1" max="99" step="1" value="-1" placeholder="oto" oninput="syncParam('p_prior_n','p_prior')">
+        </div>
+        <div class="param-note" id="p_prior_note">Otomatik (veri boyutuna göre)</div>
+      </div>
+
+      <div class="param-row">
+        <div class="param-meta">
+          <label class="param-lbl">Ufuk Belirsizlik Çarpanı</label>
+          <span class="param-desc">Uzak adımlarda ne kadar hızlı düzleşsin (0=hiç, 3=çok hızlı)</span>
+        </div>
+        <div class="param-ctrl">
+          <input type="range" id="p_hblur" min="0" max="3" step="0.1" value="1.2" oninput="syncParam('p_hblur','p_hblur_n')">
+          <input type="number" id="p_hblur_n" min="0" max="3" step="0.1" value="1.2" oninput="syncParam('p_hblur_n','p_hblur')">
+        </div>
+      </div>
+
+      <div class="param-row">
+        <div class="param-meta">
+          <label class="param-lbl">Temel Sıcaklık (Temperature)</label>
+          <span class="param-desc">Örnekleme yumuşaklığı: 0.5=keskin, 2=bulanık</span>
+        </div>
+        <div class="param-ctrl">
+          <input type="range" id="p_temp" min="0.5" max="3" step="0.1" value="1.0" oninput="syncParam('p_temp','p_temp_n')">
+          <input type="number" id="p_temp_n" min="0.5" max="3" step="0.1" value="1.0" oninput="syncParam('p_temp_n','p_temp')">
+        </div>
+      </div>
+    </div>
+
+    <!-- GRUP 3: DTW -->
+    <div class="param-group">
+      <div class="param-group-title">📐 DTW Ayarları</div>
+
+      <div class="param-row">
+        <div class="param-meta">
+          <label class="param-lbl">Komşu Sayısı (K)</label>
+          <span class="param-desc">0 = otomatik (veri boyutuna göre). 1=1-NN, 2-5=N-NN</span>
+        </div>
+        <div class="param-ctrl">
+          <input type="range" id="p_dtwk" min="0" max="10" step="1" value="0" oninput="syncParam('p_dtwk','p_dtwk_n')">
+          <input type="number" id="p_dtwk_n" min="0" max="10" step="1" value="0" oninput="syncParam('p_dtwk_n','p_dtwk')">
+        </div>
+        <div class="param-note" id="p_dtwk_note">Otomatik</div>
+      </div>
+
+      <div class="param-row">
+        <div class="param-meta">
+          <label class="param-lbl">Pencere Uzunluğu (wlen)</label>
+          <span class="param-desc">0 = otomatik. Örüntü eşleştirme için bakılan geçmiş adım sayısı</span>
+        </div>
+        <div class="param-ctrl">
+          <input type="range" id="p_wlen" min="0" max="20" step="1" value="0" oninput="syncParam('p_wlen','p_wlen_n')">
+          <input type="number" id="p_wlen_n" min="0" max="20" step="1" value="0" oninput="syncParam('p_wlen_n','p_wlen')">
+        </div>
+        <div class="param-note" id="p_wlen_note">Otomatik</div>
+      </div>
+
+      <div class="param-row">
+        <div class="param-meta">
+          <label class="param-lbl">Sakoe-Chiba Bandı (%)</label>
+          <span class="param-desc">DTW warping kısıtı. Dar=hızlı ama katı, geniş=esnek ama yavaş</span>
+        </div>
+        <div class="param-ctrl">
+          <input type="range" id="p_scband" min="5" max="100" step="5" value="20" oninput="syncParam('p_scband','p_scband_n')">
+          <input type="number" id="p_scband_n" min="5" max="100" step="5" value="20" oninput="syncParam('p_scband_n','p_scband')">
+        </div>
+      </div>
+    </div>
+
+    <!-- GRUP 4: Model ağırlıkları -->
+    <div class="param-group">
+      <div class="param-group-title">⚖️ Model Ağırlıkları (Manuel)</div>
+      <div class="param-note" style="margin-bottom:8px;">Tümünü 0 bırakırsan çapraz doğrulama ağırlıkları kullanılır</div>
+
+      <div class="param-row">
+        <div class="param-meta"><label class="param-lbl">N-gram NB</label></div>
+        <div class="param-ctrl">
+          <input type="range" id="p_wnb" min="0" max="100" step="1" value="0" oninput="syncParam('p_wnb','p_wnb_n');updateManualWeights()">
+          <input type="number" id="p_wnb_n" min="0" max="100" step="1" value="0" oninput="syncParam('p_wnb_n','p_wnb');updateManualWeights()">
+        </div>
+      </div>
+      <div class="param-row">
+        <div class="param-meta"><label class="param-lbl">DTW 1/N-NN</label></div>
+        <div class="param-ctrl">
+          <input type="range" id="p_wdtw" min="0" max="100" step="1" value="0" oninput="syncParam('p_wdtw','p_wdtw_n');updateManualWeights()">
+          <input type="number" id="p_wdtw_n" min="0" max="100" step="1" value="0" oninput="syncParam('p_wdtw_n','p_wdtw');updateManualWeights()">
+        </div>
+      </div>
+      <div class="param-row">
+        <div class="param-meta"><label class="param-lbl">Viterbi CRF</label></div>
+        <div class="param-ctrl">
+          <input type="range" id="p_wcrf" min="0" max="100" step="1" value="0" oninput="syncParam('p_wcrf','p_wcrf_n');updateManualWeights()">
+          <input type="number" id="p_wcrf_n" min="0" max="100" step="1" value="0" oninput="syncParam('p_wcrf_n','p_wcrf');updateManualWeights()">
+        </div>
+      </div>
+      <div class="param-row">
+        <div class="param-meta"><label class="param-lbl">N-HiTS</label></div>
+        <div class="param-ctrl">
+          <input type="range" id="p_wnhits" min="0" max="100" step="1" value="0" oninput="syncParam('p_wnhits','p_wnhits_n');updateManualWeights()">
+          <input type="number" id="p_wnhits_n" min="0" max="100" step="1" value="0" oninput="syncParam('p_wnhits_n','p_wnhits');updateManualWeights()">
+        </div>
+      </div>
+      <div class="param-note" id="manualWeightNote" style="color:var(--green);">Otomatik ağırlık modu aktif</div>
+    </div>
+
+    <!-- GRUP 5: NB & CRF -->
+    <div class="param-group">
+      <div class="param-group-title">🔢 N-gram NB & CRF</div>
+
+      <div class="param-row">
+        <div class="param-meta">
+          <label class="param-lbl">Laplace Alpha (α)</label>
+          <span class="param-desc">Geçiş matrisinde düzleştirme. Büyük = sıfır olasılık daha imkansız</span>
+        </div>
+        <div class="param-ctrl">
+          <input type="range" id="p_laplace" min="0.01" max="5" step="0.01" value="0.5" oninput="syncParam('p_laplace','p_laplace_n')">
+          <input type="number" id="p_laplace_n" min="0.01" max="5" step="0.01" value="0.5" oninput="syncParam('p_laplace_n','p_laplace')">
+        </div>
+      </div>
+
+      <div class="param-row">
+        <div class="param-meta">
+          <label class="param-lbl">Maksimum N-gram Penceresi</label>
+          <span class="param-desc">Kaç önceki adıma bakılsın (1-7)</span>
+        </div>
+        <div class="param-ctrl">
+          <input type="range" id="p_maxwin" min="1" max="7" step="1" value="5" oninput="syncParam('p_maxwin','p_maxwin_n')">
+          <input type="number" id="p_maxwin_n" min="1" max="7" step="1" value="5" oninput="syncParam('p_maxwin_n','p_maxwin')">
+        </div>
+      </div>
+
+      <div class="param-row">
+        <div class="param-meta">
+          <label class="param-lbl">CRF Geçiş/Emisyon Dengesi (λ)</label>
+          <span class="param-desc">0=sadece öğrenme, 1=sadece geçiş matrisi</span>
+        </div>
+        <div class="param-ctrl">
+          <input type="range" id="p_crflambda" min="0" max="1" step="0.05" value="0.5" oninput="syncParam('p_crflambda','p_crflambda_n')">
+          <input type="number" id="p_crflambda_n" min="0" max="1" step="0.05" value="0.5" oninput="syncParam('p_crflambda_n','p_crflambda')">
+        </div>
+      </div>
+
+      <div class="param-row">
+        <div class="param-meta">
+          <label class="param-lbl">CRF Öğrenme Hızı (lr)</label>
+          <span class="param-desc">Pseudo-likelihood gradient descent hızı</span>
+        </div>
+        <div class="param-ctrl">
+          <input type="range" id="p_crflr" min="0.01" max="0.5" step="0.01" value="0.08" oninput="syncParam('p_crflr','p_crflr_n')">
+          <input type="number" id="p_crflr_n" min="0.01" max="0.5" step="0.01" value="0.08" oninput="syncParam('p_crflr_n','p_crflr')">
+        </div>
+      </div>
+    </div>
+
+    <!-- GRUP 6: Çapraz doğrulama -->
+    <div class="param-group">
+      <div class="param-group-title">🔁 Çapraz Doğrulama</div>
+
+      <div class="param-row">
+        <div class="param-meta">
+          <label class="param-lbl">Test Seti Oranı (%)</label>
+          <span class="param-desc">Son bu kadar % veri model ağırlıklarını belirler</span>
+        </div>
+        <div class="param-ctrl">
+          <input type="range" id="p_testpct" min="5" max="40" step="1" value="20" oninput="syncParam('p_testpct','p_testpct_n')">
+          <input type="number" id="p_testpct_n" min="5" max="40" step="1" value="20" oninput="syncParam('p_testpct_n','p_testpct')">
+        </div>
+      </div>
+
+      <div class="param-row">
+        <div class="param-meta">
+          <label class="param-lbl">Minimum Model Ağırlığı (%)</label>
+          <span class="param-desc">Hiçbir model bu değerin altına düşemez</span>
+        </div>
+        <div class="param-ctrl">
+          <input type="range" id="p_minw" min="0" max="30" step="1" value="10" oninput="syncParam('p_minw','p_minw_n')">
+          <input type="number" id="p_minw_n" min="0" max="30" step="1" value="10" oninput="syncParam('p_minw_n','p_minw')">
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /param-grid -->
+
+  <div class="btn-row" style="margin-top:12px;">
+    <button class="btn" onclick="resetParams()" style="font-size:9px;">↺ VARSAYILANA SIFIRLA</button>
+  </div>
+</div>
+
+<div class="prog-wrap" id="progWrap">
+  <div class="prog-lbl" id="progLbl">Başlatılıyor...</div>
+  <div class="prog-outer"><div class="prog-inner" id="progBar" style="width:0%"></div></div>
+  <div class="prog-txt" id="progTxt">0%</div>
+</div>
+
+<div class="tgt-block" id="tgtBlock">
+  <div class="hero-kpis" id="heroKpis"></div>
+  <div class="verdict-strip" id="verdictStrip">
+    <span id="verdictText"></span>
+    <span class="vd-badge" id="verdictBadge"></span>
+  </div>
+  <div class="two-col">
+    <div class="info-card"><div class="ic-title">📍 Geçiş Zamanı</div><div id="stepHistWrap"></div><div id="stepHistNote" class="sh-note"></div></div>
+    <div class="info-card"><div class="ic-title">🔀 Yol Tipi</div><div class="path-bars" id="pathBars"></div><div id="pathNote" style="font-size:9px;color:var(--ink3);margin-top:8px;font-style:italic;"></div></div>
+  </div>
+  <div class="two-col">
+    <div class="info-card"><div class="ic-title">📐 Hedefe Uzaklık</div><div id="distBars"></div><div id="distNote" style="font-size:9px;color:var(--ink3);margin-top:6px;font-style:italic;"></div></div>
+    <div class="info-card"><div class="ic-title">⚖️ Model Ağırlıkları</div><div id="modelWeights"></div></div>
+  </div>
+  <div class="waypoint-box" id="waypointBox" style="display:none">
+    <div class="wp-title">⚡ Erken Uyarı — Waypoint</div>
+    <div id="waypointItems"></div>
+  </div>
+  <div class="two-col">
+    <div class="info-card"><div class="ic-title">🔬 Seri Karakteri</div><div id="regimeInfo"></div></div>
+    <div class="info-card"><div class="ic-title">📊 Kümülatif Özet</div><div id="cumSummary"></div></div>
+  </div>
+</div>
+
+<div class="chart-card" id="sec_chart" style="display:none">
+  <div class="chart-top">
+    <div class="chart-ttl">Kümülatif Seri + Tahmin Yelpazesi</div>
+    <div class="cbts">
+      <button class="cbt" onclick="czi()">+</button><button class="cbt" onclick="czo()">−</button>
+      <button class="cbt" onclick="czr()">○</button><button class="cbt" id="fsbtn" onclick="toggleFS()">□</button>
+    </div>
+  </div>
+  <div class="leg-row" id="chartLeg"></div>
+  <div class="cw"><canvas id="mainChart"></canvas></div>
+  <div class="chart-note" id="chartNote"></div>
+</div>
+
+<div class="chart-card" id="sec_cpath" style="display:none">
+  <div class="chart-top">
+    <div class="chart-ttl">Hedefe Ulaşan Yollar — Koşullu Medyan</div>
+    <div class="cbts"><button class="cbt" onclick="cpzi()">+</button><button class="cbt" onclick="cpzo()">−</button><button class="cbt" onclick="cpzr()">○</button></div>
+  </div>
+  <div class="leg-row">
+    <div class="leg"><div class="ll" style="background:var(--ink)"></div><span>Gözlem</span></div>
+    <div class="leg"><div class="ll" style="background:var(--green)"></div><span>Koşullu medyan</span></div>
+    <div class="leg"><div class="ll" style="background:rgba(26,92,48,.2);height:8px;width:20px;border:1px solid rgba(26,92,48,.4)"></div><span>%80 bant</span></div>
+  </div>
+  <div class="cw"><canvas id="cpathChart"></canvas></div>
+</div>
+
+<div class="slbl" id="sec_findings_lbl" style="display:none">analiz bulguları</div>
+<div class="findings-grid" id="sec_findings" style="display:none">
+  <div class="info-card"><div class="ic-title">Seri İstatistikleri</div><div id="statsContent"></div></div>
+  <div class="info-card"><div class="ic-title">Motor Bilgisi</div><div id="modelContent"></div></div>
+</div>
+</div>
+
+<script>
+'use strict';
+var N_SIM=8000,CONF=0.90,ALPHA=(1-CONF)/2;
+var _set=[],_data=[],_mainChart=null,_cpathChart=null;
+
+/* PARAMETRE YARDIMCILARI */
+function pv(id){return parseFloat($(id).value);}
+function pi(id){return parseInt($(id).value);}
+function getParams(){
+  return {
+    nSim:    Math.max(500, pi('p_nsim')||8000),
+    conf:    Math.max(0.50,Math.min(0.99,(pv('p_conf')||90)/100)),
+    prior:   pv('p_prior'),        /* -1 = otomatik */
+    hblur:   pv('p_hblur'),
+    temp:    pv('p_temp'),
+    dtwK:    pi('p_dtwk'),         /* 0 = otomatik */
+    wlen:    pi('p_wlen'),         /* 0 = otomatik */
+    scband:  (pv('p_scband')||20)/100,
+    laplace: pv('p_laplace'),
+    maxWin:  pi('p_maxwin'),
+    crfLambda: pv('p_crflambda'),
+    crfLr:   pv('p_crflr'),
+    testPct: (pv('p_testpct')||20)/100,
+    minW:    (pv('p_minw')||10)/100,
+    manualW: (function(){
+      var nb=pv('p_wnb'),dtw=pv('p_wdtw'),crf=pv('p_wcrf'),nhits=pv('p_wnhits');
+      var tot=nb+dtw+crf+nhits;
+      if(tot<1)return null; /* otomatik mod */
+      return{nb:nb/tot,dtw:dtw/tot,crf:crf/tot,nhits:nhits/tot};
+    })()
+  };
+}
+function syncParam(srcId,dstId){
+  var v=$(srcId).value;$(dstId).value=v;
+  /* Notlar */
+  if(srcId==='p_prior'||srcId==='p_prior_n'){
+    var n=pv('p_prior');$('p_prior_note').textContent=n<0?'Otomatik (veri boyutuna göre)':'Manuel: %'+Math.round(n)+' düzleştirme';
+  }
+  if(srcId==='p_dtwk'||srcId==='p_dtwk_n'){
+    var k=pi('p_dtwk');$('p_dtwk_note').textContent=k===0?'Otomatik':k===1?'1-NN (en katı)':k+'-NN';
+  }
+  if(srcId==='p_wlen'||srcId==='p_wlen_n'){
+    var w=pi('p_wlen');$('p_wlen_note').textContent=w===0?'Otomatik':w+' adım';
+  }
+}
+function updateManualWeights(){
+  var nb=pv('p_wnb'),dtw=pv('p_wdtw'),crf=pv('p_wcrf'),nhits=pv('p_wnhits');
+  var tot=nb+dtw+crf+nhits;
+  $('manualWeightNote').textContent=tot<1?'Otomatik ağırlık modu aktif':'Manuel: NB='+Math.round(nb/tot*100)+'% DTW='+Math.round(dtw/tot*100)+'% CRF='+Math.round(crf/tot*100)+'% NHiTS='+Math.round(nhits/tot*100)+'%';
+  $('manualWeightNote').style.color=tot<1?'var(--green)':'var(--amber)';
+}
+function toggleParams(){
+  var p=$('paramPanel'),open=p.style.display==='none';
+  p.style.display=open?'block':'none';
+  $('paramToggleBtn').textContent=open?'⚙ PARAMETRELER ▲':'⚙ PARAMETRELER ▼';
+}
+function resetParams(){
+  var defs={p_nsim:8000,p_conf:90,p_prior:-1,p_hblur:1.2,p_temp:1.0,p_dtwk:0,p_wlen:0,p_scband:20,p_laplace:0.5,p_maxwin:5,p_crflambda:0.5,p_crflr:0.08,p_testpct:20,p_minw:10,p_wnb:0,p_wdtw:0,p_wcrf:0,p_wnhits:0};
+  for(var k in defs){$(k).value=defs[k];$(k+'_n')&&($(k+'_n').value=defs[k]);}
+  $('p_prior_note').textContent='Otomatik (veri boyutuna göre)';
+  $('p_dtwk_note').textContent='Otomatik';$('p_wlen_note').textContent='Otomatik';
+  updateManualWeights();
+}
+
+function $(id){return document.getElementById(id);}
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+function show(id){$(id).style.display='block';}
+function hide(id){$(id).style.display='none';}
+function setP(p,lbl,txt){$('progBar').style.width=Math.min(100,p)+'%';$('progTxt').textContent=txt||Math.round(p)+'%';if(lbl)$('progLbl').textContent=lbl;}
+
+/* MATH */
+function mean(a){if(!a.length)return 0;var s=0;for(var i=0;i<a.length;i++)s+=a[i];return s/a.length;}
+function std(a){if(a.length<2)return 0;var m=mean(a),s=0;for(var i=0;i<a.length;i++)s+=(a[i]-m)*(a[i]-m);return Math.sqrt(s/a.length);}
+function acf1(a){var n=a.length,m=mean(a),num=0,den=0;for(var i=1;i<n;i++)num+=(a[i]-m)*(a[i-1]-m);for(var i=0;i<n;i++)den+=(a[i]-m)*(a[i]-m);return den<1e-12?0:num/den;}
+function pct(a,p){var s=a.slice().sort(function(x,y){return x-y;});return s[Math.max(0,Math.min(s.length-1,Math.floor(p*(s.length-1))))];}
+function linTrend(a){var n=a.length,sx=0,sy=0,sxy=0,sxx=0;for(var i=0;i<n;i++){sx+=i;sy+=a[i];sxy+=i*a[i];sxx+=i*i;}var d=n*sxx-sx*sx;return d<1e-12?0:(n*sxy-sx*sy)/d;}
+function entropy(data,set){if(!set.length)return 0;var cnt={},n=data.length;set.forEach(function(v){cnt[v]=0;});data.forEach(function(v){var k=snap(v,set);cnt[k]=(cnt[k]||0)+1;});var h=0;for(var k in cnt){var p=cnt[k]/n;if(p>0)h-=p*Math.log2(p);}return h;}
+function grnd(){var u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function snap(v,set){if(!set||!set.length)return v;var best=set[0];for(var i=1;i<set.length;i++)if(Math.abs(set[i]-v)<Math.abs(best-v))best=set[i];return best;}
+
+/* TREND AYRIŞTIRMA */
+function detrend(data){var tr=linTrend(data),m=mean(data);return{residuals:data.map(function(v,i){return v-(m+tr*i);}),trend:tr,intercept:m};}
+
+/* ADIM KÜMESİ */
+function parseSeries(){var parts=$('seriesInput').value.split(/[\n,;]+/),out=[];parts.forEach(function(p){var n=parseFloat(p.trim());if(!isNaN(n))out.push(n);});return out;}
+function buildAutoSet(data){var seen={},vals=[];data.forEach(function(v){var k=v.toString();if(!seen[k]){seen[k]=true;vals.push(v);}});return vals.sort(function(a,b){return a-b;});}
+function renderSetPreview(){$('setPreview').innerHTML=_set.map(function(v,i){return'<span class="tag-wrap"><span class="tag-val">'+v+'</span><button class="tag-btn" onclick="removeSetVal('+i+')">−</button></span>';}).join('');}
+function removeSetVal(i){_set.splice(i,1);renderSetPreview();}
+function addSetVal(){var v=parseFloat($('newValInput').value);if(isNaN(v))return;if(!_set.some(function(s){return Math.abs(s-v)<1e-9;})){_set.push(v);_set.sort(function(a,b){return a-b;});renderSetPreview();}$('newValInput').value='';}
+function onSeriesInput(){var d=parseSeries();if(d.length){_set=buildAutoSet(d);renderSetPreview();}else{_set=[];$('setPreview').innerHTML='';}}
+document.addEventListener('DOMContentLoaded',function(){$('newValInput').addEventListener('keydown',function(e){if(e.key==='Enter')addSetVal();});});
+
+/* OTOMATİK HEDEF */
+function autoTarget(data,tgtStep){
+  var baseCum=data.reduce(function(a,b){return a+b;},0),tr=linTrend(data),m=mean(data),a1=acf1(data);
+  var proj=0,last=data[data.length-1];
+  for(var i=0;i<tgtStep;i++){var next=m*(1-Math.abs(a1))+last*a1+tr;proj+=next;last=next;}
+  var tgt=baseCum+proj,band=Math.abs(proj)*0.18+std(data)*Math.sqrt(tgtStep)*0.5;
+  return{lo:tgt-band,hi:tgt+band,mid:tgt};
+}
+
+/* REJİM */
+function detectRegime(data,set){
+  var n=Math.min(data.length,Math.max(8,Math.floor(data.length*0.25))),recent=data.slice(-n);
+  var s=std(recent),m=mean(recent),tr=Math.abs(linTrend(recent)),ent=entropy(recent,set);
+  var cv=m>0?s/Math.abs(m):s,maxEnt=Math.log2(set.length||1)||1,entNorm=ent/maxEnt;
+  if(tr>s*0.3||entNorm>0.75)return{name:'aktif',label:'Aktif / Kaotik',cls:'aktif',score:entNorm,trend:tr,cv:cv};
+  if(tr>s*0.05||cv>0.15)return{name:'gecis',label:'Geçiş / Trendli',cls:'gecis',score:entNorm,trend:tr,cv:cv};
+  return{name:'sakin',label:'Sakin / Döngüsel',cls:'sakin',score:entNorm,trend:tr,cv:cv};
+}
+
+/* LAPLACE GEÇİŞ MATRİSİ */
+function buildTrans(data,set,eps){
+  eps=(eps!=null?eps:(typeof _P!=='undefined'?_P.laplace:0.5));
+  var n=set.length;if(!n)return null;
+  function idx(v){for(var i=0;i<set.length;i++)if(Math.abs(set[i]-v)<1e-9)return i;return -1;}
+  var T=[];for(var i=0;i<n;i++){T.push([]);for(var j=0;j<n;j++)T[i].push(eps);}
+  for(var i=1;i<data.length;i++){var fi=idx(data[i-1]),ti=idx(data[i]);if(fi>=0&&ti>=0)T[fi][ti]++;}
+  for(var i=0;i<n;i++){var s=0;for(var j=0;j<n;j++)s+=T[i][j];for(var j=0;j<n;j++)T[i][j]/=s;}
+  return T;
+}
+
+/* YUMUŞAK ÖRNEKLEME */
+function softSample(probs,set,temp){
+  temp=temp||1.0;
+  var logits=probs.map(function(p){return Math.log(Math.max(p,1e-10))/temp;}),mx=Math.max.apply(null,logits);
+  var exps=logits.map(function(l){return Math.exp(l-mx);}),Z=exps.reduce(function(a,b){return a+b;},0)||1;
+  var soft=exps.map(function(e){return e/Z;}),r=Math.random(),cum=0;
+  for(var j=0;j<set.length;j++){cum+=soft[j];if(r<=cum)return set[j];}
+  return set[set.length-1];
+}
+
+/* KARE MESAFE KERNEL — hiçbir değer 0 olamaz */
+function quadDecay(vals,set,sigma){
+  var best=0;for(var i=1;i<vals.length;i++)if(vals[i]>vals[best])best=i;
+  var bestVal=set[best];
+  sigma=sigma||std(set)||1;
+  var mixed=vals.map(function(p,i){var d=(set[i]-bestVal)/Math.max(sigma,1e-9);return p/(1+d*d)+1e-6;});
+  var Z=mixed.reduce(function(a,b){return a+b;},0)||1;
+  return mixed.map(function(p){return p/Z;});
+}
+
+/* ÇAPRAZ DOĞRULAMA AĞIRLIKLARI */
+function crossValidateWeights(data,set){
+  var testPct=typeof _P!=='undefined'?_P.testPct:0.20;
+  var minW=typeof _P!=='undefined'?_P.minW:0.10;
+  var testN=Math.max(3,Math.floor(data.length*testPct));
+  if(data.length-testN<5)return{nb:0.25,dtw:0.25,crf:0.25,nhits:0.25};
+  var methods={nb:0,dtw:0,crf:0,nhits:0};
+  for(var t=0;t<testN;t++){
+    var sl=data.slice(0,data.length-testN+t),actual=snap(data[data.length-testN+t],set);
+    var preds={nb:snap(nbCore(sl,1,set)[0],set),dtw:snap(dtwCore(sl,1,set)[0],set),crf:snap(crfCore(sl,1,set)[0],set),nhits:snap(nhitsCore(sl,1,set)[0],set)};
+    for(var m in preds)if(Math.abs(preds[m]-actual)<1e-9)methods[m]++;
+  }
+  var total=Object.values(methods).reduce(function(a,b){return a+b;},0)||1;
+  var weights={};
+  for(var m in methods)weights[m]=Math.max(minW,methods[m]/total);
+  var wT=Object.values(weights).reduce(function(a,b){return a+b;},0);
+  for(var m in weights)weights[m]/=wT;
+  return weights;
+}
+
+/* MODEL 1: N-gram NB */
+function nbCore(data,steps,set){
+  var es=set.length?set:buildAutoSet(data);if(!es.length)return Array(steps).fill(data[data.length-1]);
+  var maxWinCap=typeof _P!=='undefined'?_P.maxWin:5;
+  var laplaceA=typeof _P!=='undefined'?_P.laplace:0.5;
+  var maxWin=Math.min(maxWinCap,Math.floor(data.length/3)||1);
+  function idx(v){for(var i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i;return 0;}
+  function key(w){return w.map(function(v){return idx(v);}).join('-');}
+  var cnts={};
+  for(var ww=1;ww<=maxWin;ww++){cnts[ww]={};for(var i=ww;i<data.length;i++){var k=key(data.slice(i-ww,i)),ni=idx(data[i]);if(!cnts[ww][k])cnts[ww][k]=Array(es.length).fill(laplaceA);cnts[ww][k][ni]++;}}
+  var w=data.slice(-maxWin),path=[];
+  for(var i=0;i<steps;i++){
+    var combined=Array(es.length).fill(0),totalW=0;
+    for(var ww=maxWin;ww>=1;ww--){var k=key(w.slice(maxWin-ww));if(cnts[ww][k]){var cov=Object.keys(cnts[ww]).length/Math.max(1,data.length-ww),ww2=ww*cov,row=cnts[ww][k],tot=row.reduce(function(a,b){return a+b;},0);for(var j=0;j<es.length;j++)combined[j]+=ww2*(row[j]/tot);totalW+=ww2;}}
+    if(!totalW){for(var j=0;j<es.length;j++)combined[j]=1;totalW=es.length;}
+    var probs=quadDecay(combined.map(function(c){return c/totalW;}),es,std(es)||1);
+    var chosen=softSample(probs,es,1.0);w=w.slice(1);w.push(chosen);path.push(chosen);
+  }
+  return path;
+}
+
+/* MODEL 2: DTW — 1-NN veya N-NN (veri boyutuna göre adaptif)
+   ─────────────────────────────────────────────────────────────
+   Kaç komşu?
+     • Veri kısa (≤20)  → 1-NN: sadece en iyi eşleşme, başka yorum yok
+     • Veri orta (21-60) → 2-3-NN: birkaç alternatif yol
+     • Veri uzun (>60)  → log₂(n) komşu
+   Her komşu eşit ağırlık ALMAZ — mesafe ne kadar küçükse o kadar güvenilir.
+   Mesafe büyükse (iyi eşleşme yok) → dağılımı düzleştir, belirsizliği artır.
+   Komşu sayısı arttıkça ağırlık PAYLAŞILIR, toplanmaz.
+*/
+function dtwDist(a,b,band){
+  var n=a.length,m=b.length;band=band||Math.max(n,m);
+  var D=[];for(var i=0;i<=n;i++){D.push([]);for(var j=0;j<=m;j++)D[i].push(Infinity);}
+  D[0][0]=0;
+  for(var i=1;i<=n;i++)for(var j=Math.max(1,i-band);j<=Math.min(m,i+band);j++)D[i][j]=Math.abs(a[i-1]-b[j-1])+Math.min(D[i-1][j],D[i][j-1],D[i-1][j-1]);
+  return D[n][m];
+}
+function dtwCore(data,steps,set){
+  var n=data.length;
+  var P=typeof _P!=='undefined'?_P:{dtwK:0,wlen:0,scband:0.20};
+  /* Adaptif pencere */
+  var wlen=P.wlen>0?Math.min(P.wlen,n-2):Math.min(8,Math.max(3,Math.floor(n*0.25)));
+  var query=data.slice(-wlen);
+  var band=Math.max(1,Math.floor(wlen*P.scband));
+
+  /* Tüm geçerli pencereleri tara */
+  var dists=[];
+  for(var i=0;i+wlen<n;i++){
+    var d=dtwDist(query,data.slice(i,i+wlen),band);
+    dists.push({i:i,d:d,hasNext:i+wlen+steps-1<n});
+  }
+  if(!dists.length)return Array(steps).fill(data[n-1]);
+  dists.sort(function(a,b){return a.d-b.d;});
+
+  /* KAÇ KOMŞU */
+  var K;
+  if(P.dtwK>0){
+    K=Math.min(P.dtwK,dists.length);
+  } else {
+    if(n<=20)       K=1;
+    else if(n<=60)  K=Math.min(3,dists.length);
+    else            K=Math.min(Math.max(2,Math.floor(Math.log2(n))),dists.length);
+  }
+
+  var neighbors=dists.slice(0,K);
+
+  /* En iyi eşleşme ne kadar iyi? Normalleştir. */
+  var bestDist=neighbors[0].d;
+  var worstDist=neighbors[K-1].d||bestDist||1;
+
+  /* Eşleşme kalitesi: 0=mükemmel, 1=çok kötü
+     Kötü eşleşme → dağılımı düzleştir (temkinli ol) */
+  var matchQuality=bestDist/Math.max(worstDist,1e-9); /* 0'a yakın = iyi */
+  /* flatness: kötü eşleşmede dağılım düzleşir */
+  var flatness=Math.min(0.9, matchQuality*0.8 + (1/Math.max(n,10))*2);
+
+  /* Her komşuya ağırlık: mesafeye göre ters orantılı
+     Komşular PAYLAŞIR (toplam=1), toplanmaz */
+  var rawW=neighbors.map(function(nb){return 1/(Math.max(nb.d,1e-9));});
+  var wSum=rawW.reduce(function(a,b){return a+b;},0)||1;
+  var normW=rawW.map(function(w){return w/wSum;});
+
+  var path=[];
+  for(var s=0;s<steps;s++){
+    var probs=Array(set.length).fill(1e-6);
+
+    neighbors.forEach(function(nb,ki){
+      var ix=nb.i+wlen+s;
+      /* Komşunun bu adımda gerçek verisi var mı? */
+      var v;
+      if(ix<n){
+        v=data[ix];
+      } else {
+        /* Veri bitti: son bilinen değeri kullan ama çok güvenme */
+        v=data[n-1];
+        /* Veri dışına çıkıldığında bu komşunun etkisini azalt */
+        normW[ki]*=0.5;
+      }
+      var sn=snap(v,set),si=set.indexOf(sn);
+      if(si>=0)probs[si]+=normW[ki];
+    });
+
+    /* flatness ile düzleştir: kötü eşleşme = daha eşit dağılım */
+    var uniform=1/set.length;
+    probs=probs.map(function(p){return p*(1-flatness)+uniform*flatness;});
+
+    /* Kare mesafe kernel + ufuk belirsizliği */
+    var horizonBlur=1+s/(Math.max(1,steps)*0.5);
+    probs=quadDecay(probs,set,(std(set)||1)*horizonBlur);
+    path.push(softSample(probs,set,1.0+flatness));
+  }
+  return path;
+}
+
+/* MODEL 3: Viterbi CRF */
+function crfCore(data,steps,set){
+  var es=set.length?set:buildAutoSet(data),N=es.length;if(!N)return Array(steps).fill(data[data.length-1]);
+  function idx(v){for(var i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i;return 0;}
+  var laplaceA=typeof _P!=='undefined'?_P.laplace:0.5;
+  var crfLambda=typeof _P!=='undefined'?_P.crfLambda:0.5;
+  var crfLr=typeof _P!=='undefined'?_P.crfLr:0.08;
+  var T=buildTrans(data,es,laplaceA),wT=[],wE=[];
+  for(var i=0;i<N;i++){wT.push(Array(N).fill(0));wE.push(Array(N).fill(0));}
+  var lr=crfLr,obs=data.map(idx);
+  for(var pass=0;pass<8;pass++)for(var t=1;t<obs.length;t++){
+    var xt=obs[t-1],yt=obs[t],sc=[];for(var j=0;j<N;j++)sc.push(wT[xt][j]+wE[xt][j]);
+    var mx=Math.max.apply(null,sc),ex=sc.map(function(s){return Math.exp(s-mx);}),Z=ex.reduce(function(a,b){return a+b;},0)||1,pr=ex.map(function(e){return e/Z;});
+    for(var j=0;j<N;j++){var d=(j===yt?1:0)-pr[j];wT[xt][j]+=lr*d;wE[xt][j]+=lr*d;}
+  }
+  var path=[],prev=obs[obs.length-1];
+  for(var s=0;s<steps;s++){
+    var sc2=[];for(var j=0;j<N;j++)sc2.push(wT[prev][j]+wE[prev][j]);
+    var mx2=Math.max.apply(null,sc2),ex2=sc2.map(function(s){return Math.exp(s-mx2);}),Z2=ex2.reduce(function(a,b){return a+b;},0)||1;
+    var unary=ex2.map(function(e){return e/Z2;}),trans=T[prev],combined=Array(N).fill(0);
+    for(var j=0;j<N;j++)combined[j]=crfLambda*trans[j]+(1-crfLambda)*unary[j];
+    combined=quadDecay(combined,es,std(es)||1);
+    var chosen=softSample(combined,es,0.9),ci=idx(chosen);path.push(es[ci]);prev=ci;
+  }
+  return path;
+}
+
+/* MODEL 4: N-HiTS */
+function nhitsCore(data,steps,set){
+  var dm=mean(data),ds=std(data)||1,norm=data.map(function(v){return(v-dm)/ds;});
+  function basis(t,H,nP,nF){var b=[1];for(var p=1;p<=nP;p++)b.push(Math.pow(t/(H||1),p));for(var k=1;k<=nF;k++){b.push(Math.sin(2*Math.PI*k*t/(H||1)));b.push(Math.cos(2*Math.PI*k*t/(H||1)));}return b;}
+  function ols(X,y){
+    var nb=X[0].length,ns=X.length,XtX=[],Xty=[];for(var i=0;i<nb;i++){XtX.push(Array(nb).fill(0));Xty.push(0);}
+    for(var r=0;r<ns;r++)for(var i=0;i<nb;i++){Xty[i]+=X[r][i]*y[r];for(var j=0;j<nb;j++)XtX[i][j]+=X[r][i]*X[r][j];}
+    for(var i=0;i<nb;i++)XtX[i][i]+=1e-4;
+    var aug=XtX.map(function(row,i){return row.concat([Xty[i]]);});
+    for(var col=0;col<nb;col++){
+      var piv=col;for(var row=col+1;row<nb;row++)if(Math.abs(aug[row][col])>Math.abs(aug[piv][col]))piv=row;
+      var tmp=aug[col];aug[col]=aug[piv];aug[piv]=tmp;var d=aug[col][col]||1e-12;
+      for(var row=0;row<nb;row++)if(row!==col){var f=aug[row][col]/d;for(var k=0;k<=nb;k++)aug[row][k]-=f*aug[col][k];}
+      for(var k=0;k<=nb;k++)aug[col][k]/=d;
+    }
+    return aug.map(function(row){return row[nb];});
+  }
+  var cfgs=[[1,2,3],[2,1,2],[4,1,1]],res=norm.slice(),outs=[],n=data.length;
+  for(var sc=0;sc<cfgs.length;sc++){
+    var pool=cfgs[sc][0],nPoly=cfgs[sc][1],nFreq=cfgs[sc][2],rDown=[];
+    for(var i=0;i<n;i+=pool)rDown.push(mean(res.slice(i,Math.min(i+pool,n))));
+    var np=rDown.length;if(np<3)continue;
+    var lb=Math.min(np,Math.max(4,Math.floor(np*0.5))),rw=rDown.slice(-lb),H=steps;
+    var Xlb=[];for(var t=0;t<lb;t++)Xlb.push(basis(t,lb,nPoly,nFreq));
+    var beta=ols(Xlb,rw),Xfw=[];for(var t=0;t<H;t++)Xfw.push(basis(t,H,nPoly,nFreq));
+    outs.push(Xfw.map(function(b){return b.reduce(function(s,x,i){return s+x*beta[i];},0);}));
+    var bc=Xlb.map(function(b){return b.reduce(function(s,x,i){return s+x*beta[i];},0);}),st=n-lb*pool;
+    for(var i=0;i<lb*pool&&st+i<n;i++){var bi=Math.floor(i/pool);if(bi<bc.length)res[st+i]-=bc[bi];}
+  }
+  if(!outs.length)return Array(steps).fill(0).map(function(){return set.length?snap(dm+grnd()*ds*0.3,set):dm+grnd()*ds*0.3;});
+  var rStd=std(res)||0.01;
+  return Array.from({length:steps},function(_,s){var sum=0;for(var i=0;i<outs.length;i++)sum+=(outs[i][s]||0);var v=sum*ds+dm+grnd()*rStd*ds;return set.length?snap(v,set):v;});
+}
+
+/* ENSEMBLE — Olasılık dağılımlarını birleştir, MOD seçme
+   ────────────────────────────────────────────────────────
+   Önceki yöntemin sorunu: her model tek bir değer üretiyor, ensemble
+   bunların modunu seçiyordu → "kesin" görünüm.
+
+   Yeni yöntem:
+   1. Her model adım için TAM OLASILIK DAGILIMI üretir
+   2. Dağılımlar çapraz doğrulama ağırlıklarıyla karıştırılır
+   3. Veri kısa → belirsizlik artar (dağılım düzleşir)
+   4. Ufuk uzun → belirsizlik daha da artar
+   5. ASLA tek değere kitlenmez
+
+   Veri güvensizliği (dataPrior):
+     Az veri = model aşırı emin → zorla düzleştir
+     Çok veri = modele güven
+*/
+function ensemblePath(data,steps,set,weights,trendInfo){
+  var n=data.length,sigma=std(data)||0.1;
+  var horizonF=steps/Math.max(1,n);
+  var res=trendInfo.residuals;
+  var P=typeof _P!=='undefined'?_P:{prior:-1,hblur:1.2,temp:1.0};
+
+  /* Veri boyutuna göre prior belirsizlik — veya manuel override */
+  var dataPrior;
+  if(P.prior>=0){
+    dataPrior=P.prior/100;
+  } else {
+    dataPrior=n<15?0.80:n<30?0.50:n<60?0.25:0.10;
+  }
+  var hblur=P.hblur;
+  var baseTemp=P.temp;
+
+  /* Her model için tam dağılım üretici
+     (sadece 1 adım hesaplar, loop içinde çağrılır → yavaş ama doğru)
+     Bunu optimize etmek için tüm yolları önce hesaplayalım */
+  var allPreds={
+    nb:   nbCore(res,steps,set),
+    dtw:  dtwCore(res,steps,set),
+    crf:  crfCore(res,steps,set),
+    nhits:nhitsCore(res,steps,set)
+  };
+
+  return Array.from({length:steps},function(_,s){
+    /* 1. Her modelin bu adımdaki değerini olasılık vektörüne dönüştür */
+    var combined=Array(set.length).fill(0);
+
+    ['nb','dtw','crf','nhits'].forEach(function(m){
+      var v=snap(allPreds[m][s],set);
+      var vi=set.indexOf(v);
+      if(vi<0)vi=0;
+
+      /* Modelin bu değere güveni = ağırlığı
+         Ama komşu değerlere de kare mesafe kernel ile sızdır */
+      var modelProb=Array(set.length).fill(0);
+      modelProb[vi]=1.0;
+      /* Yumuşat: model tamamen emin olamaz */
+      var modelSigma=sigma*(1+horizonF);
+      modelProb=quadDecay(modelProb,set,modelSigma);
+
+      for(var j=0;j<set.length;j++)combined[j]+=weights[m]*modelProb[j];
+    });
+
+    /* 2. Normalize */
+    var Z=combined.reduce(function(a,b){return a+b;},0)||1;
+    combined=combined.map(function(p){return p/Z;});
+
+    /* 3. Veri az → zorla düzleştir (temkinlilik)
+       Uniform dağılımla karıştır */
+    var uniform=1/set.length;
+    combined=combined.map(function(p){return p*(1-dataPrior)+uniform*dataPrior;});
+
+    /* 4. Ufuk belirsizliği */
+    var horizonPrior=Math.min(0.70, horizonF*(s/Math.max(1,steps))*hblur);
+    combined=combined.map(function(p){return p*(1-horizonPrior)+uniform*horizonPrior;});
+    /* 5. Sıcaklık */
+    var temperature=baseTemp + dataPrior + horizonPrior*0.8;
+    var residVal=softSample(combined,set,temperature);
+
+    /* 6. Trend geri ekle */
+    var trendedVal=residVal+(trendInfo.intercept+trendInfo.trend*(n+s));
+    return set.length?snap(trendedVal,set):trendedVal;
+  });
+}
+
+/* YOL ANALİZİ */
+function cumulatify(base,path){var cum=[],acc=base;path.forEach(function(v){acc+=v;cum.push(acc);});return cum;}
+function firstPassage(cumPath,lo,hi){for(var i=0;i<cumPath.length;i++)if(cumPath[i]>=lo&&cumPath[i]<=hi)return i;return -1;}
+function classifyPath(cumPath,fpt,base){
+  if(fpt<0)return 'miss';
+  var win=cumPath.slice(0,fpt+1),deltas=[];for(var i=1;i<win.length;i++)deltas.push(win[i]-win[i-1]);
+  var maxD=Math.max.apply(null,deltas.map(Math.abs)),total=cumPath[fpt]-base,sc=0;
+  for(var i=1;i<deltas.length;i++)if(deltas[i]*deltas[i-1]<0)sc++;
+  var sr=sc/Math.max(1,deltas.length);
+  if(sr>0.45)return 'C';if(maxD>Math.abs(total)*0.7)return 'A';if(total>0)return 'B';return 'D';
+}
+function distDist(cumPaths,step,lo,hi,N){
+  var vals=cumPaths.map(function(cp){return cp[step-1]||cp[cp.length-1];}),rng=hi-lo;
+  var inside=vals.filter(function(v){return v>=lo&&v<=hi;}).length;
+  var near=vals.filter(function(v){var d=v<lo?lo-v:v-hi;return d<=rng*1.5&&!(v>=lo&&v<=hi);}).length;
+  var mid=vals.filter(function(v){var d=v<lo?lo-v:v-hi;return d>rng*1.5&&d<=rng*3;}).length;
+  return{inside:inside/N,near:near/N,mid:mid/N,far:(N-inside-near-mid)/N};
+}
+function waypointAnalysis(cumPaths,hitIdx,lo,hi,step){
+  var earlySteps=[Math.floor(step*0.15),Math.floor(step*0.30),Math.floor(step*0.50)].filter(function(s){return s>0&&s<step;});
+  var results=[],totalHit=hitIdx.length;if(!totalHit||!earlySteps.length)return results;
+  earlySteps.forEach(function(es){
+    var hitVals=hitIdx.map(function(i){return cumPaths[i][es];}),allVals=cumPaths.map(function(p){return p[es];});
+    var hQ1=pct(hitVals,.25),hQ3=pct(hitVals,.75);
+    var inR=allVals.filter(function(v){return v>=hQ1&&v<=hQ3;}).length;
+    var inRH=hitVals.filter(function(v){return v>=hQ1&&v<=hQ3;}).length;
+    var base=totalHit/cumPaths.length,cond=inR>0?inRH/inR:base;
+    if(Math.abs(cond-base)>0.07)results.push({step:es,lo:hQ1,hi:hQ3,baseProb:base,condProb:cond,lift:cond/Math.max(base,0.01)});
+  });
+  return results;
+}
+
+/* MAIN */
+var _P={};
+async function runAnalysis(){
+  _P=getParams();
+  N_SIM=_P.nSim; CONF=_P.conf; ALPHA=(1-CONF)/2;
+  _data=parseSeries();if(_data.length<6){alert('En az 6 veri noktası gerekli.');return;}
+  if(!_set.length){_set=buildAutoSet(_data);renderSetPreview();}
+  var tgtStep=parseInt($('tgtStep').value)||50,tgtLoR=parseFloat($('tgtLo').value),tgtHiR=parseFloat($('tgtHi').value);
+  var effSet=_set.slice().sort(function(a,b){return a-b;}),horizonRatio=tgtStep/_data.length;
+  var autoTgt=autoTarget(_data,tgtStep);
+  var tgtLo=isNaN(tgtLoR)?autoTgt.lo:tgtLoR,tgtHi=isNaN(tgtHiR)?autoTgt.hi:tgtHiR;
+  if(tgtLo>tgtHi){var tmp=tgtLo;tgtLo=tgtHi;tgtHi=tmp;}
+  if(isNaN(tgtLoR))$('tgtLo').placeholder=tgtLo.toFixed(2)+' (oto)';
+  if(isNaN(tgtHiR))$('tgtHi').placeholder=tgtHi.toFixed(2)+' (oto)';
+  hide('sec_chart');hide('sec_cpath');hide('sec_findings');hide('sec_findings_lbl');
+  $('tgtBlock').style.display='none';show('progWrap');setP(3,'Trend ayrıştırma...');await sleep(20);
+  var trendInfo=detrend(_data),regime=detectRegime(_data,effSet);
+  setP(8,'Çapraz doğrulama...');await sleep(20);
+  var weights=_P.manualW||crossValidateWeights(_data,effSet);
+  var baseCum=_data.reduce(function(a,b){return a+b;},0);
+  setP(14,'Simülasyonlar...');await sleep(10);
+  var simPaths=[],cumPaths=[],bSz=50;
+  try{
+    for(var i=0;i<N_SIM;i+=bSz){
+      var nb=Math.min(bSz,N_SIM-i);
+      for(var b=0;b<nb;b++){var path=ensemblePath(_data,tgtStep,effSet,weights,trendInfo);simPaths.push(path);cumPaths.push(cumulatify(baseCum,path));}
+      setP(14+((i+bSz)/N_SIM)*68,'Simülasyon: '+Math.min(i+bSz,N_SIM)+'/'+N_SIM);await sleep(0);
+    }
+  }catch(e){console.error(e);alert('Hata: '+e.message);hide('progWrap');return;}
+  setP(84,'Hedef analizi...');await sleep(10);
+  var fptList=cumPaths.map(function(cp){return firstPassage(cp,tgtLo,tgtHi);});
+  var hitIdx=fptList.reduce(function(acc,f,i){if(f>=0)acc.push(i);return acc;},[]);
+  var hitCount=hitIdx.length,hitProb=hitCount/N_SIM,fptHits=hitIdx.map(function(i){return fptList[i];});
+  var typeCounts={A:0,B:0,C:0,D:0,miss:0};
+  cumPaths.forEach(function(cp,i){typeCounts[classifyPath(cp,fptList[i],baseCum)]++;});
+  var waypoints=waypointAnalysis(cumPaths,hitIdx,tgtLo,tgtHi,tgtStep);
+  var distInfo=distDist(cumPaths,tgtStep,tgtLo,tgtHi,N_SIM);
+  setP(91,'İstatistikler...');await sleep(10);
+  var cumMed=[],cumLo=[],cumHi=[];
+  for(var s=0;s<tgtStep;s++){var sv=cumPaths.map(function(cp){return cp[s];});cumMed.push(pct(sv,.5));cumLo.push(pct(sv,ALPHA));cumHi.push(pct(sv,1-ALPHA));}
+  var condMed=null,condLo=null,condHi=null;
+  if(hitCount>=8){condMed=[];condLo=[];condHi=[];for(var s=0;s<tgtStep;s++){var sv2=hitIdx.map(function(i){return cumPaths[i][s];});condMed.push(pct(sv2,.5));condLo.push(pct(sv2,.10));condHi.push(pct(sv2,.90));}}
+  setP(96,'Görseller...');await sleep(10);
+  renderKpis(hitProb,fptHits,tgtStep);renderVerdict(hitProb,regime,horizonRatio);
+  renderStepHist(fptHits,tgtStep);renderPathBars(typeCounts,hitCount);renderDistBars(distInfo,tgtStep);
+  renderWeights(weights);renderWaypoints(waypoints,hitProb);renderRegime(regime,horizonRatio,trendInfo);
+  renderCumSummary(baseCum,cumMed,cumLo,cumHi,tgtStep,tgtLo,tgtHi);
+  drawMainChart(cumMed,cumLo,cumHi,condMed,tgtLo,tgtHi,tgtStep);
+  if(condMed)drawCpathChart(condMed,condLo,condHi,cumMed,tgtLo,tgtHi,tgtStep);
+  renderFindings(regime,hitProb,horizonRatio,effSet,weights);
+  setP(100,'Tamamlandı','100%');$('tgtBlock').style.display='block';show('sec_chart');
+  if(condMed)show('sec_cpath');show('sec_findings');show('sec_findings_lbl');hide('progWrap');
+}
+
+/* RENDER */
+function renderKpis(hitProb,fptHits,tgtStep){
+  var med=fptHits.length?pct(fptHits,.5):-1,early=fptHits.length?pct(fptHits,.10):-1;
+  var pc=hitProb>=0.5?'ok':hitProb>=0.2?'warn':'err';
+  $('heroKpis').innerHTML=
+    '<div class="kpi"><div class="kpi-lbl">Hedef Olasılığı</div><div class="kpi-val '+pc+'">'+(hitProb*100).toFixed(0)+'%</div><div class="kpi-sub">t+'+tgtStep+' içinde</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">Medyan Geçiş</div><div class="kpi-val warn">'+(med>=0?'t+'+(med+1):'—')+'</div><div class="kpi-sub">'+(med>=0?'%50 sim':'ulaşmadı')+'</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">En Erken</div><div class="kpi-val ok">'+(early>=0?'t+'+(early+1):'—')+'</div><div class="kpi-sub">iyimser %10</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">Ulaşmaz</div><div class="kpi-val err">'+((1-hitProb)*100).toFixed(0)+'%</div><div class="kpi-sub">bu ufukta</div></div>';
+}
+function renderVerdict(hitProb,regime,hr){
+  var msg=hitProb>=0.55?'Yüksek olasılık — seri bu hedefe büyük ihtimalle ulaşır':hitProb>=0.25?'Orta olasılık — mümkün, kesin değil':hitProb>=0.05?'Düşük olasılık — zor ama sıfır değil':'Çok düşük — ihtimal var, zayıf sinyal';
+  var cls=hitProb>=0.55?'ok':hitProb>=0.25?'warn':'err';
+  $('verdictText').textContent=msg+' · '+regime.label+(hr>0.8?' ⚠ Ufuk geniş':'');
+  $('verdictBadge').textContent=(hitProb*100).toFixed(1)+'%';$('verdictBadge').className='vd-badge '+cls;
+}
+function renderStepHist(fptHits,tgtStep){
+  if(!fptHits.length){$('stepHistWrap').innerHTML='<div style="font-size:10px;color:var(--ink3);padding:10px 0;">Hiçbir simülasyon hedefe ulaşmadı.</div>';return;}
+  var bins=Math.min(12,tgtStep),bSz=Math.ceil(tgtStep/bins),counts=Array(bins).fill(0);
+  fptHits.forEach(function(f){counts[Math.min(bins-1,Math.floor(f/bSz))]++;});
+  var maxC=Math.max.apply(null,counts)||1,peak=counts.indexOf(maxC);
+  $('stepHistWrap').innerHTML='<div class="step-hist">'+counts.map(function(c,i){
+    var h=Math.round((c/maxC)*52);
+    return'<div class="sh-col"><div class="sh-bar" style="height:'+h+'px;background:'+(i===peak?'var(--red)':'var(--blue)')+'"></div><div class="sh-lbl">'+Math.min(tgtStep,(i+1)*bSz)+'</div></div>';
+  }).join('')+'</div>';
+  $('stepHistNote').textContent='Yoğun: t+'+(peak*bSz+1)+'–t+'+Math.min(tgtStep,(peak+1)*bSz);
+}
+function renderPathBars(typeCounts,hitCount){
+  var types=[{k:'A',lbl:'Ani Sıçrama',col:'var(--red)'},{k:'B',lbl:'Tırmanış',col:'var(--green)'},{k:'C',lbl:'Salınımlı',col:'var(--amber)'},{k:'D',lbl:'Karışık',col:'var(--ink3)'}];
+  $('pathBars').innerHTML=types.map(function(t){var p=hitCount?(typeCounts[t.k]||0)/hitCount:0;return'<div class="pb-row"><div class="pb-lbl">'+t.lbl+'</div><div class="pb-track"><div class="pb-fill" style="width:'+(p*100).toFixed(0)+'%;background:'+t.col+'"></div></div><div class="pb-pct" style="color:'+t.col+'">'+(p*100).toFixed(0)+'%</div></div>';}).join('');
+  var dom=types.reduce(function(a,b){return(typeCounts[a.k]||0)>(typeCounts[b.k]||0)?a:b;});
+  $('pathNote').textContent='Baskın: '+dom.lbl;
+}
+function renderDistBars(d,step){
+  var bands=[{lbl:'Hedef içinde',col:'var(--green)',v:d.inside},{lbl:'Yakın (±1.5×)',col:'var(--amber)',v:d.near},{lbl:'Orta (±3×)',col:'var(--ink3)',v:d.mid},{lbl:'Uzak',col:'var(--red)',v:d.far}];
+  $('distBars').innerHTML='<div class="dist-bar-wrap">'+bands.map(function(b){return'<div class="dist-bar-row"><div class="dist-bar-lbl">'+b.lbl+'</div><div class="dist-bar-track"><div class="dist-bar-fill" style="width:'+(b.v*100).toFixed(0)+'%;background:'+b.col+'"></div></div><div class="dist-bar-pct" style="color:'+b.col+'">'+(b.v*100).toFixed(0)+'%</div></div>';}).join('')+'</div>';
+  $('distNote').textContent='t+'+step+' adımında sim. değerleri';
+}
+function renderWeights(weights){
+  var ms=[{k:'nb',lbl:'N-gram NB',col:'var(--blue)'},{k:'dtw',lbl:'DTW 1/N-NN',col:'var(--green)'},{k:'crf',lbl:'Viterbi CRF',col:'var(--amber)'},{k:'nhits',lbl:'N-HiTS',col:'var(--red)'}];
+  $('modelWeights').innerHTML=ms.map(function(m){var w=(weights[m.k]||0)*100;return'<div class="pb-row"><div class="pb-lbl">'+m.lbl+'</div><div class="pb-track"><div class="pb-fill" style="width:'+w.toFixed(0)+'%;background:'+m.col+'"></div></div><div class="pb-pct" style="color:'+m.col+'">'+w.toFixed(0)+'%</div></div>';}).join('');
+}
+function renderWaypoints(waypoints,hitProb){
+  if(!waypoints.length){$('waypointBox').style.display='none';return;}
+  $('waypointBox').style.display='block';
+  $('waypointItems').innerHTML=waypoints.map(function(wp){var dir=wp.condProb>hitProb?'▲':'▼',col=wp.condProb>hitProb?'var(--green)':'var(--red)';return'<div class="wp-item"><span>t+<strong>'+(wp.step+1)+'</strong> adımında <strong>'+wp.lo.toFixed(2)+'–'+wp.hi.toFixed(2)+'</strong> aralığında olursa</span><span style="color:'+col+'">'+dir+' '+(wp.condProb*100).toFixed(0)+'% <span style="color:var(--ink3)">(genel '+(hitProb*100).toFixed(0)+'%)</span></span></div>';}).join('');
+}
+function renderRegime(regime,hr,trendInfo){
+  var td=Math.abs(trendInfo.trend)<0.001?'Sabit':trendInfo.trend>0?'↑ Yükseliyor':'↓ Düşüyor';
+  var n=_data.length;
+  var dp=n<15?80:n<30?50:n<60?25:10;
+  var dpCls=dp>=50?'err':dp>=25?'warn':'ok';
+  $('regimeInfo').innerHTML=
+    '<div class="fr"><span class="fr-l">Rejim</span><span class="fr-r"><span class="regime-pill '+regime.cls+'"><span class="regime-dot"></span>'+regime.label+'</span></span></div>'
+    +'<div class="fr"><span class="fr-l">Trend</span><span class="fr-r '+(trendInfo.trend>0.001?'ok':trendInfo.trend<-0.001?'err':'')+'">'+td+' ('+trendInfo.trend.toFixed(4)+')</span></div>'
+    +'<div class="fr"><span class="fr-l">Ufuk/Veri</span><span class="fr-r '+(hr>0.8?'err':hr>0.5?'warn':'ok')+'">'+(hr*100).toFixed(0)+'%'+(hr>0.8?' ⚠':'')+'</span></div>'
+    +'<div class="fr"><span class="fr-l">Veri belirsizlik katkısı</span><span class="fr-r '+dpCls+'">%'+dp+' düzleştirme</span></div>'
+    +'<div class="fr"><span class="fr-l">DTW komşu sayısı</span><span class="fr-r">'+(n<=20?'1-NN':n<=60?'2-3-NN':'log₂(n)-NN')+'</span></div>'
+    +'<div class="fr"><span class="fr-l">Sıfır olasılık</span><span class="fr-r ok">Yok (Laplace+kernel)</span></div>';
+}
+function renderCumSummary(base,cumMed,cumLo,cumHi,step,lo,hi){
+  var last=cumMed[cumMed.length-1],l=cumLo[cumLo.length-1],h=cumHi[cumHi.length-1];
+  $('cumSummary').innerHTML=
+    '<div class="fr"><span class="fr-l">Baz kümülatif</span><span class="fr-r">'+base.toFixed(3)+'</span></div>'
+    +'<div class="fr"><span class="fr-l">t+'+step+' medyan</span><span class="fr-r ok">'+last.toFixed(3)+'</span></div>'
+    +'<div class="fr"><span class="fr-l">%90 alt</span><span class="fr-r warn">'+l.toFixed(3)+'</span></div>'
+    +'<div class="fr"><span class="fr-l">%90 üst</span><span class="fr-r warn">'+h.toFixed(3)+'</span></div>'
+    +'<div class="fr"><span class="fr-l">Hedef bant</span><span class="fr-r">'+lo.toFixed(2)+' – '+hi.toFixed(2)+'</span></div>'
+    +'<div class="fr"><span class="fr-l">Değişim</span><span class="fr-r '+(last>base?'ok':'err')+'">'+( last>=base?'+':'')+(last-base).toFixed(3)+'</span></div>';
+}
+function renderFindings(regime,hitProb,hr,effSet,weights){
+  var m=mean(_data),s=std(_data),a1=acf1(_data),tr=linTrend(_data);
+  $('statsContent').innerHTML=
+    '<div class="fr"><span class="fr-l">Veri uzunluğu</span><span class="fr-r">'+_data.length+'</span></div>'
+    +'<div class="fr"><span class="fr-l">Küme</span><span class="fr-r">'+effSet.length+' değer</span></div>'
+    +'<div class="fr"><span class="fr-l">Ort / Std</span><span class="fr-r">'+m.toFixed(3)+' / '+s.toFixed(3)+'</span></div>'
+    +'<div class="fr"><span class="fr-l">ACF(1)</span><span class="fr-r '+(Math.abs(a1)>0.3?'ok':'warn')+'">'+a1.toFixed(4)+'</span></div>'
+    +'<div class="fr"><span class="fr-l">Trend</span><span class="fr-r">'+(Math.abs(tr)<0.001?'Sabit':tr>0?'↑ ':'↓ ')+'('+tr.toFixed(4)+')</span></div>'
+    +'<div class="fr"><span class="fr-l">Entropi</span><span class="fr-r">'+entropy(_data,effSet).toFixed(3)+' bit</span></div>';
+  $('modelContent').innerHTML=
+    '<div class="fr"><span class="fr-l">Simülasyon</span><span class="fr-r">'+N_SIM.toLocaleString()+'</span></div>'
+    +'<div class="fr"><span class="fr-l">En iyi model</span><span class="fr-r">'+Object.entries(weights).sort(function(a,b){return b[1]-a[1];})[0][0].toUpperCase()+'</span></div>'
+    +'<div class="fr"><span class="fr-l">Sıfır olasılık</span><span class="fr-r ok">Yok (Laplace+kernel)</span></div>'
+    +'<div class="fr"><span class="fr-l">Spekülatiflik</span><span class="fr-r '+(hr>0.8?'err':hr>0.5?'warn':'ok')+'">'+(hr*100).toFixed(0)+'%</span></div>';
+}
+
+/* GRAFİKLER */
+function drawMainChart(cumMed,cumLo,cumHi,condMed,tgtLo,tgtHi,tgtStep){
+  if(_mainChart){_mainChart.destroy();_mainChart=null;}
+  var oLen=_data.length,cumObs=[],acc=0;_data.forEach(function(v){acc+=v;cumObs.push(acc);});
+  var labels=Array.from({length:oLen+tgtStep},function(_,i){return i;});
+  var datasets=[
+    {label:'hb',data:labels.map(function(_,i){return i>=oLen?tgtHi:null;}),borderColor:'rgba(139,94,0,.45)',borderWidth:1,borderDash:[4,3],backgroundColor:'rgba(139,94,0,.07)',pointRadius:0,fill:'-1',tension:0},
+    {label:'hl',data:labels.map(function(_,i){return i>=oLen?tgtLo:null;}),borderColor:'rgba(139,94,0,.45)',borderWidth:1,borderDash:[4,3],backgroundColor:'rgba(139,94,0,.07)',pointRadius:0,fill:false,tension:0},
+    {label:'hi',data:[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumHi),borderColor:'transparent',backgroundColor:'rgba(26,74,110,.08)',pointRadius:0,fill:'+1',tension:.3},
+    {label:'lo',data:[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumLo),borderColor:'rgba(26,74,110,.2)',borderWidth:1,borderDash:[3,2],backgroundColor:'rgba(26,74,110,.08)',pointRadius:0,fill:false,tension:.3},
+    {label:'med',data:[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumMed),borderColor:'#1a4a6e',borderWidth:2,borderDash:[6,3],pointRadius:0,fill:false,tension:.3},
+    {label:'obs',data:[].concat(cumObs,Array(tgtStep).fill(null)),borderColor:'#2c1f0e',borderWidth:2,pointRadius:2,pointBackgroundColor:'#2c1f0e',fill:false,tension:.2}
+  ];
+  if(condMed)datasets.push({label:'cond',data:[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],condMed),borderColor:'#1a5c30',borderWidth:2,pointRadius:0,fill:false,tension:.3});
+  $('chartLeg').innerHTML='<div class="leg"><div class="ll" style="background:#2c1f0e"></div><span>Gözlem</span></div><div class="leg"><div class="ll" style="border-top:2px dashed #1a4a6e;height:0;width:20px"></div><span>Medyan</span></div><div class="leg"><div class="ll" style="height:8px;background:rgba(26,74,110,.12);border:1px solid rgba(26,74,110,.3)"></div><span>%90 bant</span></div><div class="leg"><div class="ll" style="height:8px;background:rgba(139,94,0,.1);border:1px dashed rgba(139,94,0,.4)"></div><span>Hedef bölge</span></div>'+(condMed?'<div class="leg"><div class="ll" style="background:#1a5c30"></div><span>Koşullu medyan</span></div>':'');
+  _mainChart=new Chart($('mainChart').getContext('2d'),{type:'line',data:{labels:labels,datasets:datasets},options:{animation:false,responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false},zoom:{pan:{enabled:true,mode:'x'},zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}}},scales:{x:{grid:{color:'rgba(0,0,0,0.03)'},ticks:{color:'#8c7355',font:{family:'Space Mono',size:8},maxTicksLimit:16}},y:{grid:{color:'rgba(0,0,0,0.03)'},ticks:{color:'#8c7355',font:{family:'Space Mono',size:8},maxTicksLimit:8}}},elements:{point:{radius:0}}}});
+  $('chartNote').textContent='Hedef: '+tgtLo.toFixed(2)+' – '+tgtHi.toFixed(2)+' · Bant uzaklıkla genişler';
+}
+function drawCpathChart(condMed,condLo,condHi,allMed,tgtLo,tgtHi,tgtStep){
+  if(_cpathChart){_cpathChart.destroy();_cpathChart=null;}
+  var oLen=_data.length,cumObs=[],acc=0;_data.forEach(function(v){acc+=v;cumObs.push(acc);});
+  var conn=[cumObs[oLen-1]],labels=Array.from({length:oLen+tgtStep},function(_,i){return i;});
+  _cpathChart=new Chart($('cpathChart').getContext('2d'),{type:'line',data:{labels:labels,datasets:[
+    {data:labels.map(function(_,i){return i>=oLen?tgtHi:null;}),borderColor:'rgba(139,94,0,.4)',borderWidth:1,borderDash:[4,3],backgroundColor:'rgba(139,94,0,.06)',pointRadius:0,fill:'-1',tension:0},
+    {data:labels.map(function(_,i){return i>=oLen?tgtLo:null;}),borderColor:'rgba(139,94,0,.4)',borderWidth:1,borderDash:[4,3],backgroundColor:'rgba(139,94,0,.06)',pointRadius:0,fill:false,tension:0},
+    {data:[].concat(Array(oLen-1).fill(null),conn,condHi),borderColor:'transparent',backgroundColor:'rgba(26,92,48,.15)',pointRadius:0,fill:'+1',tension:.3},
+    {data:[].concat(Array(oLen-1).fill(null),conn,condLo),borderColor:'rgba(26,92,48,.3)',borderWidth:1,borderDash:[3,2],backgroundColor:'rgba(26,92,48,.15)',pointRadius:0,fill:false,tension:.3},
+    {data:[].concat(Array(oLen-1).fill(null),conn,allMed),borderColor:'rgba(92,62,40,.3)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false,tension:.3},
+    {data:[].concat(Array(oLen-1).fill(null),conn,condMed),borderColor:'#1a5c30',borderWidth:2.5,pointRadius:0,fill:false,tension:.3},
+    {data:[].concat(cumObs,Array(tgtStep).fill(null)),borderColor:'#2c1f0e',borderWidth:2,pointRadius:2,pointBackgroundColor:'#2c1f0e',fill:false,tension:.2}
+  ]},options:{animation:false,responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false},zoom:{pan:{enabled:true,mode:'x'},zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}}},scales:{x:{grid:{color:'rgba(0,0,0,0.03)'},ticks:{color:'#8c7355',font:{family:'Space Mono',size:8},maxTicksLimit:16}},y:{grid:{color:'rgba(0,0,0,0.03)'},ticks:{color:'#8c7355',font:{family:'Space Mono',size:8},maxTicksLimit:8}}},elements:{point:{radius:0}}}});
+}
+
+function czi(){if(_mainChart)_mainChart.zoom(1.35);}function czo(){if(_mainChart)_mainChart.zoom(0.75);}function czr(){if(_mainChart)_mainChart.resetZoom();}
+function cpzi(){if(_cpathChart)_cpathChart.zoom(1.35);}function cpzo(){if(_cpathChart)_cpathChart.zoom(0.75);}function cpzr(){if(_cpathChart)_cpathChart.resetZoom();}
+function toggleFS(){var c=$('sec_chart'),fs=c.classList.toggle('fullscreen');$('fsbtn').textContent=fs?'×':'□';setTimeout(function(){if(_mainChart)_mainChart.resize();},50);}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){var c=$('sec_chart');if(c&&c.classList.contains('fullscreen')){c.classList.remove('fullscreen');$('fsbtn').textContent='□';setTimeout(function(){if(_mainChart)_mainChart.resize();},50);}}});
+
+function loadExample(){
+  $('seriesInput').value='3,3,3.2,3.2,3.4,3.4,3.4,3.2,3.2,3,3,3,3.2,3.4,3.6,3.6,3.4,3.4,3.2,3.2,3,3,3.2,3.4,3.4,3.2,3.2,3,3,3.2,3.4,3.4,3.2,3,3,3.2,3.4,3.6,3.4,3.2';
+  onSeriesInput();$('tgtStep').value='30';$('tgtLo').value='';$('tgtHi').value='';
+}
+</script>
+</body>
+</html>
