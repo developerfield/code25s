@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+    <style>
+        /* Verilerin alt alta düzgün görünmesi için */
+        #data-list {
+            white-space: pre-wrap; 
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="data-list">Yükleniyor...</div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",
+            authDomain: "paralayici.firebaseapp.com",
+            projectId: "paralayici",
+            storageBucket: "paralayici.firebasestorage.app",
+            messagingSenderId: "980843550614",
+            appId: "1:980843550614:web:93dd5bda4ddc377b20efb7"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        db.collection("cumulative_daily_data")
+            .orderBy("date", "asc")
+            .get()
+            .then(snapshot => {
+                let output = "";
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const val = data.value;
+                    
+                    // Firestore'dan gelen tarihi formatla (GG.AA.YYYY)
+                    let dateStr = "";
+                    if (data.date && data.date.toDate) {
+                        const d = data.date.toDate();
+                        dateStr = d.getDate().toString().padStart(2, '0') + "." + 
+                                  (d.getMonth() + 1).toString().padStart(2, '0') + "." + 
+                                  d.getFullYear();
+                    } else {
+                        dateStr = data.date; // Eğer tarih string ise direkt basar
+                    }
+
+                    output += `${dateStr}:${val}\n`;
+                });
+
+                document.getElementById('data-list').textContent = output;
+            })
+            .catch(err => {
+                document.getElementById('data-list').textContent = "Hata: " + err.message;
+            });
+    </script>
+
+</body>
+</html>
