@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seri Analiz & Tahmin</title>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&display=swap');
+:root{
+  --bg:#f4efe4;--paper:#faf6ed;--ink:#1c1710;--ink2:#3a3228;--ink3:#6e6050;
+  --rule:#d6c9b4;--red:#b83232;--blue:#1a5c8a;--green:#1f7a45;--amber:#e8a020;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--ink);font-family:'Space Mono',monospace;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:repeating-linear-gradient(transparent,transparent 27px,rgba(180,158,130,.22)27px,rgba(180,158,130,.22)28px);}
+.wrap{position:relative;z-index:1;max-width:1340px;margin:0 auto;padding:28px 22px 80px;}
+header{border-bottom:3px solid var(--ink);padding-bottom:18px;margin-bottom:28px;}
+.eyebrow{font-size:10px;letter-spacing:4px;color:var(--ink3);text-transform:uppercase;margin-bottom:4px;}
+h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(28px,5vw,60px);letter-spacing:3px;line-height:.95;}
+h1 em{color:var(--blue);font-style:normal;}
+h1 strong{color:var(--red);}
+
+/* PANEL */
+.panel{background:var(--paper);border:2px solid var(--ink);padding:22px 22px 18px;position:relative;margin-bottom:20px;}
+.panel::before{content:attr(data-lbl);position:absolute;top:-12px;left:12px;background:var(--paper);
+  padding:0 8px;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-weight:700;border:2px solid var(--ink);}
+.panel.rd::before{color:var(--red);border-color:var(--red);}
+textarea{width:100%;height:120px;background:transparent;border:1px solid var(--rule);
+  color:var(--ink);font-family:'Space Mono',monospace;font-size:12px;padding:9px 10px;resize:vertical;outline:none;line-height:1.75;}
+textarea:focus{border-color:var(--ink);}
+
+/* ADIM KÜMESİ — etiket + +/- butonlu tag'ler */
+.set-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin:10px 0 6px;}
+#setPreview{display:flex;flex-wrap:wrap;gap:5px;min-height:22px;margin-bottom:14px;}
+/* Her tag: değer + – butonu */
+.tag-wrap{display:inline-flex;align-items:center;background:rgba(26,92,138,.10);
+  border:1px solid rgba(26,92,138,.4);gap:0;}
+.tag-val{color:var(--blue);padding:3px 8px;font-size:11px;font-weight:700;font-family:'Space Mono',monospace;}
+.tag-btn{background:transparent;border:none;border-left:1px solid rgba(26,92,138,.35);
+  color:var(--blue);font-size:13px;font-weight:700;padding:2px 6px;cursor:pointer;
+  line-height:1;transition:background .1s;}
+.tag-btn:hover{background:rgba(26,92,138,.18);}
+/* Adım ekle butonu — küçük + */
+.set-add-row{display:flex;align-items:center;gap:6px;margin-bottom:10px;}
+#newValInput{background:transparent;border:1px solid var(--rule);color:var(--ink);
+  font-family:'Space Mono',monospace;font-size:12px;padding:5px 8px;width:110px;outline:none;}
+#newValInput:focus{border-color:var(--blue);}
+.add-btn{padding:5px 12px;background:rgba(26,92,138,.12);border:1px solid rgba(26,92,138,.4);
+  color:var(--blue);font-family:'Space Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;transition:background .1s;}
+.add-btn:hover{background:rgba(26,92,138,.25);}
+
+/* ANA BUTONLAR */
+.btn-row{display:flex;gap:10px;align-items:center;}
+.btn{padding:10px 20px;background:var(--ink);color:var(--bg);border:2px solid var(--ink);
+  font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
+  cursor:pointer;transition:all .15s;white-space:nowrap;}
+.btn:hover{background:transparent;color:var(--ink);}
+.btn.g{background:var(--green);border-color:var(--green);}
+.btn.g:hover{background:transparent;color:var(--green);}
+.btn.r{background:var(--red);border-color:var(--red);}
+.btn.r:hover{background:transparent;color:var(--red);}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+
+/* STAT BAR — KALDIRILDI */
+
+/* PROGRESS */
+.prog-wrap{display:none;background:var(--paper);border:2px solid var(--ink);padding:14px 18px;margin-bottom:18px;}
+.prog-lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin-bottom:6px;}
+.prog-outer{width:100%;height:5px;background:var(--rule);}
+.prog-inner{height:100%;background:var(--green);transition:width .08s linear;}
+.prog-txt{font-size:12px;font-weight:700;margin-top:5px;}
+
+/* CARDS */
+.rc{background:var(--paper);border:2px solid var(--ink);padding:18px;margin-bottom:18px;}
+.rc-title{font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;
+  border-bottom:1px solid var(--rule);padding-bottom:6px;margin-bottom:12px;display:flex;align-items:baseline;gap:12px;}
+.rc-sub{font-size:10px;font-family:'Space Mono',monospace;font-weight:400;color:var(--ink3);letter-spacing:0;}
+.results-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+@media(max-width:700px){.results-grid{grid-template-columns:1fr;}}
+.fr{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:1px dotted var(--rule);font-size:11px;}
+.fr:last-child{border-bottom:none;}
+.fr-l{color:var(--ink3);}.fr-r{font-weight:700;}
+.fr-r.ok{color:var(--green);}.fr-r.warn{color:var(--amber);}.fr-r.err{color:var(--red);}
+
+/* CHART */
+.chart-card{background:var(--paper);border:2px solid var(--ink);padding:18px 20px;margin-bottom:20px;}
+.chart-card.fullscreen{position:fixed!important;inset:0!important;z-index:9999!important;
+  margin:0!important;border:none!important;display:flex;flex-direction:column;
+  padding:16px 20px;background:var(--paper)!important;}
+.chart-card.fullscreen .cw{flex:1;height:auto!important;}
+.chart-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;}
+.chart-ttl{font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:2px;}
+.cbts{display:flex;gap:5px;}
+.cbt{background:var(--paper);border:2px solid var(--ink);color:var(--ink);font-size:14px;
+  width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all .12s;}
+.cbt:hover{background:var(--ink);color:var(--bg);}
+.leg-row{display:flex;gap:14px;flex-wrap:wrap;font-size:10px;margin-bottom:10px;align-items:center;}
+.leg{display:flex;align-items:center;gap:5px;}
+.ll{width:22px;height:3px;border-radius:1px;}
+.cw{position:relative;width:100%;height:340px;}
+.cw canvas{position:absolute;inset:0;width:100%!important;height:100%!important;}
+
+/* 2D TABLE
+   SATIRLAR = değerler (mavi etiket)
+   SÜTUNLAR = adımlar  (t+1 … t+N)
+   ALT SATIRLAR: En Olası + 2. Olası (sütun başına)
+   Mavi yoğunluk → sütun bazlı normalize
+   Yeşil çerçeve → o sütunda en yüksek %
+   Sarı çerçeve  → o satırda en yüksek % olan adım
+*/
+.p2d-outer{overflow-x:auto;margin-top:4px;}
+.p2d{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;}
+.p2d th{padding:7px 10px;background:var(--ink);color:var(--bg);font-size:9px;letter-spacing:2px;
+  text-transform:uppercase;border:1px solid var(--ink2);white-space:nowrap;text-align:center;}
+.p2d th.rh{background:var(--ink2);}
+.p2d td{padding:6px 9px;border:1px solid var(--rule);text-align:center;white-space:nowrap;font-size:11px;font-weight:700;}
+.p2d tr:hover td{filter:brightness(.96);}
+.p2d td.sh{background:var(--paper)!important;color:var(--blue);font-size:11px;font-weight:700;text-align:left;padding-left:10px;}
+/* Alt özet satırları */
+.p2d td.bt{background:var(--paper)!important;color:var(--green);font-weight:700;font-size:10px;}
+.p2d td.bs{background:var(--paper)!important;color:var(--amber);font-weight:700;font-size:10px;}
+.p2d tr.foot-row td{background:var(--paper)!important;}
+.tbl-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:10px;align-items:center;}
+.tll{display:flex;align-items:center;gap:5px;}
+.tlb{width:15px;height:15px;border:1px solid #aaa;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">// Ensemble · NB(hiyerarşik) + NHiTS(pencere-3) + DTW(1-NN) + CRF(koşullu rastsal alan) · 8000 Sim · %90 Güven · 15 Adım</div>
+  <h1><em>SERİ</em> <strong>TAHMİN</strong></h1>
+</header>
+
+<!-- VERİ SERİSİ PANELİ -->
+<div class="panel rd" data-lbl="veri serisi">
+  <textarea id="seriesInput"
+    placeholder="3,3,3.2,3.2,3.4,3.4,3.2,3,3,3.2&#10;Virgül, noktalı virgül veya yeni satırla ayır."
+    oninput="onSeriesInput()"></textarea>
+
+  <!-- ADIM KÜMESİ: otomatik oluşur, +/- ile düzenlenebilir -->
+  <div class="set-lbl">Otomatik Adım Kümesi</div>
+  <div id="setPreview"></div>
+
+  <!-- Yeni değer ekleme -->
+  <div class="set-add-row">
+    <input id="newValInput" type="number" step="any" placeholder="Yeni değer">
+    <button class="add-btn" onclick="addSetVal()">+ Ekle</button>
+  </div>
+
+  <!-- Analiz butonu -->
+  <div class="btn-row">
+    <button class="btn g" onclick="runAnalysis()">&#9654; ANALİZ ET</button>
+    <button class="btn r" onclick="loadExample()">ÖRNEK</button>
+  </div>
+</div>
+
+
+
+<!-- PROGRESS BAR -->
+<div class="prog-wrap" id="progWrap">
+  <div class="prog-lbl" id="progLbl">Başlatılıyor...</div>
+  <div class="prog-outer"><div class="prog-inner" id="progBar" style="width:0%"></div></div>
+  <div class="prog-txt" id="progTxt">0%</div>
+</div>
+
+<!-- 2B OLASILIK TABLOSU -->
+<div class="rc" id="sec_table" style="display:none">
+  <div class="rc-title">2B OLASILIK TABLOSU
+    <span class="rc-sub">Satır=değer · Sütun=adım · Hücre=% olasılık</span>
+  </div>
+  <div class="p2d-outer" id="p2dWrap"></div>
+  <div class="tbl-legend" id="tblLeg"></div>
+</div>
+
+<!-- HAM VERİ + TAHMİN -->
+<div class="chart-card" id="sec_chart1" style="display:none">
+  <div class="chart-top">
+    <div class="chart-ttl">VERİ + TAHMİN</div>
+    <div class="cbts">
+      <button class="cbt" onclick="c1zi()">+</button>
+      <button class="cbt" onclick="c1zo()">-</button>
+      <button class="cbt" onclick="c1zr()">O</button>
+      <button class="cbt" id="fs1btn" onclick="toggleFS('sec_chart1','fs1btn')">[]</button>
+    </div>
+  </div>
+  <div class="leg-row">
+    <div class="leg"><div class="ll" style="background:var(--blue)"></div>Gözlem</div>
+    <div class="leg"><div class="ll" style="border-top:2px dashed var(--green);height:0;width:22px"></div>Medyan</div>
+    <div class="leg"><div class="ll" style="height:10px;width:22px;background:rgba(31,122,69,.12);border:1px solid rgba(31,122,69,.35)"></div>%90 Bant</div>
+    <span style="font-size:9px;color:var(--ink3);margin-left:auto;">scroll zoom · sürükle pan · ESC tam ekran</span>
+  </div>
+  <div class="cw"><canvas id="chart1"></canvas></div>
+</div>
+
+<!-- KÜMÜLATİF GRAFİK -->
+<div class="chart-card" id="sec_chart2" style="display:none">
+  <div class="chart-top">
+    <div class="chart-ttl">KÜMÜLATİF SERİ
+      <span style="font-size:12px;font-weight:400;font-family:'Space Mono',monospace;letter-spacing:0;color:var(--ink3)">gözlem + tahmin</span>
+    </div>
+    <div class="cbts">
+      <button class="cbt" onclick="c2zi()">+</button>
+      <button class="cbt" onclick="c2zo()">-</button>
+      <button class="cbt" onclick="c2zr()">O</button>
+      <button class="cbt" id="fs2btn" onclick="toggleFS('sec_chart2','fs2btn')">[]</button>
+    </div>
+  </div>
+  <div class="leg-row">
+    <div class="leg"><div class="ll" style="background:var(--blue)"></div>Gözlem (kümülatif)</div>
+    <div class="leg"><div class="ll" style="background:var(--amber)"></div>Tahmin medyanı (kümülatif)</div>
+    <div class="leg"><div class="ll" style="height:10px;width:22px;background:rgba(232,160,32,.15);border:1px solid rgba(232,160,32,.4)"></div>Güven bandı</div>
+  </div>
+  <div class="cw"><canvas id="chart2"></canvas></div>
+</div>
+
+<!-- ANALİZ BULGULARI + TAHMİN ÖZETİ -->
+<div class="results-grid" id="sec_results" style="display:none">
+  <div class="rc"><div class="rc-title">ANALİZ BULGULARI</div><div id="findings"></div></div>
+  <div class="rc"><div class="rc-title">TAHMİN ÖZETİ</div><div id="predSummary"></div></div>
+</div>
+
+</div><!-- /wrap -->
+<script>
+'use strict';
+
+/* ══ SABİT PARAMETRELER ══ */
+var N_SIM   = 8000;
+var N_STEPS = 15;
+var CONF    = 0.90;
+var ALPHA   = (1 - CONF) / 2;
+/* Sabit ensemble: NB(hiyerarşik) + NHiTS(pencere-3) + DTW(1-NN) + CRF(koşullu rastsal alan) */
+var ENS_METHODS = ['nbwin','nhits','dtw1nn','crf'];
+
+var _set=[], _data=[], _chart1=null, _chart2=null;
+
+function $(id){return document.getElementById(id);}
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+function setP(p,lbl,txt){
+  $('progBar').style.width=Math.min(100,p)+'%';
+  $('progTxt').textContent=txt||Math.round(p)+'%';
+  if(lbl)$('progLbl').textContent=lbl;
+}
+function show(id){$(id).style.display='block';}
+function hide(id){$(id).style.display='none';}
+
+/* ── MATH ── */
+function mean(a){if(!a||!a.length)return 0;var s=0;for(var i=0;i<a.length;i++)s+=a[i];return s/a.length;}
+function vari(a){if(!a||a.length<2)return 0;var m=mean(a),s=0;for(var i=0;i<a.length;i++)s+=(a[i]-m)*(a[i]-m);return s/a.length;}
+function std(a){return Math.sqrt(vari(a));}
+function acf1(a){
+  var n=a.length,m=mean(a),num=0,den=0;
+  for(var i=1;i<n;i++)num+=(a[i]-m)*(a[i-1]-m);
+  for(var i=0;i<n;i++)den+=(a[i]-m)*(a[i]-m);
+  return den<1e-12?0:num/den;
+}
+function pct(a,p){var s=a.slice().sort(function(x,y){return x-y;});return s[Math.max(0,Math.min(s.length-1,Math.floor(p*(s.length-1))))];}
+function linTrend(a){var n=a.length,sx=0,sy=0,sxy=0,sxx=0;for(var i=0;i<n;i++){sx+=i;sy+=a[i];sxy+=i*a[i];sxx+=i*i;}var d=n*sxx-sx*sx;return d<1e-12?0:(n*sxy-sx*sy)/d;}
+function entropy(data,set){
+  if(!set.length)return 0;
+  var cnt={},n=data.length;
+  for(var i=0;i<set.length;i++)cnt[set[i]]=0;
+  for(var i=0;i<n;i++){var k=snap(data[i],set);cnt[k]=(cnt[k]||0)+1;}
+  var h=0;for(var k in cnt){var p=cnt[k]/n;if(p>0)h-=p*Math.log2(p);}return h;
+}
+function grnd(){var u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function snap(v,set){if(!set||!set.length)return v;var best=set[0];for(var i=1;i<set.length;i++)if(Math.abs(set[i]-v)<Math.abs(best-v))best=set[i];return best;}
+
+/* ── ADIM KÜMESİ YÖNETİMİ ── */
+function parseSeries(){
+  var parts=$('seriesInput').value.split(/[\n,;]+/),out=[];
+  for(var i=0;i<parts.length;i++){var n=parseFloat(parts[i].trim());if(!isNaN(n))out.push(n);}
+  return out;
+}
+function buildAutoSet(data){
+  var seen={},vals=[];
+  for(var i=0;i<data.length;i++){var k=data[i].toString();if(!seen[k]){seen[k]=true;vals.push(data[i]);}}
+  vals.sort(function(a,b){return a-b;});
+  return vals;
+}
+function renderSetPreview(){
+  $('setPreview').innerHTML=_set.map(function(v,i){
+    return '<span class="tag-wrap">'
+      +'<span class="tag-val">'+v+'</span>'
+      +'<button class="tag-btn" title="Kaldır" onclick="removeSetVal('+i+')">&#x2212;</button>'
+      +'</span>';
+  }).join('');
+}
+function removeSetVal(idx){
+  _set.splice(idx,1);
+  renderSetPreview();
+}
+function addSetVal(){
+  var v=parseFloat($('newValInput').value);
+  if(isNaN(v)){return;}
+  /* Zaten var mı? */
+  for(var i=0;i<_set.length;i++) if(Math.abs(_set[i]-v)<1e-9) return;
+  _set.push(v);
+  _set.sort(function(a,b){return a-b;});
+  renderSetPreview();
+  $('newValInput').value='';
+}
+function onSeriesInput(){
+  var data=parseSeries();
+  if(data.length>0){
+    _set=buildAutoSet(data);
+    renderSetPreview();
+  }else{
+    _set=[];
+    $('setPreview').innerHTML='';
+  }
+}
+/* Enter ile de ekle */
+document.addEventListener('DOMContentLoaded',function(){
+  $('newValInput').addEventListener('keydown',function(e){if(e.key==='Enter')addSetVal();});
+});
+
+/* ── TRANSITION / FALLBACK ── */
+function buildTrans(data,set){
+  var n=set.length;if(!n)return null;
+  function idx(v){for(var i=0;i<set.length;i++)if(Math.abs(set[i]-v)<1e-9)return i;return -1;}
+  var T=[];
+  for(var i=0;i<n;i++){T.push([]);for(var j=0;j<n;j++)T[i].push(0.1);}
+  for(var i=1;i<data.length;i++){var fi=idx(data[i-1]),ti=idx(data[i]);if(fi>=0&&ti>=0)T[fi][ti]++;}
+  for(var i=0;i<n;i++){var s=0;for(var j=0;j<n;j++)s+=T[i][j];for(var j=0;j<n;j++)T[i][j]/=s;}
+  return T;
+}
+function mcFallback(data,steps,set,T){
+  if(!set.length||!T){
+    var s=std(data),m=mean(data),a=acf1(data),last=data[data.length-1],path=[];
+    for(var i=0;i<steps;i++){last=last*a+m*(1-Math.abs(a))+s*grnd()*(1-Math.abs(a));path.push(last);}
+    return path;
+  }
+  function idx(v){for(var i=0;i<set.length;i++)if(Math.abs(set[i]-v)<1e-9)return i;return -1;}
+  var cur=idx(data[data.length-1]);if(cur<0)cur=Math.floor(set.length/2);
+  var path=[];
+  for(var i=0;i<steps;i++){
+    var row=T[cur],r=Math.random(),cum=0;
+    for(var j=0;j<set.length;j++){cum+=row[j];if(r<=cum){cur=j;break;}}
+    path.push(set[cur]);
+  }
+  return path;
+}
+
+/* ════ 1. NAIVE BAYES — hiyerarşik (pencere-3) ════ */
+function nbPredict(data,steps,set){
+  var es=set.length?set:buildAutoSet(data);
+  var win=3;
+  if(!es.length||data.length<win+1){var T2=buildTrans(data,es);return mcFallback(data,steps,es,T2);}
+  function idx(v){for(var i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i;return 0;}
+  function key(w){return w.map(function(v){return Math.max(0,idx(v));}).join('-');}
+  /* Hiyerarşik: pencere-3, pencere-2, pencere-1 (uzun→kısa fallback) */
+  var cnts={};
+  for(var ww=1;ww<=win;ww++){
+    cnts[ww]={};
+    for(var i=ww;i<data.length;i++){
+      var k=key(data.slice(i-ww,i)),ni=idx(data[i]);
+      if(!cnts[ww][k]){cnts[ww][k]=[];for(var j=0;j<es.length;j++)cnts[ww][k].push(0.05);}
+      cnts[ww][k][ni]++;
+    }
+  }
+  var w=data.slice(-win),path=[];
+  for(var i=0;i<steps;i++){
+    /* En uzun pencereden başla, bulunamazsa kısalt */
+    var row=null;
+    for(var ww=win;ww>=1;ww--){
+      var k=key(w.slice(win-ww));
+      if(cnts[ww][k]){row=cnts[ww][k];break;}
+    }
+    if(!row){row=[];for(var j=0;j<es.length;j++)row.push(1);}
+    var tot=0;for(var j=0;j<row.length;j++)tot+=row[j];
+    var r=Math.random()*tot,cum=0,ch=0;
+    for(var j=0;j<es.length;j++){cum+=row[j];if(r<=cum){ch=j;break;}}
+    w=w.slice(1);w.push(es[ch]);path.push(es[ch]);
+  }
+  return path;
+}
+
+/* ════ 2. N-HiTS — pencere-3 ════ */
+function fitAR(data,p){
+  var n=data.length;if(n<=p||p<1)return[0];
+  var m=mean(data),c=[];
+  for(var k=0;k<=p;k++){var s=0;for(var i=k;i<n;i++)s+=(data[i]-m)*(data[i-k]-m);c.push(s/(n-k));}
+  var phi=[c[1]/(c[0]||1e-10)],V=c[0]*(1-phi[0]*phi[0]);
+  for(var lag=2;lag<=p;lag++){
+    var num=c[lag];for(var j=0;j<phi.length;j++)num-=phi[j]*(c[lag-1-j]||0);
+    var kk=num/(V||1e-10),phi2=[];
+    for(var j=0;j<phi.length;j++)phi2.push(phi[j]-kk*(phi[phi.length-2-j]||0));
+    phi2.push(kk);phi=phi2;V*=(1-kk*kk);if(isNaN(V)||V<=0)break;
+  }
+  return phi;
+}
+function arPredict(data,phi,steps,nStd,set){
+  var m=mean(data),hist=data.map(function(v){return v-m;}),path=[];
+  for(var i=0;i<steps;i++){
+    var pred=0;for(var j=0;j<phi.length;j++)pred+=phi[j]*(hist[hist.length-1-j]||0);
+    pred+=m+nStd*grnd();if(set.length)pred=snap(pred,set);hist.push(pred-m);path.push(pred);
+  }
+  return path;
+}
+function nhitsPredict(data,steps,set){
+  var n=data.length,dm=mean(data),ds=std(data)||1;
+  var norm=data.map(function(v){return(v-dm)/ds;});
+  function basis(t,H,nP,nF){
+    var b=[1];for(var p=1;p<=nP;p++)b.push(Math.pow(t/H,p));
+    for(var k=1;k<=nF;k++){b.push(Math.sin(2*Math.PI*k*t/H));b.push(Math.cos(2*Math.PI*k*t/H));}
+    return b;
+  }
+  function ols(X,y){
+    var nb=X[0].length,ns=X.length,XtX=[],Xty=[];
+    for(var i=0;i<nb;i++){XtX.push([]);for(var j=0;j<nb;j++)XtX[i].push(0);Xty.push(0);}
+    for(var r2=0;r2<ns;r2++)for(var i=0;i<nb;i++){Xty[i]+=X[r2][i]*y[r2];for(var j=0;j<nb;j++)XtX[i][j]+=X[r2][i]*X[r2][j];}
+    for(var i=0;i<nb;i++)XtX[i][i]+=1e-4;
+    var aug=XtX.map(function(row,i){return row.concat([Xty[i]]);});
+    for(var col=0;col<nb;col++){
+      var piv=col;for(var row=col+1;row<nb;row++)if(Math.abs(aug[row][col])>Math.abs(aug[piv][col]))piv=row;
+      var tmp=aug[col];aug[col]=aug[piv];aug[piv]=tmp;
+      var d=aug[col][col]||1e-12;
+      for(var row=0;row<nb;row++)if(row!==col){var f=aug[row][col]/d;for(var k=0;k<=nb;k++)aug[row][k]-=f*aug[col][k];}
+      for(var k=0;k<=nb;k++)aug[col][k]/=d;
+    }
+    return aug.map(function(row){return row[nb];});
+  }
+  var cfgs=[[1,2,3],[2,1,2],[4,1,1]],res=norm.slice(),outs=[];
+  for(var sc=0;sc<cfgs.length;sc++){
+    var pool=cfgs[sc][0],nPoly=cfgs[sc][1],nFreq=cfgs[sc][2];
+    var pooled=[],rDown=[];
+    for(var i=0;i<n;i+=pool){
+      var chunk=norm.slice(i,Math.min(i+pool,n));
+      var rchunk=res.slice(i,Math.min(i+pool,n));
+      pooled.push(mean(chunk));rDown.push(mean(rchunk));
+    }
+    var np2=pooled.length;if(np2<3)continue;
+    var lb=Math.min(np2,Math.max(4,Math.floor(np2*0.5)));
+    var rw=rDown.slice(-lb),H=steps;
+    var Xlb=[];for(var t=0;t<lb;t++)Xlb.push(basis(t,lb,nPoly,nFreq));
+    var beta=ols(Xlb,rw);
+    var Xfw=[];for(var t=0;t<H;t++)Xfw.push(basis(t,H,nPoly,nFreq));
+    var fc=Xfw.map(function(b){var s=0;for(var i=0;i<b.length;i++)s+=b[i]*beta[i];return s;});
+    outs.push(fc);
+    var bc=Xlb.map(function(b){var s=0;for(var i=0;i<b.length;i++)s+=b[i]*beta[i];return s;});
+    var start=n-lb*pool;
+    for(var i=0;i<lb*pool&&start+i<n;i++){var bi=Math.floor(i/pool);if(bi<bc.length)res[start+i]-=bc[bi];}
+  }
+  if(!outs.length){var phi2=fitAR(data,3);return arPredict(data,phi2,steps,ds*0.3,set);}
+  var rStd=std(res)||0.01;
+  return Array.from({length:steps},function(_,s){
+    var sum=0;for(var i=0;i<outs.length;i++)sum+=(outs[i][s]||0);
+    var v=sum*ds+dm+grnd()*rStd*ds;if(set.length)v=snap(v,set);return v;
+  });
+}
+
+/* ════ 3. DTW yardımcısı ════ */
+function dtwDist(a,b){
+  var n=a.length,m=b.length;
+  var dtw=[];for(var i=0;i<=n;i++){dtw.push([]);for(var j=0;j<=m;j++)dtw[i].push(Infinity);}
+  dtw[0][0]=0;
+  for(var i=1;i<=n;i++)for(var j=1;j<=m;j++){
+    var cost=Math.abs(a[i-1]-b[j-1]);
+    dtw[i][j]=cost+Math.min(dtw[i-1][j],dtw[i][j-1],dtw[i-1][j-1]);
+  }
+  return dtw[n][m];
+}
+
+/* ════ 4. DTW — Saf 1-NN ════ */
+function dtw1nnPredict(data,steps,set){
+  var wlen=Math.min(8,Math.max(3,Math.floor(data.length*0.3)));
+  var query=data.slice(-wlen);
+  var best=null,bestD=Infinity;
+  /* En benzer tek pencereyi bul */
+  for(var i=0;i<=data.length-wlen-steps;i++){
+    var cand=data.slice(i,i+wlen);
+    var d=dtwDist(query,cand);
+    if(d<bestD){bestD=d;best=i;}
+  }
+  if(best===null){var T3=buildTrans(data,set);return mcFallback(data,steps,set,T3);}
+  /* O pencereden sonra gelen değerler tahmin */
+  var path=[];
+  for(var s=0;s<steps;s++){
+    var v=data[best+wlen+s]!==undefined?data[best+wlen+s]:data[data.length-1];
+    if(set.length)v=snap(v,set);
+    path.push(v);
+  }
+  return path;
+}
+
+/* ════ 5. CRF — koşullu rastsal alan (pseudo-likelihood + softmax) ════ */
+function crfPredict(data,steps,set){
+  var es=set.length?set:buildAutoSet(data);
+  var N=es.length;if(!N)return Array(steps).fill(data[data.length-1]);
+  function idx(v){for(var i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i;return 0;}
+  var wT=[];for(var i=0;i<N;i++){wT.push([]);for(var j=0;j<N;j++)wT[i].push(0.0);}
+  var wE=[];for(var i=0;i<N;i++){wE.push([]);for(var j=0;j<N;j++)wE[i].push(0.0);}
+  var lr=0.1,obs2=data.map(idx);
+  for(var pass=0;pass<5;pass++){
+    for(var t=1;t<obs2.length;t++){
+      var xt=obs2[t-1],yt=obs2[t];
+      var scores=[];for(var j=0;j<N;j++)scores.push(wT[xt][j]+wE[xt][j]);
+      var mx=Math.max.apply(null,scores);
+      var exps=scores.map(function(s){return Math.exp(s-mx);});
+      var Z=exps.reduce(function(a,b){return a+b;},0)||1;
+      var probs=exps.map(function(e){return e/Z;});
+      for(var j=0;j<N;j++){
+        var delta=(j===yt?1:0)-probs[j];
+        wT[xt][j]+=lr*delta;wE[xt][j]+=lr*delta;
+      }
+    }
+  }
+  var path=[],prev=obs2[obs2.length-1];
+  for(var s=0;s<steps;s++){
+    var sc2=[];for(var j=0;j<N;j++)sc2.push(wT[prev][j]+wE[prev][j]);
+    var mx2=Math.max.apply(null,sc2);
+    var ex=sc2.map(function(s){return Math.exp(s-mx2);});
+    var Z2=ex.reduce(function(a,b){return a+b;},0)||1;
+    var pr=ex.map(function(e){return e/Z2;});
+    var r=Math.random(),cum4=0,chosen=0;
+    for(var j=0;j<N;j++){cum4+=pr[j];if(r<=cum4){chosen=j;break;}}
+    path.push(es[chosen]);prev=chosen;
+  }
+  return path;
+}
+
+/* ════ ENSEMBLE — orijinal ile birebir aynı: çoğunluk oylaması ════
+   Her adım için her yöntemden 1 tahmin gelir.
+   set varsa → değerleri snap et, freq sayımı yap, en çok oy alanı seç (majority vote)
+   set yoksa → ortalamasını al
+*/
+function callMethod(name,data,steps,set,T){
+  if(name==='nbwin')  return nbPredict(data,steps,set);
+  if(name==='nhits')  return nhitsPredict(data,steps,set);
+  if(name==='dtw1nn') return dtw1nnPredict(data,steps,set);
+  if(name==='crf')    return crfPredict(data,steps,set);
+  return mcFallback(data,steps,set,T);
+}
+function ensemblePath(data,steps,set,T){
+  var paths=ENS_METHODS.map(function(m){return callMethod(m,data,steps,set,T);});
+  return Array.from({length:steps},function(_,s){
+    var vals=paths.map(function(p){return p[s];});
+    if(set.length){
+      /* Çoğunluk oylaması: her yöntemin tahmini snap'lenir, freq sayılır */
+      var freq={};
+      vals.forEach(function(v){
+        var k=snap(v,set).toString();
+        freq[k]=(freq[k]||0)+1;
+      });
+      return parseFloat(Object.entries(freq).sort(function(a,b){return b[1]-a[1];})[0][0]);
+    }
+    return mean(vals);
+  });
+}
+
+/* ════ MAIN ════ */
+async function runAnalysis(){
+  _data=parseSeries();
+  if(_data.length<6){alert('En az 6 veri noktası gerekli.');return;}
+
+  /* Adım kümesi henüz boşsa otomatik oluştur */
+  if(!_set.length){
+    _set=buildAutoSet(_data);
+    renderSetPreview();
+  }
+
+  var effSet=_set.slice().sort(function(a,b){return a-b;});
+  var bad=_data.filter(function(v){return!effSet.some(function(s){return Math.abs(s-v)<1e-9;});}).length;
+  var m=mean(_data),s=std(_data),a1=acf1(_data),tr=linTrend(_data),ent=entropy(_data,effSet);
+
+  /* Stat bar kaldırıldı — değerleri sadece bulgularda gösteriyoruz */
+
+  ['sec_table','sec_chart1','sec_results','sec_chart2'].forEach(hide);
+  show('progWrap');setP(4,'Modeller hazırlanıyor...');await sleep(20);
+
+  var T=buildTrans(_data,effSet);
+  var simPaths=[];
+
+  try{
+    setP(10,'Simülasyonlar başlıyor...');await sleep(10);
+    var bSz=80;
+    for(var i=0;i<N_SIM;i+=bSz){
+      var nb2=Math.min(bSz,N_SIM-i);
+      for(var b=0;b<nb2;b++) simPaths.push(ensemblePath(_data,N_STEPS,effSet,T));
+      setP(10+((i+bSz)/N_SIM)*82,'Simülasyon: '+Math.min(i+bSz,N_SIM)+'/'+N_SIM);
+      await sleep(0);
+    }
+  }catch(e){console.error(e);alert('Hata: '+e.message);hide('progWrap');return;}
+
+  if(!simPaths.length){alert('Simülasyon üretilemedi.');hide('progWrap');return;}
+  setP(93,'Sonuçlar hesaplanıyor...');await sleep(10);
+
+  var predMed=[],predLo=[],predHi=[];
+  for(var st=0;st<N_STEPS;st++){
+    var vals=simPaths.map(function(p){return p[st];});
+    predMed.push(pct(vals,.5));
+    predLo.push(pct(vals,ALPHA));
+    predHi.push(pct(vals,1-ALPHA));
+  }
+
+  /* prob2d[adım][değerIdx] */
+  var prob2d=Array.from({length:N_STEPS},function(_,step){
+    var vals=simPaths.map(function(p){return p[step];});
+    var cnt={};effSet.forEach(function(v){cnt[v]=0;});
+    vals.forEach(function(v){var k=snap(v,effSet);cnt[k]=(cnt[k]||0)+1;});
+    return effSet.map(function(v){return(cnt[v]||0)/vals.length;});
+  });
+
+  setP(97,'Grafikler çiziliyor...');await sleep(10);
+  drawChart1(predMed,predLo,predHi);
+  drawChart2(predMed,predLo,predHi);
+  renderTable(prob2d,effSet,N_STEPS);
+  renderResults(predMed,predLo,predHi,m,s,a1,tr,simPaths.length,ent,effSet,bad);
+
+  setP(100,'Tamamlandı','100%');
+  show('sec_table');
+  show('sec_chart1');
+  show('sec_chart2');
+  $('sec_results').style.display='grid';
+  hide('progWrap');
+}
+
+/* ── CHART 1 ── */
+function drawChart1(predMed,predLo,predHi){
+  if(_chart1){_chart1.destroy();_chart1=null;}
+  var oLen=_data.length;
+  var labels=Array.from({length:oLen+predMed.length},function(_,i){return i;});
+  var obs=[].concat(_data,Array(predMed.length).fill(null));
+  var med=[].concat(Array(oLen-1).fill(null),[_data[oLen-1]],predMed);
+  var lo=[].concat(Array(oLen-1).fill(null),[_data[oLen-1]],predLo);
+  var hi=[].concat(Array(oLen-1).fill(null),[_data[oLen-1]],predHi);
+  _chart1=new Chart($('chart1').getContext('2d'),{type:'line',data:{labels:labels,datasets:[
+    {label:'Hi',data:hi,borderColor:'transparent',backgroundColor:'rgba(31,122,69,.10)',pointRadius:0,fill:'+1',tension:.35},
+    {label:'Lo',data:lo,borderColor:'rgba(31,122,69,.25)',borderWidth:1,borderDash:[3,2],backgroundColor:'rgba(31,122,69,.10)',pointRadius:0,fill:false,tension:.35},
+    {label:'Medyan',data:med,borderColor:'#1f7a45',borderWidth:2.5,borderDash:[6,3],pointRadius:0,fill:false,tension:.35},
+    {label:'Gözlem',data:obs,borderColor:'#1a5c8a',borderWidth:2,pointRadius:2.5,pointBackgroundColor:'#1a5c8a',fill:false,tension:.2},
+  ]},options:{animation:false,responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false},
+      zoom:{pan:{enabled:true,mode:'x'},zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}}},
+    scales:{
+      x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6e6050',font:{family:'Space Mono',size:9},maxTicksLimit:14}},
+      y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6e6050',font:{family:'Space Mono',size:9},maxTicksLimit:8}}
+    },elements:{point:{radius:0}}
+  }});
+}
+function c1zi(){if(_chart1)_chart1.zoom(1.35);}
+function c1zo(){if(_chart1)_chart1.zoom(0.75);}
+function c1zr(){if(_chart1)_chart1.resetZoom();}
+
+/* ── CHART 2 ── */
+function drawChart2(predMed,predLo,predHi){
+  if(_chart2){_chart2.destroy();_chart2=null;}
+  var oLen=_data.length,cumObs=[],acc=0;
+  for(var i=0;i<oLen;i++){acc+=_data[i];cumObs.push(acc);}
+  var cumMed=[],cumLo=[],cumHi=[],accM=acc,accL=acc,accH=acc;
+  for(var i=0;i<predMed.length;i++){
+    accM+=predMed[i];cumMed.push(accM);
+    accL+=predLo[i];cumLo.push(accL);
+    accH+=predHi[i];cumHi.push(accH);
+  }
+  var labels=Array.from({length:oLen+predMed.length},function(_,i){return i;});
+  var obsDs=[].concat(cumObs,Array(predMed.length).fill(null));
+  var medDs=[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumMed);
+  var loDs=[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumLo);
+  var hiDs=[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumHi);
+  _chart2=new Chart($('chart2').getContext('2d'),{type:'line',data:{labels:labels,datasets:[
+    {label:'TahHi',data:hiDs,borderColor:'transparent',backgroundColor:'rgba(232,160,32,.12)',pointRadius:0,fill:'+1',tension:.35},
+    {label:'TahLo',data:loDs,borderColor:'rgba(232,160,32,.3)',borderWidth:1,borderDash:[3,2],backgroundColor:'rgba(232,160,32,.12)',pointRadius:0,fill:false,tension:.35},
+    {label:'Tah Medyan',data:medDs,borderColor:'#e8a020',borderWidth:2.5,borderDash:[6,3],pointRadius:0,fill:false,tension:.35},
+    {label:'Gözlem Kümülatif',data:obsDs,borderColor:'#1a5c8a',borderWidth:2,pointRadius:2,pointBackgroundColor:'#1a5c8a',fill:false,tension:.2},
+  ]},options:{animation:false,responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false},
+      zoom:{pan:{enabled:true,mode:'x'},zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}}},
+    scales:{
+      x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6e6050',font:{family:'Space Mono',size:9},maxTicksLimit:14}},
+      y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6e6050',font:{family:'Space Mono',size:9},maxTicksLimit:8},
+        title:{display:true,text:'Kümülatif Toplam',color:'#6e6050',font:{family:'Space Mono',size:9}}}
+    },elements:{point:{radius:0}}
+  }});
+}
+function c2zi(){if(_chart2)_chart2.zoom(1.35);}
+function c2zo(){if(_chart2)_chart2.zoom(0.75);}
+function c2zr(){if(_chart2)_chart2.resetZoom();}
+
+/* ── FULLSCREEN ── */
+function toggleFS(cardId,btnId){
+  var c=$(cardId),isFs=c.classList.toggle('fullscreen');
+  $(btnId).textContent=isFs?'X':'[]';
+  var ch=cardId==='sec_chart1'?_chart1:_chart2;
+  setTimeout(function(){if(ch)ch.resize();},50);
+}
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    ['sec_chart1','sec_chart2'].forEach(function(id,ix){
+      var c=$(id);if(c&&c.classList.contains('fullscreen')){
+        c.classList.remove('fullscreen');
+        $(ix===0?'fs1btn':'fs2btn').textContent='[]';
+        var ch=ix===0?_chart1:_chart2;setTimeout(function(){if(ch)ch.resize();},50);
+      }
+    });
+  }
+});
+
+/* ════════════════════════════════════════════════════
+   2D TABLE — TRANSPOZE + ÇİFT RENK KANALI
+   prob2d[adım][değerIdx]
+
+   Satırlar  = değerler — BÜYÜKTEN KÜÇÜĞE sıralı
+   Sütunlar  = adımlar  (t+1 … t+N)
+
+   RENK SİSTEMİ:
+   ─ Yeşil kanalı  → SÜTUN bazlı normalize: o adımda bu değer ne kadar yüksek?
+                     (0=krem, 1=koyu --green)
+   ─ Mavi kanalı   → SATIR bazlı normalize: bu değer adımlar içinde ne kadar yüksek?
+                     (0=krem, 1=koyu --blue)
+   ─ İki kanal aynı anda aktifse hücre karışık tona gider (hem satır hem sütunda zirve)
+   ─ İkisi de düşükse krem/beyaza yakın
+
+   Alt satır 1: EN OLASI (sütun bazında)
+   Alt satır 2: 2. OLASI (sütun bazında)
+   ════════════════════════════════════════════════════ */
+function renderTable(prob2d,effSet,nPred){
+  var nSteps=nPred, nVals=effSet.length;
+
+  /* Değerleri büyükten küçüğe sıralanmış index listesi */
+  var sortedIdx=Array.from({length:nVals},function(_,i){return i;})
+    .sort(function(a,b){return effSet[b]-effSet[a];});
+  var sortedVals=sortedIdx.map(function(i){return effSet[i];});
+
+  /* SÜTUN MAX — yeşil kanal için */
+  var colMax=Array.from({length:nSteps},function(_,ci){
+    var mx=0;
+    for(var ri=0;ri<nVals;ri++) if(prob2d[ci][ri]>mx) mx=prob2d[ci][ri];
+    return mx||1e-9;
+  });
+
+  /* SATIR MAX — mavi kanal için */
+  var rowMax=Array.from({length:nVals},function(_,ri){
+    var mx=0;
+    for(var ci=0;ci<nSteps;ci++) if(prob2d[ci][ri]>mx) mx=prob2d[ci][ri];
+    return mx||1e-9;
+  });
+
+  /* Her sütun için sıralı değer listesi (En Olası / 2. Olası) */
+  var colRanked=Array.from({length:nSteps},function(_,ci){
+    return effSet.map(function(v,ri){return{v:v,p:prob2d[ci][ri]};})
+      .sort(function(a,b){return b.p-a.p;});
+  });
+
+  /* Tema renkleri (RGB sayısal) */
+  /* --paper: #faf6ed  → base (düşük olasılık) */
+  /* --blue:  #1a5c8a  → satır kanalı zirve  */
+  /* --green: #1f7a45  → sütun kanalı zirve  */
+  /* Karışım: her kanalı bağımsız hesapla, sonra RGB interpolasyonu */
+  function cellBg(gN, bN){
+    /* gN = yeşil normalize [0,1],  bN = mavi normalize [0,1] */
+    /* Base = paper: 250,246,237 */
+    /* Green peak = 31,122,69  */
+    /* Blue peak  = 26,92,138  */
+    /* Her kanal paper'dan kendi peak'ine doğru gidiyor, sonra topluyoruz */
+    var pr=250, pg=246, pb_=237;
+    var gr_r=31,  gr_g=122, gr_b=69;
+    var bl_r=26,  bl_g=92,  bl_b=138;
+
+    /* Katkılar — iki kanal birbirinden bağımsız rengi paperdan çeker */
+    var r=Math.round(pr + gN*(gr_r-pr) + bN*(bl_r-pr));
+    var g=Math.round(pg + gN*(gr_g-pg) + bN*(bl_g-pg));
+    var b=Math.round(pb_ + gN*(gr_b-pb_) + bN*(bl_b-pb_));
+
+    /* Clamp */
+    r=Math.max(0,Math.min(255,r));
+    g=Math.max(0,Math.min(255,g));
+    b=Math.max(0,Math.min(255,b));
+
+    /* Metin rengi: toplam koyuluğa bakarak seç */
+    var lum=(r*0.299+g*0.587+b*0.114);
+    var tc=lum<148?'#faf6ed':'#1c1710';
+    return {bg:'rgb('+r+','+g+','+b+')',tc:tc};
+  }
+
+  /* BAŞLIK */
+  var hdr='<tr>'
+    +'<th class="rh" style="min-width:72px;text-align:left;padding-left:10px;">Değer ↓</th>'
+    +Array.from({length:nSteps},function(_,ci){return '<th>t+'+(ci+1)+'</th>';}).join('')
+    +'</tr>';
+
+  /* GÖVDE — satırlar büyükten küçüğe */
+  var rows=sortedIdx.map(function(ri){
+    var val=effSet[ri];
+    var cells=Array.from({length:nSteps},function(_,ci){
+      var p=prob2d[ci][ri];
+      var pStr=(p*100).toFixed(1);
+      var gN=colMax[ci]>0?p/colMax[ci]:0;   /* sütun normalize → yeşil */
+      var bN=rowMax[ri]>0?p/rowMax[ri]:0;   /* satır normalize → mavi  */
+      var col=cellBg(gN,bN);
+      return '<td style="background:'+col.bg+';color:'+col.tc+';">'+pStr+'%</td>';
+    }).join('');
+    return '<tr><td class="sh">'+val+'</td>'+cells+'</tr>';
+  }).join('');
+
+  /* ALT SATIR 1: EN OLASI */
+  var footBest='<tr class="foot-row">'
+    +'<td class="sh" style="font-size:9px;color:var(--green);letter-spacing:1px;">EN OLASI</td>'
+    +Array.from({length:nSteps},function(_,ci){
+      var best=colRanked[ci][0];
+      return '<td class="bt">'+best.v
+        +'<br><span style="font-size:9px;font-weight:400;color:var(--ink3)">('+
+        (best.p*100).toFixed(1)+'%)</span></td>';
+    }).join('')+'</tr>';
+
+  /* ALT SATIR 2: 2. OLASI */
+  var footSec='<tr class="foot-row">'
+    +'<td class="sh" style="font-size:9px;color:var(--amber);letter-spacing:1px;">2. OLASI</td>'
+    +Array.from({length:nSteps},function(_,ci){
+      var sec=colRanked[ci][1]||colRanked[ci][0];
+      return '<td class="bs">'+sec.v
+        +'<br><span style="font-size:9px;font-weight:400;color:var(--ink3)">('+
+        (sec.p*100).toFixed(1)+'%)</span></td>';
+    }).join('')+'</tr>';
+
+  $('p2dWrap').innerHTML='<table class="p2d"><thead>'+hdr+'</thead><tbody>'+rows+footBest+footSec+'</tbody></table>';
+
+  /* LEGEND */
+  $('tblLeg').innerHTML=
+    '<div class="tll">'
+      +'<div class="tlb" style="background:linear-gradient(135deg,#1f7a45,#faf6ed)"></div>'
+      +'<span><b>Yeşil yoğunluk</b> = o sütunda (adımda) ne kadar baskın — sütun normalize</span>'
+    +'</div>'
+    +'<div class="tll">'
+      +'<div class="tlb" style="background:linear-gradient(135deg,#1a5c8a,#faf6ed)"></div>'
+      +'<span><b>Mavi yoğunluk</b> = o satırda (değerde) ne kadar baskın — satır normalize</span>'
+    +'</div>'
+    +'<div class="tll">'
+      +'<div class="tlb" style="background:linear-gradient(135deg,#0d3d3a,#faf6ed)"></div>'
+      +'<span><b>Koyu karışık ton</b> = hem satırda hem sütunda yüksek (çift baskınlık)</span>'
+    +'</div>'
+    +'<div class="tll">'
+      +'<div class="tlb" style="background:#faf6ed;border:1px solid #d6c9b4"></div>'
+      +'<span><b>Krem/boş</b> = her iki eksende de düşük olasılık</span>'
+    +'</div>';
+}
+
+/* ── RESULTS ── */
+function renderResults(predMed,predLo,predHi,m,s,a1,tr,nSim,ent,effSet,bad){
+  var last=_data[_data.length-1],fMed=predMed[N_STEPS-1],fLo=predLo[N_STEPS-1],fHi=predHi[N_STEPS-1];
+  var acfI=Math.abs(a1)>0.5?'Güçlü':Math.abs(a1)>0.2?'Orta':'Zayıf';
+  var trendStr=Math.abs(tr)<0.0005?'Sabit':(tr>0?'↑ Yükseliyor':'↓ Düşüyor');
+  var freq={};_data.forEach(function(v){var k=v.toString();freq[k]=(freq[k]||0)+1;});
+  var top=Object.entries(freq).sort(function(a,b){return b[1]-a[1];})[0];
+
+  $('findings').innerHTML=
+    '<div class="fr"><span class="fr-l">Veri uzunluğu</span><span class="fr-r">'+_data.length+' nokta</span></div>'+
+    '<div class="fr"><span class="fr-l">Küme boyutu</span><span class="fr-r">'+effSet.length+' değer</span></div>'+
+    (bad>0?'<div class="fr"><span class="fr-l">Geçersiz nokta</span><span class="fr-r err">'+bad+' !</span></div>':'')+
+    '<div class="fr"><span class="fr-l">Ortalama / Std</span><span class="fr-r">'+m.toFixed(3)+' / '+s.toFixed(3)+'</span></div>'+
+    '<div class="fr"><span class="fr-l">En sık değer</span><span class="fr-r ok">'+top[0]+' (%'+((top[1]/_data.length)*100).toFixed(1)+')</span></div>'+
+    '<div class="fr"><span class="fr-l">ACF(1)</span><span class="fr-r '+(Math.abs(a1)>0.3?'ok':'warn')+'">'+a1.toFixed(4)+' — '+acfI+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Entropi</span><span class="fr-r '+(ent>2?'warn':'')+'">'+ent.toFixed(3)+' / '+Math.log2(effSet.length||1).toFixed(2)+' bit</span></div>'+
+    '<div class="fr"><span class="fr-l">Trend</span><span class="fr-r '+(Math.abs(tr)<0.0005?'':'tr>0?\'ok\':\'err\'')+'"">'+trendStr+' ('+tr.toFixed(5)+')</span></div>'+
+    '<div class="fr"><span class="fr-l">Yöntem</span><span class="fr-r">NB · NHiTS · DTW(1-NN) · CRF</span></div>'+
+    '<div class="fr"><span class="fr-l">Simülasyon</span><span class="fr-r">'+nSim.toLocaleString()+' yol</span></div>';
+
+  $('predSummary').innerHTML=
+    '<div class="fr"><span class="fr-l">Son gözlem</span><span class="fr-r">'+last+'</span></div>'+
+    '<div class="fr"><span class="fr-l">t+'+N_STEPS+' medyan</span><span class="fr-r ok">'+(typeof fMed==='number'?fMed.toFixed(4):fMed)+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Alt %90</span><span class="fr-r warn">'+(typeof fLo==='number'?fLo.toFixed(4):fLo)+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Üst %90</span><span class="fr-r warn">'+(typeof fHi==='number'?fHi.toFixed(4):fHi)+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Yön</span><span class="fr-r '+(fMed>last?'ok':fMed<last?'err':'')+'">'+
+      (fMed>last?'Yükseliyor':fMed<last?'Düşüyor':'Sabit')+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Belirsizlik +/-</span><span class="fr-r">'+((fHi-fLo)/2).toFixed(4)+'</span></div>';
+}
+
+/* ── ÖRNEK ── */
+function loadExample(){
+  $('seriesInput').value='3,3,3.2,3.2,3.4,3.4,3.4,3.2,3.2,3,3,3,3.2,3.4,3.6,3.6,3.4,3.4,3.2,3.2,3,3,3.2,3.4,3.4,3.2,3.2,3,3,3.2';
+  onSeriesInput();
+}
+</script>
+    <div id="raw-values">Yükleniyor...</div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",
+            authDomain: "paralayici.firebaseapp.com",
+            projectId: "paralayici",
+            storageBucket: "paralayici.firebasestorage.app",
+            messagingSenderId: "980843550614",
+            appId: "1:980843550614:web:93dd5bda4ddc377b20efb7"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        db.collection("cumulative_daily_data")
+            .orderBy("date", "asc")
+            .get()
+            .then(snapshot => {
+                const rawValues = [];
+                snapshot.forEach(doc => {
+                    rawValues.push(doc.data().value);
+                });
+                // Sadece virgülle ayrılmış ham değerleri yazdırır
+                document.getElementById('raw-values').textContent = rawValues.join(", ");
+            })
+            .catch(err => {
+                document.getElementById('raw-values').textContent = "Hata: " + err.message;
+            });
+    </script>
+
+</body>
+</html>
