@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kümülatif Hedef Analizi</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+:root {
+  --paper: #f7f3e9;
+  --paper2: #f0ead8;
+  --ink: #2c1f0e;
+  --ink2: #5a3e28;
+  --ink3: #8c7355;
+  --ink4: #b8a48a;
+  --rule: rgba(92,62,40,.18);
+  --red: #8b2020;
+  --blue: #1a4a6e;
+  --green: #1a5c30;
+  --amber: #8b5e00;
+  --redl: rgba(139,32,32,.12);
+  --bluel: rgba(26,74,110,.12);
+  --greenl: rgba(26,92,48,.12);
+  --amberl: rgba(139,94,0,.12);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Space Mono', monospace;
+  min-height: 100vh;
+  /* Defter çizgileri */
+  background-image:
+    /* Sol kenar kırmızı çizgi */
+    linear-gradient(90deg, transparent 52px, rgba(180,60,60,.25) 52px, rgba(180,60,60,.25) 54px, transparent 54px),
+    /* Yatay mavi çizgiler */
+    repeating-linear-gradient(
+      transparent, transparent 31px,
+      rgba(100,140,200,.2) 31px, rgba(100,140,200,.2) 32px
+    );
+}
+
+/* Delik efekti — sol kenar */
+body::before {
+  content: '';
+  position: fixed;
+  left: 18px;
+  top: 0; bottom: 0;
+  width: 22px;
+  background-image: repeating-radial-gradient(
+    circle at 11px 0,
+    transparent 0, transparent 9px,
+    rgba(0,0,0,.06) 9px, rgba(0,0,0,.06) 11px,
+    var(--paper2) 11px, var(--paper2) 13px,
+    transparent 13px
+  );
+  background-size: 22px 80px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 40px 36px 100px 72px;
+}
+
+/* ── BAŞLIK ── */
+header {
+  margin-bottom: 40px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--ink2);
+}
+.hand-title {
+  font-family: 'Caveat', cursive;
+  font-size: clamp(32px, 5vw, 54px);
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.05;
+  letter-spacing: 1px;
+}
+.hand-title em { color: var(--blue); font-style: normal; }
+.hand-title strong { color: var(--red); }
+.hand-sub {
+  font-family: 'Caveat', cursive;
+  font-size: 16px;
+  color: var(--ink3);
+  margin-top: 4px;
+  letter-spacing: .5px;
+}
+
+/* ── SECTION LABEL ── */
+.slbl {
+  font-family: 'Caveat', cursive;
+  font-size: 13px;
+  color: var(--ink3);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.slbl::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+
+/* ── PANEL (defter sayfası kutusu) ── */
+.panel {
+  background: rgba(255,255,255,.35);
+  border: 1.5px solid var(--ink4);
+  border-radius: 2px;
+  padding: 20px 22px 18px;
+  margin-bottom: 26px;
+  position: relative;
+  box-shadow: 2px 3px 0 rgba(0,0,0,.04);
+}
+.panel-lbl {
+  position: absolute;
+  top: -10px; left: 14px;
+  background: var(--paper);
+  padding: 0 7px;
+  font-family: 'Caveat', cursive;
+  font-size: 13px;
+  color: var(--ink2);
+  letter-spacing: 1px;
+  border: 1px solid var(--ink4);
+}
+
+textarea {
+  width: 100%;
+  height: 90px;
+  background: transparent;
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  font-family: 'Space Mono', monospace;
+  font-size: 11.5px;
+  padding: 8px 10px;
+  resize: vertical;
+  outline: none;
+  line-height: 2;  /* defter çizgisi hizası */
+}
+textarea:focus { border-color: var(--blue); }
+
+/* Adım kümesi */
+.set-lbl { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--ink3); margin: 10px 0 5px; }
+#setPreview { display: flex; flex-wrap: wrap; gap: 4px; min-height: 20px; margin-bottom: 8px; }
+.tag-wrap {
+  display: inline-flex; align-items: center;
+  background: var(--bluel); border: 1px solid rgba(26,74,110,.3);
+}
+.tag-val { color: var(--blue); padding: 2px 7px; font-size: 10px; font-weight: 700; }
+.tag-btn { background: transparent; border: none; border-left: 1px solid rgba(26,74,110,.25);
+  color: var(--blue); font-size: 12px; padding: 1px 5px; cursor: pointer; line-height: 1; }
+.tag-btn:hover { background: var(--bluel); }
+
+.set-add-row { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; }
+.set-add-row input {
+  background: transparent; border: 1px solid var(--rule); color: var(--ink);
+  font-family: 'Space Mono', monospace; font-size: 11px; padding: 4px 8px; width: 100px; outline: none;
+}
+.set-add-row input:focus { border-color: var(--blue); }
+.add-btn {
+  padding: 4px 10px; background: var(--bluel); border: 1px solid rgba(26,74,110,.3);
+  color: var(--blue); font-family: 'Space Mono', monospace; font-size: 10px; cursor: pointer;
+}
+.add-btn:hover { background: rgba(26,74,110,.22); }
+
+/* ── HEDEF SATIRI ── */
+.target-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin-top: 4px;
+}
+@media(max-width:580px){ .target-row { grid-template-columns: 1fr; } }
+.tgt-field label {
+  display: block;
+  font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--ink3); margin-bottom: 4px;
+}
+.tgt-field input {
+  width: 100%; background: transparent; border: 1px solid var(--rule);
+  color: var(--ink); font-family: 'Space Mono', monospace; font-size: 12px;
+  padding: 7px 9px; outline: none;
+}
+.tgt-field input:focus { border-color: var(--amber); }
+.tgt-field input.tx { border-color: rgba(139,32,32,.35); }
+.tgt-field input.tx:focus { border-color: var(--red); }
+
+/* ── BUTONLAR ── */
+.btn-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+.btn {
+  padding: 9px 20px; background: var(--ink); color: var(--paper);
+  border: 2px solid var(--ink); font-family: 'Space Mono', monospace;
+  font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; transition: all .15s;
+}
+.btn:hover { background: transparent; color: var(--ink); }
+.btn.g { background: var(--green); border-color: var(--green); }
+.btn.g:hover { background: transparent; color: var(--green); }
+.btn.r { background: var(--red); border-color: var(--red); }
+.btn.r:hover { background: transparent; color: var(--red); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── PROGRESS ── */
+.prog-wrap {
+  display: none; background: rgba(255,255,255,.35); border: 1.5px solid var(--ink4);
+  padding: 14px 18px; margin-bottom: 20px;
+}
+.prog-lbl { font-family: 'Caveat', cursive; font-size: 14px; color: var(--ink3); margin-bottom: 6px; }
+.prog-outer { width: 100%; height: 4px; background: var(--rule); }
+.prog-inner { height: 100%; background: var(--green); transition: width .08s; }
+.prog-txt { font-size: 11px; font-weight: 700; margin-top: 5px; color: var(--ink2); }
+
+/* ── HEDEF SONUÇ KARTI ── */
+.tgt-block { display: none; margin-bottom: 24px; }
+
+/* Hero KPI'lar */
+.hero-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border: 2px solid var(--ink2);
+  margin-bottom: 2px;
+  background: rgba(255,255,255,.3);
+}
+@media(max-width:640px){ .hero-kpis { grid-template-columns: 1fr 1fr; } }
+.kpi {
+  padding: 16px 14px;
+  border-right: 1px solid var(--rule);
+  text-align: center;
+}
+.kpi:last-child { border-right: none; }
+.kpi-lbl {
+  font-size: 8px; letter-spacing: 2.5px; text-transform: uppercase;
+  color: var(--ink3); margin-bottom: 6px;
+}
+.kpi-val {
+  font-family: 'Bebas Neue', 'Caveat', cursive;
+  font-size: 36px; line-height: 1; letter-spacing: 1px; color: var(--ink);
+}
+.kpi-val.ok { color: var(--green); }
+.kpi-val.warn { color: var(--amber); }
+.kpi-val.err { color: var(--red); }
+.kpi-sub { font-size: 8px; color: var(--ink3); margin-top: 4px; }
+
+/* Verdict şeridi */
+.verdict-strip {
+  padding: 8px 16px; background: var(--ink2); color: var(--paper);
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;
+}
+.verdict-strip .vd-badge {
+  font-family: 'Caveat', cursive; font-size: 16px; font-weight: 700; letter-spacing: 1px;
+}
+.vd-badge.ok { color: #7fd8a0; }
+.vd-badge.warn { color: #f5c842; }
+.vd-badge.err { color: #f07070; }
+
+/* İKİ KOLON LAYOUT */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+@media(max-width:740px){ .two-col { grid-template-columns: 1fr; } }
+
+.info-card {
+  background: rgba(255,255,255,.35); border: 1.5px solid var(--ink4); padding: 16px;
+}
+.ic-title {
+  font-family: 'Caveat', cursive; font-size: 15px; font-weight: 700; color: var(--ink2);
+  border-bottom: 1px solid var(--rule); padding-bottom: 5px; margin-bottom: 10px;
+}
+.fr {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 4px 0; border-bottom: 1px dotted var(--rule); font-size: 10px;
+}
+.fr:last-child { border-bottom: none; }
+.fr-l { color: var(--ink3); }
+.fr-r { font-weight: 700; }
+.fr-r.ok { color: var(--green); }
+.fr-r.warn { color: var(--amber); }
+.fr-r.err { color: var(--red); }
+
+/* YOL TİPİ ÇUBUKLARI */
+.path-bars { display: flex; flex-direction: column; gap: 8px; }
+.pb-row { display: flex; align-items: center; gap: 8px; }
+.pb-lbl { font-size: 9px; color: var(--ink3); min-width: 120px; }
+.pb-track { flex: 1; height: 12px; background: var(--paper2); border: 1px solid var(--rule); position: relative; overflow: hidden; }
+.pb-fill { height: 100%; transition: width .5s ease; }
+.pb-pct { font-size: 10px; font-weight: 700; min-width: 35px; text-align: right; }
+.pb-note { font-size: 9px; color: var(--ink3); margin-top: 2px; padding-left: 128px; font-style: italic; }
+
+/* ADIM DAĞILIM */
+.step-hist-wrap { margin: 8px 0 4px; }
+.step-hist {
+  display: flex; gap: 2px; align-items: flex-end;
+  height: 56px; padding: 0 2px;
+}
+.sh-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+.sh-bar { width: 100%; transition: height .4s; min-height: 1px; border-radius: 1px 1px 0 0; }
+.sh-lbl { font-size: 7px; color: var(--ink4); margin-top: 2px; writing-mode: vertical-rl; transform: rotate(180deg); }
+.sh-note { font-size: 9px; color: var(--ink3); margin-top: 5px; }
+
+/* WAYPOINT UYARISI */
+.waypoint-box {
+  background: var(--amberl); border: 1.5px solid rgba(139,94,0,.3);
+  padding: 12px 14px; margin-bottom: 16px;
+}
+.wp-title {
+  font-family: 'Caveat', cursive; font-size: 14px; font-weight: 700;
+  color: var(--amber); margin-bottom: 8px;
+}
+.wp-item {
+  font-size: 10px; color: var(--ink2); padding: 3px 0;
+  border-bottom: 1px dotted rgba(139,94,0,.2);
+  display: flex; justify-content: space-between;
+}
+.wp-item:last-child { border-bottom: none; }
+.wp-item strong { color: var(--amber); }
+
+/* REJİM GÖSTERGESI */
+.regime-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border: 1.5px solid currentColor; font-size: 9px;
+  letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700;
+}
+.regime-pill.sakin { color: var(--blue); }
+.regime-pill.gecis { color: var(--amber); }
+.regime-pill.aktif { color: var(--red); }
+.regime-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+/* GRAFİK KARTI */
+.chart-card {
+  background: rgba(255,255,255,.35); border: 1.5px solid var(--ink4);
+  padding: 18px 20px; margin-bottom: 20px;
+}
+.chart-card.fullscreen {
+  position: fixed !important; inset: 0 !important; z-index: 9999 !important;
+  margin: 0 !important; border: none !important;
+  display: flex; flex-direction: column; padding: 16px 20px; background: var(--paper) !important;
+}
+.chart-card.fullscreen .cw { flex: 1; height: auto !important; }
+.chart-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.chart-ttl { font-family: 'Caveat', cursive; font-size: 20px; font-weight: 700; color: var(--ink2); }
+.cbts { display: flex; gap: 4px; }
+.cbt {
+  background: transparent; border: 1.5px solid var(--ink4); color: var(--ink2);
+  font-size: 12px; width: 26px; height: 26px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all .12s;
+}
+.cbt:hover { background: var(--ink2); color: var(--paper); }
+.leg-row { display: flex; gap: 14px; flex-wrap: wrap; font-size: 9px; margin-bottom: 8px; align-items: center; }
+.leg { display: flex; align-items: center; gap: 5px; }
+.ll { width: 20px; height: 2.5px; border-radius: 1px; }
+.cw { position: relative; width: 100%; height: 320px; }
+.cw canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+
+/* BULGULAR GRİD */
+.findings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+@media(max-width:700px){ .findings-grid { grid-template-columns: 1fr; } }
+
+/* Grafik altı notu */
+.chart-note {
+  font-family: 'Caveat', cursive; font-size: 12px; color: var(--ink3);
+  margin-top: 6px; text-align: right;
+}
+
+/* Güven çürümesi göstergesi */
+.decay-bar {
+  display: flex; height: 6px; margin: 6px 0 3px; border-radius: 2px; overflow: hidden;
+}
+.decay-seg { flex: 1; }
+.decay-lbl { display: flex; justify-content: space-between; font-size: 8px; color: var(--ink4); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="hand-title"><em>Kümülatif</em> <strong>Hedef</strong> Analizi</div>
+  <div class="hand-sub">// 6000 simülasyon · Rejim + Yol Tipi + Waypoint · Ensemble tahmin</div>
+</header>
+
+<!-- VERİ GİRİŞİ -->
+<div class="slbl">veri & hedef</div>
+<div class="panel">
+  <div class="panel-lbl">veri serisi</div>
+  <textarea id="seriesInput"
+    placeholder="Değerleri virgül, noktalı virgül veya satır ile gir — örnek: 3, 3.2, 3, 3.4, 3.2, 3, 3.2, 3.4 ..."
+    oninput="onSeriesInput()"></textarea>
+
+  <div class="set-lbl">Adım Kümesi</div>
+  <div id="setPreview"></div>
+  <div class="set-add-row">
+    <input id="newValInput" type="number" step="any" placeholder="Ekle...">
+    <button class="add-btn" onclick="addSetVal()">+ ekle</button>
+  </div>
+
+  <!-- HEDEF -->
+  <div class="set-lbl" style="margin-top:6px;">Hedef</div>
+  <div class="target-row">
+    <div class="tgt-field">
+      <label>Hedef Adım (x)</label>
+      <input id="tgtStep" type="number" min="1" max="200" value="50" placeholder="50">
+    </div>
+    <div class="tgt-field">
+      <label>Alt Sınır (y₁)</label>
+      <input id="tgtLo" type="number" step="any" placeholder="örn. 150">
+    </div>
+    <div class="tgt-field">
+      <label>Üst Sınır (y₂)</label>
+      <input id="tgtHi" type="number" step="any" placeholder="örn. 180">
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn g" onclick="runAnalysis()">▶ ANALİZ ET</button>
+    <button class="btn r" onclick="loadExample()">ÖRNEK</button>
+  </div>
+</div>
+
+<!-- PROGRESS -->
+<div class="prog-wrap" id="progWrap">
+  <div class="prog-lbl" id="progLbl">Başlatılıyor...</div>
+  <div class="prog-outer"><div class="prog-inner" id="progBar" style="width:0%"></div></div>
+  <div class="prog-txt" id="progTxt">0%</div>
+</div>
+
+<!-- HEDEF ANALİZ BLOĞU -->
+<div class="tgt-block" id="tgtBlock">
+
+  <!-- KPI'lar -->
+  <div class="hero-kpis" id="heroKpis"></div>
+
+  <!-- Verdict şeridi -->
+  <div class="verdict-strip" id="verdictStrip">
+    <span id="verdictText"></span>
+    <span class="vd-badge" id="verdictBadge"></span>
+  </div>
+
+  <!-- İki kolon: Geçiş detayları + Yol tipleri -->
+  <div class="two-col">
+    <div class="info-card">
+      <div class="ic-title">📍 Geçiş Zamanı Dağılımı</div>
+      <div id="stepHistWrap"></div>
+      <div id="stepHistNote" class="sh-note"></div>
+    </div>
+    <div class="info-card">
+      <div class="ic-title">🔀 Yol Tipi Analizi</div>
+      <div class="path-bars" id="pathBars"></div>
+      <div id="pathNote" style="font-size:9px;color:var(--ink3);margin-top:8px;font-style:italic;"></div>
+    </div>
+  </div>
+
+  <!-- Waypoint uyarısı -->
+  <div class="waypoint-box" id="waypointBox">
+    <div class="wp-title">⚡ Erken Uyarı Sinyalleri (Waypoint)</div>
+    <div id="waypointItems"></div>
+  </div>
+
+  <!-- Rejim + Özet -->
+  <div class="two-col">
+    <div class="info-card">
+      <div class="ic-title">🔬 Seri Karakteri</div>
+      <div id="regimeInfo"></div>
+    </div>
+    <div class="info-card">
+      <div class="ic-title">📊 Kümülatif Özet</div>
+      <div id="cumSummary"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- KÜMÜLATİF TAHMİN GRAFİĞİ -->
+<div class="chart-card" id="sec_chart" style="display:none">
+  <div class="chart-top">
+    <div class="chart-ttl">Kümülatif Seri + Tahmin Yelpazesi</div>
+    <div class="cbts">
+      <button class="cbt" onclick="czi()">+</button>
+      <button class="cbt" onclick="czo()">−</button>
+      <button class="cbt" onclick="czr()">○</button>
+      <button class="cbt" id="fsbtn" onclick="toggleFS()">□</button>
+    </div>
+  </div>
+  <div class="leg-row" id="chartLeg"></div>
+  <div class="cw"><canvas id="mainChart"></canvas></div>
+  <div class="chart-note" id="chartNote"></div>
+</div>
+
+<!-- KOŞULLU YOL GRAFİĞİ -->
+<div class="chart-card" id="sec_cpath" style="display:none">
+  <div class="chart-top">
+    <div class="chart-ttl">Hedefe Ulaşan Yollar (Koşullu Medyan)</div>
+    <div class="cbts">
+      <button class="cbt" onclick="cpzi()">+</button>
+      <button class="cbt" onclick="cpzo()">−</button>
+      <button class="cbt" onclick="cpzr()">○</button>
+    </div>
+  </div>
+  <div class="leg-row">
+    <div class="leg"><div class="ll" style="background:var(--blue)"></div><span>Gözlem (kümülatif)</span></div>
+    <div class="leg"><div class="ll" style="background:var(--green)"></div><span>Hedefe ulaşan yollar — medyan</span></div>
+    <div class="leg"><div class="ll" style="background:rgba(26,92,48,.2);height:8px;width:20px;border:1px solid rgba(26,92,48,.4)"></div><span>Koşullu %80 bant</span></div>
+    <div class="leg"><div class="ll" style="background:var(--ink3);border-top:2px dashed var(--ink3);height:0"></div><span>Tüm sim. medyanı</span></div>
+  </div>
+  <div class="cw"><canvas id="cpathChart"></canvas></div>
+</div>
+
+<!-- BULGULAR -->
+<div class="slbl" id="sec_findings_lbl" style="display:none">analiz bulguları</div>
+<div class="findings-grid" id="sec_findings" style="display:none">
+  <div class="info-card">
+    <div class="ic-title">Seri İstatistikleri</div>
+    <div id="statsContent"></div>
+  </div>
+  <div class="info-card">
+    <div class="ic-title">Model Bilgisi</div>
+    <div id="modelContent"></div>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<script>
+'use strict';
+
+/* ══ SABITLER ══ */
+var N_SIM   = 6000;
+var CONF    = 0.90;
+var ALPHA   = (1 - CONF) / 2;
+
+var _set=[], _data=[], _mainChart=null, _cpathChart=null;
+
+function $(id){return document.getElementById(id);}
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+function show(id){$(id).style.display='block';}
+function hide(id){$(id).style.display='none';}
+function showFlex(id){$(id).style.display='flex';}
+function setP(p,lbl,txt){
+  $('progBar').style.width=Math.min(100,p)+'%';
+  $('progTxt').textContent=txt||Math.round(p)+'%';
+  if(lbl)$('progLbl').textContent=lbl;
+}
+
+/* ══ MATH ══ */
+function mean(a){if(!a.length)return 0;var s=0;for(var i=0;i<a.length;i++)s+=a[i];return s/a.length;}
+function std(a){
+  if(a.length<2)return 0;var m=mean(a),s=0;
+  for(var i=0;i<a.length;i++)s+=(a[i]-m)*(a[i]-m);return Math.sqrt(s/a.length);
+}
+function acf1(a){
+  var n=a.length,m=mean(a),num=0,den=0;
+  for(var i=1;i<n;i++)num+=(a[i]-m)*(a[i-1]-m);
+  for(var i=0;i<n;i++)den+=(a[i]-m)*(a[i]-m);
+  return den<1e-12?0:num/den;
+}
+function pct(a,p){
+  var s=a.slice().sort(function(x,y){return x-y;});
+  return s[Math.max(0,Math.min(s.length-1,Math.floor(p*(s.length-1))))];
+}
+function linTrend(a){
+  var n=a.length,sx=0,sy=0,sxy=0,sxx=0;
+  for(var i=0;i<n;i++){sx+=i;sy+=a[i];sxy+=i*a[i];sxx+=i*i;}
+  var d=n*sxx-sx*sx;return d<1e-12?0:(n*sxy-sx*sy)/d;
+}
+function entropy(data,set){
+  if(!set.length)return 0;
+  var cnt={},n=data.length;
+  set.forEach(function(v){cnt[v]=0;});
+  data.forEach(function(v){var k=snap(v,set);cnt[k]=(cnt[k]||0)+1;});
+  var h=0;for(var k in cnt){var p=cnt[k]/n;if(p>0)h-=p*Math.log2(p);}return h;
+}
+function grnd(){var u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function snap(v,set){if(!set||!set.length)return v;var best=set[0];for(var i=1;i<set.length;i++)if(Math.abs(set[i]-v)<Math.abs(best-v))best=set[i];return best;}
+
+/* ══ ADIM KÜMESİ ══ */
+function parseSeries(){
+  var parts=$('seriesInput').value.split(/[\n,;]+/),out=[];
+  parts.forEach(function(p){var n=parseFloat(p.trim());if(!isNaN(n))out.push(n);});
+  return out;
+}
+function buildAutoSet(data){
+  var seen={},vals=[];
+  data.forEach(function(v){var k=v.toString();if(!seen[k]){seen[k]=true;vals.push(v);}});
+  return vals.sort(function(a,b){return a-b;});
+}
+function renderSetPreview(){
+  $('setPreview').innerHTML=_set.map(function(v,i){
+    return '<span class="tag-wrap"><span class="tag-val">'+v+'</span>'
+      +'<button class="tag-btn" onclick="removeSetVal('+i+')">−</button></span>';
+  }).join('');
+}
+function removeSetVal(i){_set.splice(i,1);renderSetPreview();}
+function addSetVal(){
+  var v=parseFloat($('newValInput').value);if(isNaN(v))return;
+  if(!_set.some(function(s){return Math.abs(s-v)<1e-9;})){
+    _set.push(v);_set.sort(function(a,b){return a-b;});renderSetPreview();
+  }
+  $('newValInput').value='';
+}
+function onSeriesInput(){
+  var d=parseSeries();
+  if(d.length){_set=buildAutoSet(d);renderSetPreview();}
+  else{_set=[];$('setPreview').innerHTML='';}
+}
+document.addEventListener('DOMContentLoaded',function(){
+  $('newValInput').addEventListener('keydown',function(e){if(e.key==='Enter')addSetVal();});
+});
+
+/* ══ REJİM TESPİTİ ══
+   Son N adıma bakarak serinin karakterini belirle.
+   Sakin: dar bant, düşük trend
+   Geçiş: belirgin trend, orta varyans
+   Aktif: yüksek varyans, yüksek entropi
+*/
+function detectRegime(data,set){
+  var n=Math.min(data.length, Math.max(8, Math.floor(data.length*0.25)));
+  var recent=data.slice(-n);
+  var s=std(recent), m=mean(recent), tr=Math.abs(linTrend(recent)), ent=entropy(recent,set);
+  var cv=m>0?s/Math.abs(m):s; /* coefficient of variation */
+  var maxEnt=Math.log2(set.length||1)||1;
+  var entNorm=ent/maxEnt;
+
+  if(tr>s*0.3||entNorm>0.75) return {name:'aktif',  label:'Aktif / Kaotik',   cls:'aktif', score:entNorm, trend:tr, cv:cv};
+  if(tr>s*0.05||cv>0.15)     return {name:'gecis',  label:'Geçiş / Trendli',  cls:'gecis', score:entNorm, trend:tr, cv:cv};
+                              return {name:'sakin',  label:'Sakin / Döngüsel', cls:'sakin', score:entNorm, trend:tr, cv:cv};
+}
+
+/* ══ GEÇİŞ MATRİSİ / FALLBACK ══ */
+function buildTrans(data,set){
+  var n=set.length;if(!n)return null;
+  function idx(v){for(var i=0;i<set.length;i++)if(Math.abs(set[i]-v)<1e-9)return i;return -1;}
+  var T=[];
+  for(var i=0;i<n;i++){T.push([]);for(var j=0;j<n;j++)T[i].push(0.1);}
+  for(var i=1;i<data.length;i++){var fi=idx(data[i-1]),ti=idx(data[i]);if(fi>=0&&ti>=0)T[fi][ti]++;}
+  for(var i=0;i<n;i++){var s=0;for(var j=0;j<n;j++)s+=T[i][j];for(var j=0;j<n;j++)T[i][j]/=s;}
+  return T;
+}
+function mcStep(cur,set,T){
+  var row=T[cur],r=Math.random(),cum=0;
+  for(var j=0;j<set.length;j++){cum+=row[j];if(r<=cum)return j;}
+  return cur;
+}
+
+/* ══ TAHMİN MODELLERİ ══ */
+
+/* 1. Naive Bayes — hiyerarşik pencere */
+function nbPredict(data,steps,set){
+  var es=set.length?set:buildAutoSet(data);
+  if(!es.length)return Array(steps).fill(data[data.length-1]);
+  var win=3;
+  function idx(v){for(var i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i;return 0;}
+  function key(w){return w.map(function(v){return idx(v);}).join('-');}
+  var cnts={};
+  for(var ww=1;ww<=win;ww++){
+    cnts[ww]={};
+    for(var i=ww;i<data.length;i++){
+      var k=key(data.slice(i-ww,i)),ni=idx(data[i]);
+      if(!cnts[ww][k]){cnts[ww][k]=Array(es.length).fill(0.05);}
+      cnts[ww][k][ni]++;
+    }
+  }
+  var w=data.slice(-win),path=[];
+  for(var i=0;i<steps;i++){
+    var row=null;
+    for(var ww=win;ww>=1;ww--){var k=key(w.slice(win-ww));if(cnts[ww][k]){row=cnts[ww][k];break;}}
+    if(!row)row=Array(es.length).fill(1);
+    var tot=row.reduce(function(a,b){return a+b;},0);
+    var r=Math.random()*tot,cum=0,ch=0;
+    for(var j=0;j<es.length;j++){cum+=row[j];if(r<=cum){ch=j;break;}}
+    w=w.slice(1);w.push(es[ch]);path.push(es[ch]);
+  }
+  return path;
+}
+
+/* 2. DTW 1-NN */
+function dtwDist(a,b){
+  var n=a.length,m=b.length;
+  var D=[];for(var i=0;i<=n;i++){D.push([]);for(var j=0;j<=m;j++)D[i].push(Infinity);}
+  D[0][0]=0;
+  for(var i=1;i<=n;i++)for(var j=1;j<=m;j++){
+    D[i][j]=Math.abs(a[i-1]-b[j-1])+Math.min(D[i-1][j],D[i][j-1],D[i-1][j-1]);
+  }
+  return D[n][m];
+}
+function dtw1nnPredict(data,steps,set){
+  var wlen=Math.min(8,Math.max(3,Math.floor(data.length*0.3)));
+  var query=data.slice(-wlen);
+  var best=null,bestD=Infinity;
+  for(var i=0;i<=data.length-wlen-1;i++){
+    var d=dtwDist(query,data.slice(i,i+wlen));
+    if(d<bestD&&i+wlen+steps<=data.length){bestD=d;best=i;}
+  }
+  if(best===null){
+    var T=buildTrans(data,set);
+    if(!T)return Array(steps).fill(data[data.length-1]);
+    var cur=0;for(var j=0;j<set.length;j++)if(Math.abs(set[j]-data[data.length-1])<1e-9)cur=j;
+    var path=[];for(var s=0;s<steps;s++){cur=mcStep(cur,set,T);path.push(set[cur]);}
+    return path;
+  }
+  return Array.from({length:steps},function(_,s){
+    var v=data[best+wlen+s]!==undefined?data[best+wlen+s]:data[data.length-1];
+    return set.length?snap(v,set):v;
+  });
+}
+
+/* 3. CRF (pseudo-likelihood) */
+function crfPredict(data,steps,set){
+  var es=set.length?set:buildAutoSet(data);
+  var N=es.length;if(!N)return Array(steps).fill(data[data.length-1]);
+  function idx(v){for(var i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i;return 0;}
+  var wT=[],wE=[];
+  for(var i=0;i<N;i++){wT.push(Array(N).fill(0));wE.push(Array(N).fill(0));}
+  var lr=0.1,obs=data.map(idx);
+  for(var pass=0;pass<5;pass++){
+    for(var t=1;t<obs.length;t++){
+      var xt=obs[t-1],yt=obs[t];
+      var sc=[];for(var j=0;j<N;j++)sc.push(wT[xt][j]+wE[xt][j]);
+      var mx=Math.max.apply(null,sc);
+      var ex=sc.map(function(s){return Math.exp(s-mx);});
+      var Z=ex.reduce(function(a,b){return a+b;},0)||1;
+      var pr=ex.map(function(e){return e/Z;});
+      for(var j=0;j<N;j++){var d=(j===yt?1:0)-pr[j];wT[xt][j]+=lr*d;wE[xt][j]+=lr*d;}
+    }
+  }
+  var path=[],prev=obs[obs.length-1];
+  for(var s=0;s<steps;s++){
+    var sc2=[];for(var j=0;j<N;j++)sc2.push(wT[prev][j]+wE[prev][j]);
+    var mx2=Math.max.apply(null,sc2);
+    var ex2=sc2.map(function(s){return Math.exp(s-mx2);});
+    var Z2=ex2.reduce(function(a,b){return a+b;},0)||1;
+    var pr2=ex2.map(function(e){return e/Z2;});
+    var r=Math.random(),cum=0,ch=0;
+    for(var j=0;j<N;j++){cum+=pr2[j];if(r<=cum){ch=j;break;}}
+    path.push(es[ch]);prev=ch;
+  }
+  return path;
+}
+
+/* 4. N-HiTS */
+function nhitsPredict(data,steps,set){
+  var dm=mean(data),ds=std(data)||1;
+  var norm=data.map(function(v){return(v-dm)/ds;});
+  function basis(t,H,nP,nF){
+    var b=[1];for(var p=1;p<=nP;p++)b.push(Math.pow(t/H,p));
+    for(var k=1;k<=nF;k++){b.push(Math.sin(2*Math.PI*k*t/H));b.push(Math.cos(2*Math.PI*k*t/H));}
+    return b;
+  }
+  function ols(X,y){
+    var nb=X[0].length,ns=X.length,XtX=[],Xty=[];
+    for(var i=0;i<nb;i++){XtX.push(Array(nb).fill(0));Xty.push(0);}
+    for(var r=0;r<ns;r++)for(var i=0;i<nb;i++){Xty[i]+=X[r][i]*y[r];for(var j=0;j<nb;j++)XtX[i][j]+=X[r][i]*X[r][j];}
+    for(var i=0;i<nb;i++)XtX[i][i]+=1e-4;
+    var aug=XtX.map(function(row,i){return row.concat([Xty[i]]);});
+    for(var col=0;col<nb;col++){
+      var piv=col;for(var row=col+1;row<nb;row++)if(Math.abs(aug[row][col])>Math.abs(aug[piv][col]))piv=row;
+      var tmp=aug[col];aug[col]=aug[piv];aug[piv]=tmp;
+      var d=aug[col][col]||1e-12;
+      for(var row=0;row<nb;row++)if(row!==col){var f=aug[row][col]/d;for(var k=0;k<=nb;k++)aug[row][k]-=f*aug[col][k];}
+      for(var k=0;k<=nb;k++)aug[col][k]/=d;
+    }
+    return aug.map(function(row){return row[nb];});
+  }
+  var cfgs=[[1,2,3],[2,1,2],[4,1,1]],res=norm.slice(),outs=[];
+  var n=data.length;
+  for(var sc=0;sc<cfgs.length;sc++){
+    var pool=cfgs[sc][0],nPoly=cfgs[sc][1],nFreq=cfgs[sc][2];
+    var rDown=[];
+    for(var i=0;i<n;i+=pool){rDown.push(mean(res.slice(i,Math.min(i+pool,n))));}
+    var np=rDown.length;if(np<3)continue;
+    var lb=Math.min(np,Math.max(4,Math.floor(np*0.5)));
+    var rw=rDown.slice(-lb),H=steps;
+    var Xlb=[];for(var t=0;t<lb;t++)Xlb.push(basis(t,lb,nPoly,nFreq));
+    var beta=ols(Xlb,rw);
+    var Xfw=[];for(var t=0;t<H;t++)Xfw.push(basis(t,H,nPoly,nFreq));
+    outs.push(Xfw.map(function(b){return b.reduce(function(s,x,i){return s+x*beta[i];},0);}));
+    var bc=Xlb.map(function(b){return b.reduce(function(s,x,i){return s+x*beta[i];},0);});
+    var st=n-lb*pool;
+    for(var i=0;i<lb*pool&&st+i<n;i++){var bi=Math.floor(i/pool);if(bi<bc.length)res[st+i]-=bc[bi];}
+  }
+  if(!outs.length)return Array(steps).fill(0).map(function(){return set.length?snap(dm+grnd()*ds*0.3,set):dm+grnd()*ds*0.3;});
+  var rStd=std(res)||0.01;
+  return Array.from({length:steps},function(_,s){
+    var sum=0;for(var i=0;i<outs.length;i++)sum+=(outs[i][s]||0);
+    var v=sum*ds+dm+grnd()*rStd*ds;return set.length?snap(v,set):v;
+  });
+}
+
+/* ══ ENSEMBLE — çoğunluk oylaması ══ */
+function ensemblePath(data,steps,set,T){
+  var methods=['nb','dtw','crf','nhits'];
+  var preds={
+    nb:   nbPredict(data,steps,set),
+    dtw:  dtw1nnPredict(data,steps,set),
+    crf:  crfPredict(data,steps,set),
+    nhits:nhitsPredict(data,steps,set)
+  };
+  return Array.from({length:steps},function(_,s){
+    var vals=methods.map(function(m){return preds[m][s];});
+    if(set.length){
+      var freq={};
+      vals.forEach(function(v){var k=snap(v,set).toString();freq[k]=(freq[k]||0)+1;});
+      return parseFloat(Object.entries(freq).sort(function(a,b){return b[1]-a[1];})[0][0]);
+    }
+    return mean(vals);
+  });
+}
+
+/* ══ YOL KARAKTERİZASYONU ══
+   Her simülasyon yolunu analiz et:
+   - cumPath: kümülatif değerler dizisi
+   - ilk geçiş zamanı (firstPass): hedefi ilk kez ne zaman geçti
+   - tip: A(sıçrama), B(tırmanış), C(salınım), D(düşüş)
+*/
+function cumulatify(baseCum,path){
+  var cum=[],acc=baseCum;
+  for(var i=0;i<path.length;i++){acc+=path[i];cum.push(acc);}
+  return cum;
+}
+function firstPassageTime(cumPath,lo,hi){
+  for(var i=0;i<cumPath.length;i++)if(cumPath[i]>=lo&&cumPath[i]<=hi)return i;
+  return -1;
+}
+function classifyPath(cumPath,fpt,baseCum,lo,hi){
+  /* Sadece hedefe ulaşan yolları sınıfla */
+  if(fpt<0)return 'miss';
+  var window=cumPath.slice(0,fpt+1);
+  var deltas=[];for(var i=1;i<window.length;i++)deltas.push(window[i]-window[i-1]);
+  var maxDelta=Math.max.apply(null,deltas.map(Math.abs));
+  var totalChange=cumPath[fpt]-baseCum;
+  var stepCount=fpt+1;
+  /* Salınım sayısı: işaret değişimi sayısı */
+  var signChanges=0;
+  for(var i=1;i<deltas.length;i++)if(deltas[i]*deltas[i-1]<0)signChanges++;
+  var salRatio=signChanges/Math.max(1,deltas.length);
+
+  if(salRatio>0.45)              return 'C'; /* salınımlı */
+  if(maxDelta>Math.abs(totalChange)*0.7) return 'A'; /* ani sıçrama */
+  if(totalChange>0)              return 'B'; /* düzenli tırmanış */
+                                 return 'D'; /* düşüş/karışık */
+}
+
+/* ══ WAYPOINT ANALİZİ ══
+   Hedefe ulaşan yolların ilk %30'unda ne görüyoruz?
+   Belirli adımlarda eşiği geçme oranı → erken uyarı
+*/
+function waypointAnalysis(cumPaths,hitIndices,lo,hi,tgtStep){
+  var earlySteps=[
+    Math.floor(tgtStep*0.15),
+    Math.floor(tgtStep*0.30),
+    Math.floor(tgtStep*0.50)
+  ].filter(function(s){return s>0&&s<tgtStep;});
+
+  var results=[];
+  var totalHit=hitIndices.length;
+  var totalMiss=cumPaths.length-totalHit;
+  if(!totalHit||!earlySteps.length)return results;
+
+  earlySteps.forEach(function(es){
+    /* Hedefe ulaşan yollar bu adımda ne yapıyor? */
+    var hitVals=hitIndices.map(function(i){return cumPaths[i][es];});
+    var allVals=cumPaths.map(function(p){return p[es];});
+    var hitMed=pct(hitVals,.5);
+    var allMed=pct(allVals,.5);
+
+    /* Hedefe ulaşanların %60'ından fazlası bu adımda belirli bir bölgede mi? */
+    var hitQ1=pct(hitVals,.25),hitQ3=pct(hitVals,.75);
+
+    /* Bu bölgedeyken genel olasılık artışı */
+    var inRegion=allVals.filter(function(v){return v>=hitQ1&&v<=hitQ3;}).length;
+    var inRegionAndHit=hitVals.filter(function(v){return v>=hitQ1&&v<=hitQ3;}).length;
+    var baseProb=totalHit/cumPaths.length;
+    var condProb=inRegion>0?inRegionAndHit/inRegion:baseProb;
+
+    if(Math.abs(condProb-baseProb)>0.08){
+      results.push({
+        step:es,
+        lo:hitQ1,
+        hi:hitQ3,
+        baseProb:baseProb,
+        condProb:condProb,
+        lift:condProb/Math.max(baseProb,0.01)
+      });
+    }
+  });
+  return results;
+}
+
+/* ══ MAIN ANALİZ ══ */
+async function runAnalysis(){
+  _data=parseSeries();
+  if(_data.length<6){alert('En az 6 veri noktası gerekli.');return;}
+  if(!_set.length){_set=buildAutoSet(_data);renderSetPreview();}
+
+  var tgtStep=parseInt($('tgtStep').value)||50;
+  var tgtLo=parseFloat($('tgtLo').value);
+  var tgtHi=parseFloat($('tgtHi').value);
+  if(isNaN(tgtLo)||isNaN(tgtHi)){alert('Hedef sınırlarını (y₁ ve y₂) gir.');return;}
+  if(tgtLo>tgtHi){var tmp=tgtLo;tgtLo=tgtHi;tgtHi=tmp;}
+
+  var effSet=_set.slice().sort(function(a,b){return a-b;});
+  var N_STEPS=tgtStep;
+
+  /* Uyarı: uzun ufuk */
+  var horizonRatio=N_STEPS/_data.length;
+
+  hide('sec_chart');hide('sec_cpath');hide('sec_findings');hide('sec_findings_lbl');
+  $('tgtBlock').style.display='none';
+  show('progWrap');setP(4,'Rejim tespiti...');await sleep(20);
+
+  /* Rejim */
+  var regime=detectRegime(_data,effSet);
+  var T=buildTrans(_data,effSet);
+
+  /* Kümülatif baz */
+  var baseCum=_data.reduce(function(a,b){return a+b;},0);
+
+  /* Simülasyon */
+  var simPaths=[];    /* ham adım değerleri */
+  var cumPaths=[];    /* kümülatif değerler */
+
+  setP(8,'Simülasyonlar başlıyor...');await sleep(10);
+  var bSz=60;
+  try{
+    for(var i=0;i<N_SIM;i+=bSz){
+      var nb=Math.min(bSz,N_SIM-i);
+      for(var b=0;b<nb;b++){
+        var path=ensemblePath(_data,N_STEPS,effSet,T);
+        simPaths.push(path);
+        cumPaths.push(cumulatify(baseCum,path));
+      }
+      setP(8+((i+bSz)/N_SIM)*72,'Simülasyon: '+Math.min(i+bSz,N_SIM)+'/'+N_SIM);
+      await sleep(0);
+    }
+  }catch(e){console.error(e);alert('Hata: '+e.message);hide('progWrap');return;}
+
+  setP(82,'Hedef analizi...');await sleep(10);
+
+  /* Hedef analizi */
+  var fptList=cumPaths.map(function(cp){return firstPassageTime(cp,tgtLo,tgtHi);});
+  var hitIndices=fptList.map(function(f,i){return f>=0?i:-1;}).filter(function(i){return i>=0;});
+  var hitCount=hitIndices.length;
+  var hitProb=hitCount/N_SIM;
+
+  /* Geçiş zamanı dağılımı (sadece başarılılar) */
+  var fptHits=hitIndices.map(function(i){return fptList[i];});
+
+  /* Yol tipi sınıflaması */
+  var typeCounts={A:0,B:0,C:0,D:0,miss:0};
+  cumPaths.forEach(function(cp,i){
+    var t=classifyPath(cp,fptList[i],baseCum,tgtLo,tgtHi);
+    typeCounts[t]=(typeCounts[t]||0)+1;
+  });
+
+  /* Waypoint */
+  var waypoints=waypointAnalysis(cumPaths,hitIndices,tgtLo,tgtHi,tgtStep);
+
+  setP(90,'Grafikler hazırlanıyor...');await sleep(10);
+
+  /* Genel istatistikler */
+  var cumMedArr=Array.from({length:N_STEPS},function(_,s){
+    return pct(cumPaths.map(function(cp){return cp[s];}),0.5);
+  });
+  var cumLoArr=Array.from({length:N_STEPS},function(_,s){
+    return pct(cumPaths.map(function(cp){return cp[s];}),ALPHA);
+  });
+  var cumHiArr=Array.from({length:N_STEPS},function(_,s){
+    return pct(cumPaths.map(function(cp){return cp[s];}),1-ALPHA);
+  });
+
+  /* Koşullu medyan (sadece hit yolları) */
+  var condMedArr=null,condLoArr=null,condHiArr=null;
+  if(hitCount>=10){
+    condMedArr=Array.from({length:N_STEPS},function(_,s){
+      return pct(hitIndices.map(function(i){return cumPaths[i][s];}),0.5);
+    });
+    condLoArr=Array.from({length:N_STEPS},function(_,s){
+      return pct(hitIndices.map(function(i){return cumPaths[i][s];}),0.10);
+    });
+    condHiArr=Array.from({length:N_STEPS},function(_,s){
+      return pct(hitIndices.map(function(i){return cumPaths[i][s];}),0.90);
+    });
+  }
+
+  setP(96,'Görseller çiziliyor...');await sleep(10);
+
+  renderHeroKpis(hitProb,fptHits,tgtStep,tgtLo,tgtHi,baseCum);
+  renderVerdict(hitProb,regime);
+  renderStepHist(fptHits,tgtStep);
+  renderPathBars(typeCounts,hitCount,N_SIM);
+  renderWaypoints(waypoints,hitProb);
+  renderRegimeInfo(regime,hitProb,horizonRatio);
+  renderCumSummary(baseCum,cumMedArr,cumLoArr,cumHiArr,tgtStep);
+  drawMainChart(cumMedArr,cumLoArr,cumHiArr,condMedArr,tgtLo,tgtHi,tgtStep);
+  if(condMedArr)drawCpathChart(condMedArr,condLoArr,condHiArr,cumMedArr,tgtLo,tgtHi,tgtStep);
+  renderFindings(regime,hitProb,horizonRatio,effSet);
+
+  setP(100,'Tamamlandı','100%');
+  $('tgtBlock').style.display='block';
+  show('sec_chart');
+  if(condMedArr)show('sec_cpath');
+  show('sec_findings');show('sec_findings_lbl');
+  hide('progWrap');
+}
+
+/* ══ RENDER FONKSİYONLARI ══ */
+
+function renderHeroKpis(hitProb,fptHits,tgtStep,tgtLo,tgtHi,baseCum){
+  var medFpt=fptHits.length?pct(fptHits,.5):-1;
+  var earlyFpt=fptHits.length?pct(fptHits,.10):-1;
+  var pctClass=hitProb>=0.5?'ok':hitProb>=0.2?'warn':'err';
+  var midTgt=(tgtLo+tgtHi)/2;
+  $('heroKpis').innerHTML=
+    '<div class="kpi"><div class="kpi-lbl">Hedef Olasılığı</div>'
+    +'<div class="kpi-val '+pctClass+'">'+(hitProb*100).toFixed(0)+'%</div>'
+    +'<div class="kpi-sub">t+'+tgtStep+' penceresinde</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">Medyan Geçiş</div>'
+    +'<div class="kpi-val '+(medFpt>=0?'warn':'err')+'">'+(medFpt>=0?'t+'+(medFpt+1):'—')+'</div>'
+    +'<div class="kpi-sub">'+(medFpt>=0?'%50 ihtimalle bu adımda':'hiç geçmedi')+'</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">En Erken Geçiş</div>'
+    +'<div class="kpi-val ok">'+(earlyFpt>=0?'t+'+(earlyFpt+1):'—')+'</div>'
+    +'<div class="kpi-sub">'+(earlyFpt>=0?'en iyimser %10':'—')+'</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">Hiç Ulaşmaz</div>'
+    +'<div class="kpi-val err">'+((1-hitProb)*100).toFixed(0)+'%</div>'
+    +'<div class="kpi-sub">simülasyonların</div></div>';
+}
+
+function renderVerdict(hitProb,regime){
+  var texts={
+    high:   'Yüksek olasılık — seri bu hedefe büyük ihtimalle ulaşır',
+    med:    'Orta olasılık — mümkün ama garantili değil',
+    low:    'Düşük olasılık — hedefe ulaşmak zor görünüyor',
+    vlow:   'Çok düşük — bu hedef mevcut seri karakteriyle uyumsuz'
+  };
+  var key=hitProb>=0.55?'high':hitProb>=0.25?'med':hitProb>=0.08?'low':'vlow';
+  var cls=hitProb>=0.55?'ok':hitProb>=0.25?'warn':'err';
+  $('verdictText').textContent=texts[key]+' · Rejim: '+regime.label;
+  $('verdictBadge').textContent=(hitProb*100).toFixed(1)+'% ihtimal';
+  $('verdictBadge').className='vd-badge '+cls;
+}
+
+function renderStepHist(fptHits,tgtStep){
+  if(!fptHits.length){
+    $('stepHistWrap').innerHTML='<div style="font-size:10px;color:var(--ink3);padding:10px 0;">Hiçbir simülasyon hedefe ulaşmadı.</div>';
+    $('stepHistNote').textContent='';return;
+  }
+  /* Adımları gruplara böl */
+  var bins=Math.min(12,tgtStep);
+  var binSize=Math.ceil(tgtStep/bins);
+  var counts=Array(bins).fill(0);
+  fptHits.forEach(function(f){var b=Math.min(bins-1,Math.floor(f/binSize));counts[b]++;});
+  var maxC=Math.max.apply(null,counts)||1;
+  var peakBin=counts.indexOf(maxC);
+
+  var bars=counts.map(function(c,i){
+    var h=Math.round((c/maxC)*52);
+    var cls=i===peakBin?'sh-bar hi':'sh-bar';
+    var lbl='t+'+(i*binSize+1)+(binSize>1?'–t+'+Math.min(tgtStep,(i+1)*binSize):'');
+    return '<div class="sh-col"><div class="'+cls+'" style="height:'+h+'px;background:'+(i===peakBin?'var(--red)':'var(--blue)')+'"></div><div class="sh-lbl">t+'+Math.min(tgtStep,(i+1)*binSize)+'</div></div>';
+  }).join('');
+  $('stepHistWrap').innerHTML='<div class="step-hist">'+bars+'</div>';
+  $('stepHistNote').textContent='En yoğun geçiş: t+'+(peakBin*binSize+1)+'–t+'+Math.min(tgtStep,(peakBin+1)*binSize)+' aralığında';
+}
+
+function renderPathBars(typeCounts,hitCount,total){
+  if(!hitCount){$('pathBars').innerHTML='<div style="font-size:10px;color:var(--ink3)">Veri yok</div>';return;}
+  var types=[
+    {k:'A',lbl:'Ani Sıçrama',    col:'var(--red)',   desc:'Bir-iki adımda fırlar'},
+    {k:'B',lbl:'Düzenli Tırmanış',col:'var(--green)', desc:'Adım adım, öngörülebilir'},
+    {k:'C',lbl:'Salınımlı Ulaşan',col:'var(--amber)',  desc:'Gidip gelerek bulur'},
+    {k:'D',lbl:'Karışık/Düşüş',  col:'var(--ink3)',  desc:'Belirsiz yol'}
+  ];
+  var html=types.map(function(t){
+    var cnt=typeCounts[t.k]||0;
+    var pct2=cnt/total;
+    var hitPct=hitCount?cnt/hitCount:0;
+    return '<div class="pb-row">'
+      +'<div class="pb-lbl">'+t.lbl+'</div>'
+      +'<div class="pb-track"><div class="pb-fill" style="width:'+(hitPct*100).toFixed(0)+'%;background:'+t.col+'"></div></div>'
+      +'<div class="pb-pct" style="color:'+t.col+'">'+(hitPct*100).toFixed(0)+'%</div>'
+      +'</div>';
+  }).join('');
+  $('pathBars').innerHTML=html;
+  /* Baskın tip yorumu */
+  var dominant=types.reduce(function(a,b){return (typeCounts[a.k]||0)>(typeCounts[b.k]||0)?a:b;});
+  $('pathNote').textContent='Baskın yol: '+dominant.lbl+' — '+dominant.desc;
+}
+
+function renderWaypoints(waypoints,hitProb){
+  if(!waypoints.length){
+    $('waypointBox').style.display='none';return;
+  }
+  $('waypointBox').style.display='block';
+  $('waypointItems').innerHTML=waypoints.map(function(wp){
+    var dir=wp.condProb>hitProb?'▲':'▼';
+    var col=wp.condProb>hitProb?'var(--green)':'var(--red)';
+    return '<div class="wp-item">'
+      +'<span>t+<strong>'+(wp.step+1)+'</strong> adımında kümülatif değer '
+      +'<strong>'+wp.lo.toFixed(2)+'–'+wp.hi.toFixed(2)+'</strong> arasındaysa</span>'
+      +'<span style="color:'+col+'">'+dir+' '+(wp.condProb*100).toFixed(0)+'% '
+      +'<span style="color:var(--ink3);font-weight:400">(genel: '+(hitProb*100).toFixed(0)+'%, '
+      +(wp.lift>1?'+':'')+(((wp.lift-1)*100).toFixed(0))+'%)</span></span>'
+      +'</div>';
+  }).join('');
+}
+
+function renderRegimeInfo(regime,hitProb,horizonRatio){
+  var confDecay=Math.max(0,1-horizonRatio*0.6);
+  var decayColor=confDecay>0.6?'var(--green)':confDecay>0.3?'var(--amber)':'var(--red)';
+  $('regimeInfo').innerHTML=
+    '<div class="fr"><span class="fr-l">Rejim</span><span class="fr-r"><span class="regime-pill '+regime.cls+'"><span class="regime-dot"></span>'+regime.label+'</span></span></div>'
+    +'<div class="fr"><span class="fr-l">Varyasyon kat.</span><span class="fr-r">'+(regime.cv*100).toFixed(1)+'%</span></div>'
+    +'<div class="fr"><span class="fr-l">Trend gücü</span><span class="fr-r">'+(regime.trend*100).toFixed(3)+'/adım</span></div>'
+    +'<div class="fr"><span class="fr-l">Ufuk / Veri oranı</span><span class="fr-r '+(horizonRatio>0.8?'err':horizonRatio>0.5?'warn':'ok')+'">'+(horizonRatio*100).toFixed(0)+'%</span></div>'
+    +'<div class="fr"><span class="fr-l">Tahmin güveni</span><span class="fr-r" style="color:'+decayColor+'">'+(confDecay*100).toFixed(0)+'% (uzaklıkla azalır)</span></div>';
+}
+
+function renderCumSummary(baseCum,cumMed,cumLo,cumHi,tgtStep){
+  var last=cumMed[cumMed.length-1];
+  var lo=cumLo[cumLo.length-1];
+  var hi=cumHi[cumHi.length-1];
+  var mid=(lo+hi)/2;
+  $('cumSummary').innerHTML=
+    '<div class="fr"><span class="fr-l">Başlangıç kümülatif</span><span class="fr-r">'+baseCum.toFixed(3)+'</span></div>'
+    +'<div class="fr"><span class="fr-l">t+'+tgtStep+' medyan</span><span class="fr-r ok">'+last.toFixed(3)+'</span></div>'
+    +'<div class="fr"><span class="fr-l">t+'+tgtStep+' alt %90</span><span class="fr-r warn">'+lo.toFixed(3)+'</span></div>'
+    +'<div class="fr"><span class="fr-l">t+'+tgtStep+' üst %90</span><span class="fr-r warn">'+hi.toFixed(3)+'</span></div>'
+    +'<div class="fr"><span class="fr-l">Bant genişliği</span><span class="fr-r">'+(hi-lo).toFixed(3)+'</span></div>'
+    +'<div class="fr"><span class="fr-l">Baz → medyan değişim</span><span class="fr-r '+(last>baseCum?'ok':'err')+'">'+(last-baseCum>=0?'+':'')+(last-baseCum).toFixed(3)+'</span></div>';
+}
+
+/* ══ GRAFİKLER ══ */
+
+function drawMainChart(cumMed,cumLo,cumHi,condMed,tgtLo,tgtHi,tgtStep){
+  if(_mainChart){_mainChart.destroy();_mainChart=null;}
+
+  var oLen=_data.length;
+  /* Gözlem kümülatifi */
+  var cumObs=[],acc=0;
+  _data.forEach(function(v){acc+=v;cumObs.push(acc);});
+
+  var labels=Array.from({length:oLen+tgtStep},function(_,i){return i;});
+  var obsDs=[].concat(cumObs,Array(tgtStep).fill(null));
+  var medDs=[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumMed);
+  var loDs= [].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumLo);
+  var hiDs= [].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumHi);
+
+  /* Hedef bant — yatay bantlar */
+  var tgtLoDs=Array(oLen+tgtStep).fill(null);
+  var tgtHiDs=Array(oLen+tgtStep).fill(null);
+  for(var i=oLen;i<oLen+tgtStep;i++){tgtLoDs[i]=tgtLo;tgtHiDs[i]=tgtHi;}
+
+  var datasets=[
+    {label:'Hedef Bant Üst',data:tgtHiDs,borderColor:'rgba(139,94,0,.5)',borderWidth:1,borderDash:[4,3],
+     backgroundColor:'rgba(139,94,0,.07)',pointRadius:0,fill:'-1',tension:0},
+    {label:'Hedef Bant Alt',data:tgtLoDs,borderColor:'rgba(139,94,0,.5)',borderWidth:1,borderDash:[4,3],
+     backgroundColor:'rgba(139,94,0,.07)',pointRadius:0,fill:false,tension:0},
+    {label:'%90 Üst',data:hiDs,borderColor:'transparent',backgroundColor:'rgba(26,74,110,.08)',
+     pointRadius:0,fill:'+1',tension:.3},
+    {label:'%90 Alt',data:loDs,borderColor:'rgba(26,74,110,.2)',borderWidth:1,borderDash:[3,2],
+     backgroundColor:'rgba(26,74,110,.08)',pointRadius:0,fill:false,tension:.3},
+    {label:'Medyan',data:medDs,borderColor:'#1a4a6e',borderWidth:2,borderDash:[6,3],
+     pointRadius:0,fill:false,tension:.3},
+    {label:'Gözlem',data:obsDs,borderColor:'#2c1f0e',borderWidth:2,
+     pointRadius:2,pointBackgroundColor:'#2c1f0e',fill:false,tension:.2}
+  ];
+
+  if(condMed){
+    var condDs=[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],condMed);
+    datasets.push({label:'Koşullu Medyan',data:condDs,borderColor:'#1a5c30',borderWidth:2,
+      pointRadius:0,fill:false,tension:.3});
+  }
+
+  $('chartLeg').innerHTML=
+    '<div class="leg"><div class="ll" style="background:#2c1f0e"></div><span>Gözlem</span></div>'
+    +'<div class="leg"><div class="ll" style="background:#1a4a6e;border-top:2px dashed #1a4a6e;height:0;width:20px"></div><span>Medyan tahmin</span></div>'
+    +'<div class="leg"><div class="ll" style="height:8px;background:rgba(26,74,110,.12);border:1px solid rgba(26,74,110,.3)"></div><span>%90 bant</span></div>'
+    +'<div class="leg"><div class="ll" style="height:8px;background:rgba(139,94,0,.1);border:1px dashed rgba(139,94,0,.4)"></div><span>Hedef bölge</span></div>'
+    +(condMed?'<div class="leg"><div class="ll" style="background:#1a5c30"></div><span>Hedefe ulaşan yollar (koşullu)</span></div>':'')
+    +'<span style="font-size:8px;color:var(--ink3);margin-left:auto;">kaydır · yakınlaştır · ESC</span>';
+
+  _mainChart=new Chart($('mainChart').getContext('2d'),{type:'line',data:{labels:labels,datasets:datasets},
+    options:{animation:false,responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false},
+        zoom:{pan:{enabled:true,mode:'x'},zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}}},
+      scales:{
+        x:{grid:{color:'rgba(0,0,0,0.03)'},ticks:{color:'#8c7355',font:{family:'Space Mono',size:8},maxTicksLimit:16}},
+        y:{grid:{color:'rgba(0,0,0,0.03)'},ticks:{color:'#8c7355',font:{family:'Space Mono',size:8},maxTicksLimit:8}}
+      },elements:{point:{radius:0}}}});
+
+  $('chartNote').textContent=
+    'Hedef bölge: '+tgtLo.toFixed(2)+' – '+tgtHi.toFixed(2)+
+    ' · Bant, uzaklaştıkça doğal olarak genişler — bu belirsizliğin dürüst göstergesidir.';
+}
+
+function drawCpathChart(condMed,condLo,condHi,allMed,tgtLo,tgtHi,tgtStep){
+  if(_cpathChart){_cpathChart.destroy();_cpathChart=null;}
+  var oLen=_data.length;
+  var cumObs=[],acc=0;
+  _data.forEach(function(v){acc+=v;cumObs.push(acc);});
+  var labels=Array.from({length:oLen+tgtStep},function(_,i){return i;});
+  var conn=[cumObs[oLen-1]];
+  var obsDs=[].concat(cumObs,Array(tgtStep).fill(null));
+  var cHiDs=[].concat(Array(oLen-1).fill(null),conn,condHi);
+  var cLoDs=[].concat(Array(oLen-1).fill(null),conn,condLo);
+  var cMedDs=[].concat(Array(oLen-1).fill(null),conn,condMed);
+  var aMedDs=[].concat(Array(oLen-1).fill(null),conn,allMed);
+  var tLoDs=Array(oLen+tgtStep).fill(null);
+  var tHiDs=Array(oLen+tgtStep).fill(null);
+  for(var i=oLen;i<oLen+tgtStep;i++){tLoDs[i]=tgtLo;tHiDs[i]=tgtHi;}
+
+  _cpathChart=new Chart($('cpathChart').getContext('2d'),{type:'line',data:{labels:labels,datasets:[
+    {label:'hb',data:tHiDs,borderColor:'rgba(139,94,0,.4)',borderWidth:1,borderDash:[4,3],
+     backgroundColor:'rgba(139,94,0,.06)',pointRadius:0,fill:'-1',tension:0},
+    {label:'hl',data:tLoDs,borderColor:'rgba(139,94,0,.4)',borderWidth:1,borderDash:[4,3],
+     backgroundColor:'rgba(139,94,0,.06)',pointRadius:0,fill:false,tension:0},
+    {label:'cHi',data:cHiDs,borderColor:'transparent',backgroundColor:'rgba(26,92,48,.15)',
+     pointRadius:0,fill:'+1',tension:.3},
+    {label:'cLo',data:cLoDs,borderColor:'rgba(26,92,48,.3)',borderWidth:1,borderDash:[3,2],
+     backgroundColor:'rgba(26,92,48,.15)',pointRadius:0,fill:false,tension:.3},
+    {label:'Genel Medyan',data:aMedDs,borderColor:'rgba(92,62,40,.35)',borderWidth:1.5,borderDash:[5,4],
+     pointRadius:0,fill:false,tension:.3},
+    {label:'Koşullu Medyan',data:cMedDs,borderColor:'#1a5c30',borderWidth:2.5,
+     pointRadius:0,fill:false,tension:.3},
+    {label:'Gözlem',data:obsDs,borderColor:'#2c1f0e',borderWidth:2,
+     pointRadius:2,pointBackgroundColor:'#2c1f0e',fill:false,tension:.2}
+  ]},options:{animation:false,responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false},
+      zoom:{pan:{enabled:true,mode:'x'},zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}}},
+    scales:{
+      x:{grid:{color:'rgba(0,0,0,0.03)'},ticks:{color:'#8c7355',font:{family:'Space Mono',size:8},maxTicksLimit:16}},
+      y:{grid:{color:'rgba(0,0,0,0.03)'},ticks:{color:'#8c7355',font:{family:'Space Mono',size:8},maxTicksLimit:8}}
+    },elements:{point:{radius:0}}}});
+}
+
+function renderFindings(regime,hitProb,horizonRatio,effSet){
+  var m=mean(_data),s=std(_data),a1=acf1(_data),tr=linTrend(_data);
+  $('statsContent').innerHTML=
+    '<div class="fr"><span class="fr-l">Veri uzunluğu</span><span class="fr-r">'+_data.length+'</span></div>'
+    +'<div class="fr"><span class="fr-l">Küme boyutu</span><span class="fr-r">'+effSet.length+'</span></div>'
+    +'<div class="fr"><span class="fr-l">Ortalama / Std</span><span class="fr-r">'+m.toFixed(3)+' / '+s.toFixed(3)+'</span></div>'
+    +'<div class="fr"><span class="fr-l">ACF(1)</span><span class="fr-r '+(Math.abs(a1)>0.3?'ok':'warn')+'">'+a1.toFixed(4)+'</span></div>'
+    +'<div class="fr"><span class="fr-l">Trend</span><span class="fr-r '+(Math.abs(tr)<0.001?'':'tr>0?\'ok\':\'err\'')+'">'+(Math.abs(tr)<0.001?'Sabit':tr>0?'↑ Yükseliyor':'↓ Düşüyor')+'</span></div>'
+    +'<div class="fr"><span class="fr-l">Entropi</span><span class="fr-r">'+entropy(_data,effSet).toFixed(3)+' bit</span></div>';
+  $('modelContent').innerHTML=
+    '<div class="fr"><span class="fr-l">Simülasyon sayısı</span><span class="fr-r">'+N_SIM.toLocaleString()+'</span></div>'
+    +'<div class="fr"><span class="fr-l">Ensemble</span><span class="fr-r">NB · DTW · CRF · NHiTS</span></div>'
+    +'<div class="fr"><span class="fr-l">Güven bandı</span><span class="fr-r">%90</span></div>'
+    +'<div class="fr"><span class="fr-l">Ufuk / Veri</span><span class="fr-r '+(horizonRatio>0.8?'err':horizonRatio>0.5?'warn':'ok')+'">'+(horizonRatio*100).toFixed(0)+'%'+(horizonRatio>0.8?' ⚠ Spekülatif':'')+'</span></div>'
+    +'<div class="fr"><span class="fr-l">Hedef olasılığı</span><span class="fr-r '+(hitProb>=0.4?'ok':hitProb>=0.15?'warn':'err')+'">'+(hitProb*100).toFixed(1)+'%</span></div>';
+}
+
+/* ══ CHART KONTROLLERI ══ */
+function czi(){if(_mainChart)_mainChart.zoom(1.35);}
+function czo(){if(_mainChart)_mainChart.zoom(0.75);}
+function czr(){if(_mainChart)_mainChart.resetZoom();}
+function cpzi(){if(_cpathChart)_cpathChart.zoom(1.35);}
+function cpzo(){if(_cpathChart)_cpathChart.zoom(0.75);}
+function cpzr(){if(_cpathChart)_cpathChart.resetZoom();}
+function toggleFS(){
+  var c=$('sec_chart'),fs=c.classList.toggle('fullscreen');
+  $('fsbtn').textContent=fs?'×':'□';
+  setTimeout(function(){if(_mainChart)_mainChart.resize();},50);
+}
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    var c=$('sec_chart');
+    if(c&&c.classList.contains('fullscreen')){
+      c.classList.remove('fullscreen');$('fsbtn').textContent='□';
+      setTimeout(function(){if(_mainChart)_mainChart.resize();},50);
+    }
+  }
+});
+
+/* ══ ÖRNEK ══ */
+function loadExample(){
+  $('seriesInput').value='3,3,3.2,3.2,3.4,3.4,3.4,3.2,3.2,3,3,3,3.2,3.4,3.6,3.6,3.4,3.4,3.2,3.2,3,3,3.2,3.4,3.4,3.2,3.2,3,3,3.2,3.4,3.4,3.2,3,3,3.2,3.4,3.6,3.4,3.2';
+  onSeriesInput();
+  $('tgtStep').value='30';
+  /* Hedef: kümülatif toplam yaklaşık 115–130 arasında */
+  var d=parseSeries();
+  var cum=d.reduce(function(a,b){return a+b;},0);
+  $('tgtLo').value=(cum*1.05).toFixed(1);
+  $('tgtHi').value=(cum*1.15).toFixed(1);
+}
+</script>
+</body>
+</html>
