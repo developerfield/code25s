@@ -682,41 +682,100 @@ textarea::placeholder { color: var(--text3); }
 </div>
 
 <!-- HEDEF OLASILIK PANELİ -->
-<div class="panel green" data-lbl="// hedef olasılık hesabı">
+<div class="panel green" data-lbl="// hedef olasilik hesabi">
   <div class="corner-dec tl"></div><div class="corner-dec tr"></div>
   <div style="font-size:10px;color:var(--text3);margin-bottom:16px;letter-spacing:1px;">
-    K. ADIMDA KÜMÜLATİF TOPLAMIN [A1, A2] BANDINDAN GEÇMESİ OLASILIGI
+    K. ADIMDA KUMULATIF TOPLAMIN [A1, A2] BANDINDAN GECMESI OLASILIGI
   </div>
-  <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;">
+
+  <!-- Ana girdiler -->
+  <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:18px;">
     <div class="input-group">
-      <div class="input-label">K — Hedef Adım</div>
+      <div class="input-label">K &mdash; Hedef Adim</div>
       <input id="targetStep" type="number" min="1" value="300" class="mono-input num">
     </div>
     <div class="input-group">
-      <div class="input-label">A1 — Alt Sınır</div>
+      <div class="input-label">A1 &mdash; Alt Sinir</div>
       <input id="targetLow" type="number" value="-20" class="mono-input num">
     </div>
     <div class="input-group">
-      <div class="input-label">A2 — Üst Sınır</div>
+      <div class="input-label">A2 &mdash; Ust Sinir</div>
       <input id="targetHigh" type="number" value="0" class="mono-input num">
     </div>
     <button class="btn btn-green" style="margin-bottom:1px;" onclick="runTargetAnalysis()">&#9654;&nbsp; HESAPLA</button>
   </div>
 
+  <!-- MUDAHALE & BELiRSiZLiK ALANI -->
+  <div style="border:1px solid rgba(0,245,255,0.12);padding:16px 18px;margin-bottom:18px;position:relative;">
+    <div style="position:absolute;top:-9px;left:14px;background:var(--panel);padding:0 10px;
+      font-size:9px;letter-spacing:2px;color:var(--cyan2);font-family:'Orbitron',monospace;">
+      // MUDAHALE &amp; BELiRSiZLiK
+    </div>
+
+    <!-- Trend kirilimi toggle -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" id="chkIntervention"
+          style="width:15px;height:15px;accent-color:var(--cyan);cursor:pointer;">
+        <span style="font-size:10px;color:var(--text2);letter-spacing:1px;">TREND KIRILIMI / MUDAHALE</span>
+      </label>
+      <span style="font-size:9px;color:var(--text3);">son noktadan hedefe beklenti dogrusu + baskı</span>
+    </div>
+
+    <!-- Mudahale kontrolleri -->
+    <div id="intControls" style="display:none;margin-bottom:14px;">
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;">
+        <div class="input-group">
+          <div class="input-label">Yon</div>
+          <select id="intDir" class="mono-input" style="width:130px;cursor:pointer;background:var(--bg2);">
+            <option value="auto">OTOMATIK</option>
+            <option value="up">&#9650; YUKARI</option>
+            <option value="down">&#9660; ASAGI</option>
+            <option value="flat">&#9654; DUZLUK</option>
+          </select>
+        </div>
+        <div class="input-group" style="flex:1;min-width:180px;">
+          <div class="input-label">Baski Gucu &nbsp;<span id="lblStrength" style="color:var(--cyan);">50%</span></div>
+          <input type="range" id="intStrength" min="0" max="100" value="50"
+            style="width:100%;accent-color:var(--cyan);cursor:pointer;">
+        </div>
+      </div>
+      <div id="slopeInfo" style="font-size:10px;color:var(--text3);padding:7px 10px;
+        background:var(--bg2);border:1px solid var(--border);font-family:'Share Tech Mono',monospace;">
+        K, A1, A2 degerlerini girin...
+      </div>
+    </div>
+
+    <!-- Belirsizlik -->
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" id="chkUncert" checked
+          style="width:15px;height:15px;accent-color:var(--amber);cursor:pointer;">
+        <span style="font-size:10px;color:var(--text2);letter-spacing:1px;">BELiRSiZLiK GENiSLEMESi</span>
+      </label>
+      <div class="input-group" style="flex:1;min-width:180px;">
+        <div class="input-label">Genisleme Hizi &nbsp;<span id="lblUncert" style="color:var(--amber);">30%</span></div>
+        <input type="range" id="uncertRate" min="5" max="100" value="30"
+          style="width:100%;accent-color:var(--amber);cursor:pointer;">
+      </div>
+      <span style="font-size:9px;color:var(--text3);">Uzak adimlarda band genisler, %0 engellenir</span>
+    </div>
+  </div>
+
   <!-- Progress -->
   <div id="targetProgress" style="display:none;margin-bottom:14px;">
-    <div class="prog-lbl" id="targetProgLbl">Simülasyon çalışıyor...</div>
+    <div class="prog-lbl" id="targetProgLbl">Simulasyon calisiyor...</div>
     <div class="prog-outer"><div id="targetProgBar" class="prog-inner" style="width:0%"></div></div>
     <div class="prog-txt" id="targetProgTxt">0%</div>
   </div>
 
-  <!-- Sonuç -->
+  <!-- Sonuc -->
   <div id="targetResult" style="display:none;"></div>
 
   <!-- Grafik -->
   <div id="targetChartWrap" style="display:none;margin-top:18px;">
     <div class="chart-top" style="margin-bottom:8px;">
-      <div class="chart-ttl">KÜMÜLATİF SİMÜLASYON // HEDEF KESİŞİMİ</div>
+      <div class="chart-ttl">KUMULATIF SIMULASYON // HEDEF KESiSiMi</div>
     </div>
     <div id="targetLegend" class="leg-row"></div>
     <div class="cw" style="height:380px;"><canvas id="targetChart"></canvas></div>
@@ -1334,242 +1393,333 @@ function setSimCount(n){
   if(inp)inp.value=n;
 }
 
-/* ════ HEDEF OLASILIK ANALİZİ ════ */
+/* ════ HEDEF OLASILIK - EVENT LiSTENERS ════ */
+document.addEventListener('DOMContentLoaded', function(){
 
-/* ════ MUDAHALE YARDIMCıLARI ════ */
-function toggleIntervention(){
-  var on=document.getElementById('useIntervention').checked;
-  document.getElementById('interventionControls').style.display=on?'block':'none';
-  if(on)updateSlopePreview();
-}
-function updateSlopePreview(){
-  var k=parseInt(document.getElementById('targetStep').value);
-  var a1=parseFloat(document.getElementById('targetLow').value);
-  var a2=parseFloat(document.getElementById('targetHigh').value);
-  var data=parseSeries();
-  if(!data.length||isNaN(k)||isNaN(a1)||isNaN(a2)){
-    document.getElementById('slopePreview').textContent='Egim hesabi icin K, A1, A2 ve veri gerekli';return;
+  // Mudahale checkbox
+  document.getElementById('chkIntervention').addEventListener('change', function(){
+    document.getElementById('intControls').style.display = this.checked ? 'block' : 'none';
+    if(this.checked) refreshSlopeInfo();
+  });
+
+  // Strength slider label
+  document.getElementById('intStrength').addEventListener('input', function(){
+    document.getElementById('lblStrength').textContent = this.value + '%';
+    refreshSlopeInfo();
+  });
+
+  // Direction change
+  document.getElementById('intDir').addEventListener('change', refreshSlopeInfo);
+
+  // Uncertainty slider label
+  document.getElementById('uncertRate').addEventListener('input', function(){
+    document.getElementById('lblUncert').textContent = this.value + '%';
+  });
+
+  // Live slope info when K/A1/A2 change
+  ['targetStep','targetLow','targetHigh'].forEach(function(id){
+    document.getElementById(id).addEventListener('input', refreshSlopeInfo);
+  });
+});
+
+function refreshSlopeInfo(){
+  if(!document.getElementById('chkIntervention').checked) return;
+  var k   = parseInt(document.getElementById('targetStep').value);
+  var a1  = parseFloat(document.getElementById('targetLow').value);
+  var a2  = parseFloat(document.getElementById('targetHigh').value);
+  var data = parseSeries();
+  var el = document.getElementById('slopeInfo');
+  if(!data.length || isNaN(k) || isNaN(a1) || isNaN(a2) || k < 1){
+    el.textContent = 'K, A1, A2 degerlerini girin...'; return;
   }
-  var baseCum=0;for(var i=0;i<data.length;i++)baseCum+=data[i];
-  var targetMid=(a1+a2)/2;
-  var rawSlope=(targetMid-baseCum)/k;
-  var dir=document.getElementById('interventionDir').value;
-  var str=parseInt(document.getElementById('interventionStrength').value)/100;
-  var eff=calcEffSlope(rawSlope,dir,str);
-  var sign=eff>=0?'+':'';
-  document.getElementById('slopePreview').innerHTML=
-    'Ham egim: <span style="color:var(--cyan)">'+sign+rawSlope.toFixed(4)+'</span>/adim &nbsp;|&nbsp; '
-    +'Uygulanan: <span style="color:var(--green)">'+(eff>=0?'+':'')+eff.toFixed(4)+'</span>/adim &nbsp;|&nbsp; '
-    +'Guc: <span style="color:var(--amber)">'+Math.round(str*100)+'%</span> &nbsp;|&nbsp; '
-    +'Son kum→hedef orta: <span style="color:var(--text)">'+baseCum.toFixed(1)+' → '+targetMid.toFixed(1)+'</span>';
-}
-function calcEffSlope(rawSlope,dir,strength){
-  if(dir==='up')   rawSlope=Math.abs(rawSlope)||0.1;
-  if(dir==='down') rawSlope=-(Math.abs(rawSlope)||0.1);
-  if(dir==='flat') rawSlope=0;
-  return rawSlope*strength;
+  var baseCum = 0;
+  for(var i = 0; i < data.length; i++) baseCum += data[i];
+  var mid      = (a1 + a2) / 2;
+  var rawSlope = (mid - baseCum) / k;
+  var dir      = document.getElementById('intDir').value;
+  var strength = parseInt(document.getElementById('intStrength').value) / 100;
+  var eff      = computeSlope(rawSlope, dir, strength);
+  var s = function(v){ return (v >= 0 ? '+' : '') + v.toFixed(4); };
+  el.innerHTML =
+    'Ham egim: <span style="color:var(--cyan)">' + s(rawSlope) + '</span>/adim &nbsp;|&nbsp; ' +
+    'Uygulanan: <span style="color:var(--green)">' + s(eff) + '</span>/adim &nbsp;|&nbsp; ' +
+    'Guc: <span style="color:var(--amber)">' + Math.round(strength * 100) + '%</span> &nbsp;|&nbsp; ' +
+    'Son kum &rarr; hedef orta: <span style="color:var(--text)">' + baseCum.toFixed(1) + ' &rarr; ' + mid.toFixed(1) + '</span>';
 }
 
+function computeSlope(raw, dir, strength){
+  if(dir === 'up')   raw =  Math.abs(raw) || 0.1;
+  if(dir === 'down') raw = -(Math.abs(raw) || 0.1);
+  if(dir === 'flat') raw = 0;
+  return raw * strength;
+}
+
+/* ════ HEDEF OLASILIK ANALiZi ════ */
 async function runTargetAnalysis(){
-  var data=parseSeries();
-  if(data.length<6){alert('Önce en az 6 veri noktası girin.');return;}
-  var k=parseInt($('targetStep').value);
-  var a1=parseFloat($('targetLow').value);
-  var a2=parseFloat($('targetHigh').value);
-  if(isNaN(k)||k<1){alert('Geçerli K adım sayısı girin.');return;}
-  if(isNaN(a1)||isNaN(a2)){alert('Geçerli A1 ve A2 değerleri girin.');return;}
-  if(a1>a2){var tmp=a1;a1=a2;a2=tmp;}
-  var effSet=_set.length?_set.slice():buildAutoSet(data);
-  effSet.sort(function(a,b){return a-b;});
-  var T=buildTrans(data,effSet);
-  var baseCum=0;
-  for(var i=0;i<data.length;i++)baseCum+=data[i];
-  var useInterv=document.getElementById('useIntervention').checked;
-  var effSlope=0;
-  var interventionLabel='';
+  var data = parseSeries();
+  if(data.length < 6){ alert('Once en az 6 veri noktasi girin.'); return; }
+
+  var k  = parseInt(document.getElementById('targetStep').value);
+  var a1 = parseFloat(document.getElementById('targetLow').value);
+  var a2 = parseFloat(document.getElementById('targetHigh').value);
+
+  if(isNaN(k) || k < 1){ alert('Gecerli K adim sayisi girin.'); return; }
+  if(isNaN(a1) || isNaN(a2)){ alert('Gecerli A1 ve A2 degerleri girin.'); return; }
+  if(a1 > a2){ var tmp = a1; a1 = a2; a2 = tmp; }
+
+  var effSet = _set.length ? _set.slice() : buildAutoSet(data);
+  effSet.sort(function(a,b){ return a - b; });
+  var T = buildTrans(data, effSet);
+
+  var baseCum = 0;
+  for(var i = 0; i < data.length; i++) baseCum += data[i];
+
+  // Mudahale parametreleri
+  var useInterv  = document.getElementById('chkIntervention').checked;
+  var effSlope   = 0;
+  var intLabel   = '';
   if(useInterv){
-    var rawSlope=((a1+a2)/2-baseCum)/k;
-    var dir=document.getElementById('interventionDir').value;
-    var strength=parseInt(document.getElementById('interventionStrength').value)/100;
-    effSlope=calcEffSlope(rawSlope,dir,strength);
-    interventionLabel='Egim: '+(effSlope>=0?'+':'')+effSlope.toFixed(4)+'/adim · Guc: '+Math.round(strength*100)+'%';
+    var rawSlope = ((a1 + a2) / 2 - baseCum) / k;
+    var dir      = document.getElementById('intDir').value;
+    var strength = parseInt(document.getElementById('intStrength').value) / 100;
+    effSlope     = computeSlope(rawSlope, dir, strength);
+    intLabel     = 'Egim ' + (effSlope >= 0 ? '+' : '') + effSlope.toFixed(4) + '/adim, Guc ' + Math.round(strength*100) + '%';
   }
-  var useUncert=document.getElementById('useUncertainty').checked;
-  var uncertRate=parseInt(document.getElementById('uncertaintyRate').value)/100;
-  var dataStd=std(data)||1;
-  var setRange=effSet.length>1?(effSet[effSet.length-1]-effSet[0]):dataStd*2;
-  var noiseScale=Math.max(dataStd,setRange*0.15);
-  $('targetProgress').style.display='block';
-  $('targetResult').style.display='none';
-  $('targetChartWrap').style.display='none';
-  var simN=N_SIM,bSz=200,hits=0;
-  var SAMPLE_PATHS=Math.min(simN,400);
-  var sampleInterval=Math.max(1,Math.floor(simN/SAMPLE_PATHS));
-  var storedPaths=[];
-  for(var i=0;i<simN;i+=bSz){
-    var nb=Math.min(bSz,simN-i);
-    for(var b=0;b<nb;b++){
-      var rawPath=ensemblePath(data,k,effSet,T);
-      var cum=baseCum;
-      var cumPath=[];
-      for(var s=0;s<k;s++){
-        var step=rawPath[s];
-        if(useInterv){step+=effSlope;step=snap(step,effSet);}
-        if(useUncert){
-          var noiseAmp=noiseScale*uncertRate*Math.sqrt((s+1)/k);
-          step=snap(step+grnd()*noiseAmp,effSet);
+
+  // Belirsizlik parametreleri
+  var useUncert   = document.getElementById('chkUncert').checked;
+  var uncertStrength = parseInt(document.getElementById('uncertRate').value) / 100;
+  var dataStd     = std(data) || 1;
+  var setRange    = effSet.length > 1 ? (effSet[effSet.length-1] - effSet[0]) : dataStd * 2;
+  var noiseScale  = Math.max(dataStd, setRange * 0.15);
+
+  // UI
+  document.getElementById('targetProgress').style.display = 'block';
+  document.getElementById('targetResult').style.display   = 'none';
+  document.getElementById('targetChartWrap').style.display = 'none';
+
+  var simN = N_SIM;
+  var bSz  = 200;
+  var hits = 0;
+  var sampleEvery  = Math.max(1, Math.floor(simN / Math.min(simN, 400)));
+  var storedPaths  = [];
+
+  for(var i = 0; i < simN; i += bSz){
+    var nb = Math.min(bSz, simN - i);
+    for(var b = 0; b < nb; b++){
+      var rawPath = ensemblePath(data, k, effSet, T);
+      var cum     = baseCum;
+      var cumPath = [];
+
+      for(var s = 0; s < k; s++){
+        var step = rawPath[s];
+
+        // 1. Mudahale: egim basksı (snap'ten once)
+        if(useInterv){
+          step = snap(step + effSlope, effSet);
         }
-        cum+=step;cumPath.push(cum);
+
+        // 2. Belirsizlik genislemesi: gürültu artarak büyür
+        if(useUncert){
+          var amp = noiseScale * uncertStrength * Math.sqrt((s + 1) / k);
+          step = snap(step + grnd() * amp, effSet);
+        }
+
+        cum += step;
+        cumPath.push(cum);
       }
-      var finalCum=cumPath[k-1];
-      if(finalCum>=a1&&finalCum<=a2)hits++;
-      if((i+b)%sampleInterval===0)storedPaths.push({path:cumPath,hit:(finalCum>=a1&&finalCum<=a2)});
+
+      var finalCum = cumPath[k - 1];
+      if(finalCum >= a1 && finalCum <= a2) hits++;
+      if((i + b) % sampleEvery === 0)
+        storedPaths.push({ path: cumPath, hit: (finalCum >= a1 && finalCum <= a2) });
     }
-    var pp=Math.round(((i+bSz)/simN)*100);
-    $('targetProgBar').style.width=Math.min(100,pp)+'%';
-    $('targetProgLbl').textContent='SIMULASYON: '+Math.min(i+bSz,simN).toLocaleString()+' / '+simN.toLocaleString();
-    $('targetProgTxt').textContent=Math.min(100,pp)+'%';
+
+    var pp = Math.min(100, Math.round(((i + bSz) / simN) * 100));
+    document.getElementById('targetProgBar').style.width = pp + '%';
+    document.getElementById('targetProgLbl').textContent =
+      'SIMULASYON: ' + Math.min(i + bSz, simN).toLocaleString() + ' / ' + simN.toLocaleString();
+    document.getElementById('targetProgTxt').textContent = pp + '%';
     await sleep(0);
   }
-  $('targetProgress').style.display='none';
-  var prob=hits/simN;
-  var pctStr=(prob*100).toFixed(2);
-  var probColorHex=prob>=0.5?'#00ff88':prob>=0.2?'#ffb800':'#ff2d55';
-  var modeFlags='';
-  if(useInterv)modeFlags+='<span style="color:var(--cyan);margin-right:12px;">► MUDAHALE AKTiF · '+interventionLabel+'</span>';
-  if(useUncert)modeFlags+='<span style="color:var(--amber);">◆ BELiRSiZLiK GENiSLEMESi · '+Math.round(uncertRate*100)+'%</span>';
-  if(!modeFlags)modeFlags='<span style="color:var(--text3);">Ham ensemble (mudahale yok)</span>';
-  var resEl=$('targetResult');
-  resEl.style.display='block';
-  resEl.innerHTML=
-    '<div class="target-result-box" style="border-color:'+probColorHex+';">'
-    +'<div style="position:absolute;top:0;left:0;width:3px;height:100%;background:'+probColorHex+';box-shadow:0 0 14px '+probColorHex+';"></div>'
-    +'<div style="font-size:9px;letter-spacing:3px;color:var(--text3);margin-bottom:8px;font-family:'Orbitron',monospace;">HESAP SONUCU</div>'
-    +'<div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;">'
-    +'<div class="target-big-pct" style="color:'+probColorHex+';text-shadow:0 0 20px '+probColorHex+',0 0 40px '+probColorHex+';">'+pctStr+'%</div>'
-    +'<div style="font-size:11px;color:var(--text2);line-height:1.8;font-family:'Share Tech Mono',monospace;">'
-    +'veri uzunlugu <span style="color:var(--cyan)">'+data.length+'</span>'den itibaren<br>'
-    +'<span style="color:'+probColorHex+'">'+k+'</span>. adimda kumulatif<br>'
-    +'[<span style="color:var(--text)">'+a1+'</span>, <span style="color:var(--text)">'+a2+'</span>] bandina girme olasiligi'
-    +'</div></div>'
-    +'<div style="margin-top:10px;padding:8px 10px;background:var(--bg3);font-size:10px;font-family:'Share Tech Mono',monospace;">'+modeFlags+'</div>'
-    +'<div class="target-detail-grid">'
-    +'<div class="td-item"><div class="td-key">Basarili Yol</div><div class="td-val" style="color:var(--green)">'+hits.toLocaleString()+' / '+simN.toLocaleString()+'</div></div>'
-    +'<div class="td-item"><div class="td-key">Mevcut Kumulatif</div><div class="td-val" style="color:var(--cyan)">'+baseCum.toFixed(2)+'</div></div>'
-    +'<div class="td-item"><div class="td-key">Hedef Adim</div><div class="td-val">'+k+'</div></div>'
-    +'<div class="td-item"><div class="td-key">Bant [A1,A2]</div><div class="td-val">['+a1+', '+a2+']</div></div>'
-    +'<div class="td-item"><div class="td-key">Simulasyon</div><div class="td-val">'+simN.toLocaleString()+'</div></div>'
-    +'<div class="td-item"><div class="td-key">Kume Boyutu</div><div class="td-val">'+effSet.length+' deger</div></div>'
-    +'</div></div>';
-  drawTargetChart(data,baseCum,storedPaths,k,a1,a2,hits,simN,probColorHex,useInterv?effSlope:null);
+
+  document.getElementById('targetProgress').style.display = 'none';
+
+  var prob        = hits / simN;
+  var pctStr      = (prob * 100).toFixed(2);
+  var hex         = prob >= 0.5 ? '#00ff88' : prob >= 0.2 ? '#ffb800' : '#ff2d55';
+
+  // Mod etiketleri
+  var flags = '';
+  if(useInterv) flags += '<span style="color:var(--cyan);margin-right:14px;">&#9654; MUDAHALE: ' + intLabel + '</span>';
+  if(useUncert) flags += '<span style="color:var(--amber);">&#9670; BELiRSiZLiK: ' + Math.round(uncertStrength*100) + '%</span>';
+  if(!flags)    flags  = '<span style="color:var(--text3);">Ham ensemble — mudahale yok</span>';
+
+  document.getElementById('targetResult').style.display = 'block';
+  document.getElementById('targetResult').innerHTML =
+    '<div class="target-result-box" style="border-color:' + hex + ';">' +
+    '<div style="position:absolute;top:0;left:0;width:3px;height:100%;background:' + hex + ';box-shadow:0 0 14px ' + hex + ';"></div>' +
+    '<div style="font-size:9px;letter-spacing:3px;color:var(--text3);margin-bottom:8px;font-family:\'Orbitron\',monospace;">HESAP SONUCU</div>' +
+    '<div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;">' +
+    '<div class="target-big-pct" style="color:' + hex + ';text-shadow:0 0 20px ' + hex + ',0 0 40px ' + hex + ';">' + pctStr + '%</div>' +
+    '<div style="font-size:11px;color:var(--text2);line-height:1.9;font-family:\'Share Tech Mono\',monospace;">' +
+    'veri uzunlugu <span style="color:var(--cyan)">' + data.length + '</span>\'den itibaren<br>' +
+    '<span style="color:' + hex + '">' + k + '</span>. adimda kumulatif<br>' +
+    '[<span style="color:var(--text)">' + a1 + '</span>, <span style="color:var(--text)">' + a2 + '</span>] bandina girme olasiligi' +
+    '</div></div>' +
+    '<div style="margin-top:10px;padding:8px 10px;background:var(--bg3);font-size:10px;font-family:\'Share Tech Mono\',monospace;">' + flags + '</div>' +
+    '<div class="target-detail-grid">' +
+    '<div class="td-item"><div class="td-key">Basarili Yol</div><div class="td-val" style="color:var(--green)">' + hits.toLocaleString() + ' / ' + simN.toLocaleString() + '</div></div>' +
+    '<div class="td-item"><div class="td-key">Mevcut Kumulatif</div><div class="td-val" style="color:var(--cyan)">' + baseCum.toFixed(2) + '</div></div>' +
+    '<div class="td-item"><div class="td-key">Hedef Adim</div><div class="td-val">' + k + '</div></div>' +
+    '<div class="td-item"><div class="td-key">Bant [A1, A2]</div><div class="td-val">[' + a1 + ', ' + a2 + ']</div></div>' +
+    '<div class="td-item"><div class="td-key">Simulasyon</div><div class="td-val">' + simN.toLocaleString() + '</div></div>' +
+    '<div class="td-item"><div class="td-key">Kume Boyutu</div><div class="td-val">' + effSet.length + ' deger</div></div>' +
+    '</div></div>';
+
+  drawTargetChart(data, baseCum, storedPaths, k, a1, a2, hits, simN, hex, useInterv ? effSlope : null);
 }
 
-function drawTargetChart(data,baseCum,storedPaths,k,a1,a2,hits,simN,probColorHex,effSlope){
-  if(_targetChart){_targetChart.destroy();_targetChart=null;}
+function drawTargetChart(data, baseCum, storedPaths, k, a1, a2, hits, simN, hex, effSlope){
+  if(_targetChart){ _targetChart.destroy(); _targetChart = null; }
 
-  var oLen=data.length;
-  var cumObs=[],acc=0;
-  for(var i=0;i<oLen;i++){acc+=data[i];cumObs.push(acc);}
+  var oLen   = data.length;
+  var cumObs = [], acc = 0;
+  for(var i = 0; i < oLen; i++){ acc += data[i]; cumObs.push(acc); }
 
-  var totalLen=oLen+k;
-  var labels=Array.from({length:totalLen},function(_,i){return i;});
-  var datasets=[];
+  var totalLen = oLen + k;
+  var labels   = Array.from({length: totalLen}, function(_, i){ return i; });
+  var datasets = [];
 
-  // Kaçan yollar (kırmızı, saydam)
-  var failPaths=storedPaths.filter(function(p){return !p.hit;});
-  var hitPaths=storedPaths.filter(function(p){return p.hit;});
+  var failP = storedPaths.filter(function(p){ return !p.hit; });
+  var hitP  = storedPaths.filter(function(p){ return  p.hit; });
 
-  for(var pi=0;pi<Math.min(failPaths.length,150);pi++){
-    var ds=Array(oLen-1).fill(null).concat([baseCum]).concat(failPaths[pi].path);
-    datasets.push({data:ds,borderColor:'rgba(255,45,85,0.10)',borderWidth:1,pointRadius:0,fill:false,tension:.3});
+  // Kacan yollar
+  for(var pi = 0; pi < Math.min(failP.length, 150); pi++){
+    datasets.push({
+      data: Array(oLen-1).fill(null).concat([baseCum]).concat(failP[pi].path),
+      borderColor: 'rgba(255,45,85,0.09)', borderWidth: 1,
+      pointRadius: 0, fill: false, tension: 0.3
+    });
   }
-  for(var pi=0;pi<Math.min(hitPaths.length,150);pi++){
-    var ds=Array(oLen-1).fill(null).concat([baseCum]).concat(hitPaths[pi].path);
-    datasets.push({data:ds,borderColor:'rgba(0,255,136,0.18)',borderWidth:1.5,pointRadius:0,fill:false,tension:.3});
+  // Bandi gecen yollar
+  for(var pi = 0; pi < Math.min(hitP.length, 150); pi++){
+    datasets.push({
+      data: Array(oLen-1).fill(null).concat([baseCum]).concat(hitP[pi].path),
+      borderColor: 'rgba(0,255,136,0.18)', borderWidth: 1.5,
+      pointRadius: 0, fill: false, tension: 0.3
+    });
   }
 
-  // Band sınırları
-  var a2Full=Array(oLen-1).fill(null).concat(Array(k+1).fill(a2));
-  var a1Full=Array(oLen-1).fill(null).concat(Array(k+1).fill(a1));
-  datasets.push({data:a2Full,borderColor:'rgba(255,45,85,0.7)',borderWidth:1.5,borderDash:[8,4],pointRadius:0,fill:false,tension:0});
-  datasets.push({data:a1Full,borderColor:'rgba(255,45,85,0.7)',borderWidth:1.5,borderDash:[8,4],pointRadius:0,fill:'-1',backgroundColor:'rgba(255,45,85,0.04)',tension:0});
+  // Beklenti dogrusu (mudahale aktifse)
+  if(effSlope !== null && effSlope !== undefined){
+    var expLine = Array(oLen - 1).fill(null);
+    expLine.push(baseCum);
+    var ec = baseCum;
+    for(var s = 0; s < k; s++){ ec += effSlope; expLine.push(ec); }
+    datasets.push({
+      data: expLine, borderColor: 'rgba(0,245,255,0.55)',
+      borderWidth: 1.5, borderDash: [5, 4],
+      pointRadius: 0, fill: false, tension: 0
+    });
+  }
 
-  // Gözlem kümülatifi
-  var obsDs=cumObs.concat(Array(k).fill(null));
-  datasets.push({data:obsDs,borderColor:'#00f5ff',borderWidth:2.5,pointRadius:2,pointBackgroundColor:'#00f5ff',fill:false,tension:.2});
+  // Band sinirlari
+  var bandNull = Array(oLen - 1).fill(null);
+  datasets.push({
+    data: bandNull.concat(Array(k + 1).fill(a2)),
+    borderColor: 'rgba(255,45,85,0.65)', borderWidth: 1.5, borderDash: [8,4],
+    pointRadius: 0, fill: false, tension: 0
+  });
+  datasets.push({
+    data: bandNull.concat(Array(k + 1).fill(a1)),
+    borderColor: 'rgba(255,45,85,0.65)', borderWidth: 1.5, borderDash: [8,4],
+    pointRadius: 0, fill: '-1', backgroundColor: 'rgba(255,45,85,0.04)', tension: 0
+  });
 
-  var prob=hits/simN;
-  var pColor=prob>=0.5?'#00ff88':prob>=0.2?'#ffb800':'#ff2d55';
+  // Gozlem kumulatifi
+  datasets.push({
+    data: cumObs.concat(Array(k).fill(null)),
+    borderColor: '#00f5ff', borderWidth: 2.5,
+    pointRadius: 2, pointBackgroundColor: '#00f5ff',
+    fill: false, tension: 0.2
+  });
 
-  var legHtml='<div class="leg"><div class="ll" style="background:#00f5ff"></div>Gozlem kumulatifi</div>'+'<div class="leg"><div class="ll" style="background:rgba(0,255,136,0.5)"></div>Bandi gecen yollar</div>'+'<div class="leg"><div class="ll" style="background:rgba(255,45,85,0.4)"></div>Kacan yollar</div>'+'<div class="leg"><div class="ll" style="border-top:1.5px dashed rgba(255,45,85,0.7);height:0;width:20px;"></div>A1/A2 sinirlari</div>';
-  if(effSlope!==null&&effSlope!==undefined)legHtml+='<div class="leg"><div class="ll" style="border-top:1.5px dashed rgba(0,245,255,0.6);height:0;width:20px;"></div>Beklenti dogrusu</div>';
-  legHtml+='<span style="margin-left:auto;font-family:\'Orbitron\',monospace;font-size:11px;font-weight:700;color:'+pColor+';text-shadow:0 0 10px '+pColor+';">'+(prob*100).toFixed(2)+'%</span>';
-  $('targetLegend').innerHTML=legHtmlheight:0;width:20px;"></div>A1/A2 sınırları</div>'+
-    '<span style="margin-left:auto;font-family:\'Orbitron\',monospace;font-size:11px;font-weight:700;color:'+pColor+';text-shadow:0 0 10px '+pColor+';">'+(prob*100).toFixed(2)+'%</span>';
+  // Legend
+  var prob   = hits / simN;
+  var pColor = prob >= 0.5 ? '#00ff88' : prob >= 0.2 ? '#ffb800' : '#ff2d55';
+  var legHtml =
+    '<div class="leg"><div class="ll" style="background:#00f5ff"></div>Gozlem kumulatifi</div>' +
+    '<div class="leg"><div class="ll" style="background:rgba(0,255,136,0.5)"></div>Bandi gecen yollar</div>' +
+    '<div class="leg"><div class="ll" style="background:rgba(255,45,85,0.4)"></div>Kacan yollar</div>' +
+    '<div class="leg"><div class="ll" style="border-top:1.5px dashed rgba(255,45,85,0.65);height:0;width:20px;"></div>A1/A2 sinirlari</div>';
+  if(effSlope !== null && effSlope !== undefined)
+    legHtml += '<div class="leg"><div class="ll" style="border-top:1.5px dashed rgba(0,245,255,0.6);height:0;width:20px;"></div>Beklenti dogrusu</div>';
+  legHtml += '<span style="margin-left:auto;font-family:\'Orbitron\',monospace;font-size:11px;font-weight:700;color:' +
+    pColor + ';text-shadow:0 0 10px ' + pColor + ';">' + (prob * 100).toFixed(2) + '%</span>';
+  document.getElementById('targetLegend').innerHTML = legHtml;
 
-  $('targetChartWrap').style.display='block';
+  document.getElementById('targetChartWrap').style.display = 'block';
 
-  _targetChart=new Chart($('targetChart').getContext('2d'),{
-    type:'line',
-    data:{labels:labels,datasets:datasets},
-    options:{
-      animation:false,responsive:true,maintainAspectRatio:false,
-      plugins:{
-        legend:{display:false},
-        tooltip:{
-          mode:'index',intersect:false,
-          filter:function(item){return item.datasetIndex>=datasets.length-3;},
-          backgroundColor:'rgba(5,8,16,0.95)',borderColor:'rgba(0,245,255,0.3)',borderWidth:1,
-          titleColor:'#00f5ff',bodyColor:'#c8d8e8',
+  _targetChart = new Chart(document.getElementById('targetChart').getContext('2d'), {
+    type: 'line',
+    data: { labels: labels, datasets: datasets },
+    options: {
+      animation: false, responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index', intersect: false,
+          filter: function(item){ return item.datasetIndex >= datasets.length - 3; },
+          backgroundColor: 'rgba(5,8,16,0.95)',
+          borderColor: 'rgba(0,245,255,0.3)', borderWidth: 1,
+          titleColor: '#00f5ff', bodyColor: '#c8d8e8'
         }
       },
-      scales:{
-        x:{grid:{color:'rgba(0,245,255,0.04)'},ticks:{color:'#3a5a7a',font:{family:'Share Tech Mono',size:9},maxTicksLimit:16}},
-        y:{grid:{color:'rgba(0,245,255,0.04)'},ticks:{color:'#3a5a7a',font:{family:'Share Tech Mono',size:9},maxTicksLimit:8},
-           title:{display:true,text:'Kümülatif Toplam',color:'#3a5a7a',font:{family:'Share Tech Mono',size:9}}}
+      scales: {
+        x: { grid:{ color:'rgba(0,245,255,0.04)' }, ticks:{ color:'#3a5a7a', font:{family:'Share Tech Mono',size:9}, maxTicksLimit:16 } },
+        y: { grid:{ color:'rgba(0,245,255,0.04)' }, ticks:{ color:'#3a5a7a', font:{family:'Share Tech Mono',size:9}, maxTicksLimit:8 },
+             title:{ display:true, text:'Kumulatif Toplam', color:'#3a5a7a', font:{family:'Share Tech Mono',size:9} } }
       },
-      elements:{point:{radius:0}}
+      elements: { point:{ radius:0 } }
     },
-    plugins:[{
-      id:'targetLine',
-      afterDraw:function(chart){
-        var ctx2=chart.ctx;
-        var xScale=chart.scales.x;
-        var yScale=chart.scales.y;
-        var targetIdx=oLen+k-1;
-        if(targetIdx>=labels.length)return;
-        var xPos=xScale.getPixelForValue(targetIdx);
-        var yTop=chart.chartArea.top;
-        var yBot=chart.chartArea.bottom;
+    plugins: [{
+      id: 'targetLine',
+      afterDraw: function(chart){
+        var ctx2    = chart.ctx;
+        var xScale  = chart.scales.x;
+        var yScale  = chart.scales.y;
+        var tIdx    = oLen + k - 1;
+        if(tIdx >= labels.length) return;
+        var xPos    = xScale.getPixelForValue(tIdx);
+        var yTop    = chart.chartArea.top;
+        var yBot    = chart.chartArea.bottom;
 
-        // Dikey çizgi
         ctx2.save();
+        ctx2.setLineDash([5, 4]);
+        ctx2.strokeStyle = 'rgba(0,245,255,0.45)';
+        ctx2.lineWidth   = 1.5;
         ctx2.beginPath();
-        ctx2.setLineDash([5,4]);
-        ctx2.strokeStyle='rgba(0,245,255,0.5)';
-        ctx2.lineWidth=1.5;
-        ctx2.moveTo(xPos,yTop);
-        ctx2.lineTo(xPos,yBot);
+        ctx2.moveTo(xPos, yTop);
+        ctx2.lineTo(xPos, yBot);
         ctx2.stroke();
         ctx2.setLineDash([]);
 
-        // t+k etiketi
-        ctx2.fillStyle='#00f5ff';
-        ctx2.font='bold 9px Orbitron, monospace';
-        ctx2.textAlign='center';
-        ctx2.shadowColor='#00f5ff';
-        ctx2.shadowBlur=6;
-        ctx2.fillText('t+'+k,xPos,yTop+11);
-        ctx2.shadowBlur=0;
+        ctx2.fillStyle  = '#00f5ff';
+        ctx2.font       = 'bold 9px Orbitron, monospace';
+        ctx2.textAlign  = 'center';
+        ctx2.shadowColor = '#00f5ff';
+        ctx2.shadowBlur  = 6;
+        ctx2.fillText('t+' + k, xPos, yTop + 12);
+        ctx2.shadowBlur  = 0;
 
-        // Bant etiketleri
-        var yA1=yScale.getPixelForValue(a1);
-        var yA2=yScale.getPixelForValue(a2);
-        ctx2.font='9px Share Tech Mono, monospace';
-        ctx2.textAlign='right';
-        ctx2.fillStyle='rgba(255,45,85,0.8)';
-        if(yA1>yTop&&yA1<yBot) ctx2.fillText('A1='+a1,xPos-6,yA1-4);
-        if(yA2>yTop&&yA2<yBot) ctx2.fillText('A2='+a2,xPos-6,yA2-4);
+        var yA1 = yScale.getPixelForValue(a1);
+        var yA2 = yScale.getPixelForValue(a2);
+        ctx2.font      = '9px Share Tech Mono, monospace';
+        ctx2.textAlign = 'right';
+        ctx2.fillStyle = 'rgba(255,45,85,0.8)';
+        if(yA1 > yTop && yA1 < yBot) ctx2.fillText('A1=' + a1, xPos - 6, yA1 - 4);
+        if(yA2 > yTop && yA2 < yBot) ctx2.fillText('A2=' + a2, xPos - 6, yA2 - 4);
         ctx2.restore();
       }
     }]
