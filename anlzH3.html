@@ -3,218 +3,727 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Seri Analiz & Tahmin</title>
+<title>NEXUS // SERİ TAHMİN</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&display=swap');
-:root{
-  --bg:#f4efe4;--paper:#faf6ed;--ink:#1c1710;--ink2:#3a3228;--ink3:#6e6050;
-  --rule:#d6c9b4;--red:#b83232;--blue:#1a5c8a;--green:#1f7a45;--amber:#e8a020;
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
+
+:root {
+  --bg:        #050810;
+  --bg2:       #080d1a;
+  --bg3:       #0c1220;
+  --panel:     #0a0f1e;
+  --border:    #0f3460;
+  --border2:   #1a4a7a;
+  --cyan:      #00f5ff;
+  --cyan2:     #00c8d4;
+  --cyan-dim:  rgba(0,245,255,0.15);
+  --cyan-glow: rgba(0,245,255,0.06);
+  --green:     #00ff88;
+  --green-dim: rgba(0,255,136,0.12);
+  --red:       #ff2d55;
+  --red-dim:   rgba(255,45,85,0.12);
+  --amber:     #ffb800;
+  --amber-dim: rgba(255,184,0,0.12);
+  --text:      #c8d8e8;
+  --text2:     #6a8aaa;
+  --text3:     #3a5a7a;
+  --grid-line: rgba(0,245,255,0.04);
+  --scan:      rgba(0,245,255,0.03);
 }
-*{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg);color:var(--ink);font-family:'Space Mono',monospace;min-height:100vh;}
-body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background-image:repeating-linear-gradient(transparent,transparent 27px,rgba(180,158,130,.22)27px,rgba(180,158,130,.22)28px);}
-.wrap{position:relative;z-index:1;max-width:1340px;margin:0 auto;padding:28px 22px 80px;}
-header{border-bottom:3px solid var(--ink);padding-bottom:18px;margin-bottom:28px;}
-.eyebrow{font-size:10px;letter-spacing:4px;color:var(--ink3);text-transform:uppercase;margin-bottom:4px;}
-h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(28px,5vw,60px);letter-spacing:3px;line-height:.95;}
-h1 em{color:var(--blue);font-style:normal;}
-h1 strong{color:var(--red);}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Scanline effect */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    var(--scan) 2px,
+    var(--scan) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Grid background */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+}
+
+/* HEADER */
+header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 20px;
+  margin-bottom: 28px;
+  position: relative;
+}
+header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 0;
+  width: 200px; height: 1px;
+  background: var(--cyan);
+  box-shadow: 0 0 12px var(--cyan);
+}
+
+.eyebrow {
+  font-size: 9px;
+  letter-spacing: 4px;
+  color: var(--cyan2);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  opacity: 0.7;
+}
+
+h1 {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(22px, 4vw, 52px);
+  font-weight: 900;
+  letter-spacing: 6px;
+  line-height: 1;
+  color: var(--text);
+}
+h1 .accent { color: var(--cyan); text-shadow: 0 0 20px var(--cyan), 0 0 40px var(--cyan2); }
+h1 .slash { color: var(--text3); }
+
+.header-sub {
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 2px;
+  margin-top: 8px;
+}
 
 /* PANEL */
-.panel{background:var(--paper);border:2px solid var(--ink);padding:22px 22px 18px;position:relative;margin-bottom:20px;}
-.panel::before{content:attr(data-lbl);position:absolute;top:-12px;left:12px;background:var(--paper);
-  padding:0 8px;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-weight:700;border:2px solid var(--ink);}
-.panel.rd::before{color:var(--red);border-color:var(--red);}
-textarea{width:100%;height:120px;background:transparent;border:1px solid var(--rule);
-  color:var(--ink);font-family:'Space Mono',monospace;font-size:12px;padding:9px 10px;resize:vertical;outline:none;line-height:1.75;}
-textarea:focus{border-color:var(--ink);}
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 20px 22px 18px;
+  position: relative;
+  margin-bottom: 16px;
+  transition: border-color .2s;
+}
+.panel:hover { border-color: var(--border2); }
+.panel::before {
+  content: attr(data-lbl);
+  position: absolute;
+  top: -1px; left: 16px;
+  transform: translateY(-50%);
+  background: var(--bg);
+  padding: 0 10px;
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--cyan2);
+  font-family: 'Orbitron', monospace;
+}
+.panel.red::before { color: var(--red); }
+.panel.green::before { color: var(--green); }
 
-/* ADIM KÜMESİ — etiket + +/- butonlu tag'ler */
-.set-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin:10px 0 6px;}
-#setPreview{display:flex;flex-wrap:wrap;gap:5px;min-height:22px;margin-bottom:14px;}
-/* Her tag: değer + – butonu */
-.tag-wrap{display:inline-flex;align-items:center;background:rgba(26,92,138,.10);
-  border:1px solid rgba(26,92,138,.4);gap:0;}
-.tag-val{color:var(--blue);padding:3px 8px;font-size:11px;font-weight:700;font-family:'Space Mono',monospace;}
-.tag-btn{background:transparent;border:none;border-left:1px solid rgba(26,92,138,.35);
-  color:var(--blue);font-size:13px;font-weight:700;padding:2px 6px;cursor:pointer;
-  line-height:1;transition:background .1s;}
-.tag-btn:hover{background:rgba(26,92,138,.18);}
-/* Adım ekle butonu — küçük + */
-.set-add-row{display:flex;align-items:center;gap:6px;margin-bottom:10px;}
-#newValInput{background:transparent;border:1px solid var(--rule);color:var(--ink);
-  font-family:'Space Mono',monospace;font-size:12px;padding:5px 8px;width:110px;outline:none;}
-#newValInput:focus{border-color:var(--blue);}
-.add-btn{padding:5px 12px;background:rgba(26,92,138,.12);border:1px solid rgba(26,92,138,.4);
-  color:var(--blue);font-family:'Space Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;transition:background .1s;}
-.add-btn:hover{background:rgba(26,92,138,.25);}
+/* TEXTAREA */
+textarea {
+  width: 100%;
+  height: 110px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--cyan);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  padding: 10px 12px;
+  resize: vertical;
+  outline: none;
+  line-height: 1.8;
+  transition: border-color .2s;
+}
+textarea:focus { border-color: var(--cyan); box-shadow: 0 0 8px var(--cyan-dim); }
+textarea::placeholder { color: var(--text3); }
 
-/* ANA BUTONLAR */
-.btn-row{display:flex;gap:10px;align-items:center;}
-.btn{padding:10px 20px;background:var(--ink);color:var(--bg);border:2px solid var(--ink);
-  font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
-  cursor:pointer;transition:all .15s;white-space:nowrap;}
-.btn:hover{background:transparent;color:var(--ink);}
-.btn.g{background:var(--green);border-color:var(--green);}
-.btn.g:hover{background:transparent;color:var(--green);}
-.btn.r{background:var(--red);border-color:var(--red);}
-.btn.r:hover{background:transparent;color:var(--red);}
-.btn:disabled{opacity:.35;cursor:not-allowed;}
+/* SET TAGS */
+.set-lbl {
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text2);
+  margin: 12px 0 8px;
+}
 
-/* STAT BAR — KALDIRILDI */
+#setPreview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 26px;
+  margin-bottom: 14px;
+}
+
+.tag-wrap {
+  display: inline-flex;
+  align-items: center;
+  background: var(--cyan-glow);
+  border: 1px solid var(--cyan2);
+  transition: all .15s;
+}
+.tag-wrap:hover { background: var(--cyan-dim); box-shadow: 0 0 8px var(--cyan-dim); }
+.tag-val {
+  color: var(--cyan);
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Share Tech Mono', monospace;
+}
+.tag-btn {
+  background: transparent;
+  border: none;
+  border-left: 1px solid rgba(0,245,255,0.2);
+  color: var(--text2);
+  font-size: 14px;
+  padding: 2px 7px;
+  cursor: pointer;
+  transition: all .1s;
+  line-height: 1;
+}
+.tag-btn:hover { color: var(--red); background: var(--red-dim); }
+
+/* ADD ROW */
+.set-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.mono-input {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  padding: 7px 10px;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+.mono-input:focus { border-color: var(--cyan); box-shadow: 0 0 6px var(--cyan-dim); }
+.mono-input.wide { width: 140px; }
+.mono-input.sm { width: 110px; }
+.mono-input.num { width: 130px; }
+
+/* BUTTONS */
+.btn {
+  padding: 8px 18px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 10px var(--cyan-dim); }
+.btn:disabled { opacity: .3; cursor: not-allowed; }
+
+.btn-cyan {
+  background: var(--cyan-dim);
+  border-color: var(--cyan);
+  color: var(--cyan);
+  text-shadow: 0 0 8px var(--cyan);
+}
+.btn-cyan:hover { background: rgba(0,245,255,0.25); box-shadow: 0 0 16px var(--cyan-dim); }
+
+.btn-green {
+  background: var(--green-dim);
+  border-color: var(--green);
+  color: var(--green);
+}
+.btn-green:hover { background: rgba(0,255,136,0.2); box-shadow: 0 0 14px var(--green-dim); }
+
+.btn-red {
+  background: var(--red-dim);
+  border-color: var(--red);
+  color: var(--red);
+}
+.btn-red:hover { background: rgba(255,45,85,0.2); }
+
+.btn-amber {
+  background: var(--amber-dim);
+  border-color: var(--amber);
+  color: var(--amber);
+}
+.btn-amber:hover { background: rgba(255,184,0,0.2); }
+
+.btn-sm {
+  padding: 5px 12px;
+  font-size: 9px;
+}
+
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 
 /* PROGRESS */
-.prog-wrap{display:none;background:var(--paper);border:2px solid var(--ink);padding:14px 18px;margin-bottom:18px;}
-.prog-lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin-bottom:6px;}
-.prog-outer{width:100%;height:5px;background:var(--rule);}
-.prog-inner{height:100%;background:var(--green);transition:width .08s linear;}
-.prog-txt{font-size:12px;font-weight:700;margin-top:5px;}
+.prog-wrap {
+  display: none;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+.prog-lbl {
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text2);
+  margin-bottom: 8px;
+}
+.prog-outer {
+  width: 100%;
+  height: 3px;
+  background: var(--bg3);
+  position: relative;
+  overflow: hidden;
+}
+.prog-inner {
+  height: 100%;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+  transition: width .08s linear;
+}
+.prog-txt {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cyan);
+  margin-top: 6px;
+}
+
+/* SECTION LABEL */
+.sec-lbl {
+  font-family: 'Orbitron', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--text2);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  padding-left: 2px;
+}
 
 /* CARDS */
-.rc{background:var(--paper);border:2px solid var(--ink);padding:18px;margin-bottom:18px;}
-.rc-title{font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;
-  border-bottom:1px solid var(--rule);padding-bottom:6px;margin-bottom:12px;display:flex;align-items:baseline;gap:12px;}
-.rc-sub{font-size:10px;font-family:'Space Mono',monospace;font-weight:400;color:var(--ink3);letter-spacing:0;}
-.results-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
-@media(max-width:700px){.results-grid{grid-template-columns:1fr;}}
-.fr{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:1px dotted var(--rule);font-size:11px;}
-.fr:last-child{border-bottom:none;}
-.fr-l{color:var(--ink3);}.fr-r{font-weight:700;}
-.fr-r.ok{color:var(--green);}.fr-r.warn{color:var(--amber);}.fr-r.err{color:var(--red);}
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  position: relative;
+}
+.card-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 13px;
+  letter-spacing: 3px;
+  color: var(--cyan);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.card-sub {
+  font-size: 10px;
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--text3);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+@media(max-width:700px){ .results-grid { grid-template-columns: 1fr; } }
+
+.fr {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(0,245,255,0.06);
+  font-size: 11px;
+}
+.fr:last-child { border-bottom: none; }
+.fr-l { color: var(--text2); }
+.fr-r { font-weight: 700; font-family: 'Orbitron', monospace; font-size: 10px; }
+.fr-r.ok { color: var(--green); }
+.fr-r.warn { color: var(--amber); }
+.fr-r.err { color: var(--red); }
+.fr-r.cyan { color: var(--cyan); }
 
 /* CHART */
-.chart-card{background:var(--paper);border:2px solid var(--ink);padding:18px 20px;margin-bottom:20px;}
-.chart-card.fullscreen{position:fixed!important;inset:0!important;z-index:9999!important;
-  margin:0!important;border:none!important;display:flex;flex-direction:column;
-  padding:16px 20px;background:var(--paper)!important;}
-.chart-card.fullscreen .cw{flex:1;height:auto!important;}
-.chart-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;}
-.chart-ttl{font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:2px;}
-.cbts{display:flex;gap:5px;}
-.cbt{background:var(--paper);border:2px solid var(--ink);color:var(--ink);font-size:14px;
-  width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all .12s;}
-.cbt:hover{background:var(--ink);color:var(--bg);}
-.leg-row{display:flex;gap:14px;flex-wrap:wrap;font-size:10px;margin-bottom:10px;align-items:center;}
-.leg{display:flex;align-items:center;gap:5px;}
-.ll{width:22px;height:3px;border-radius:1px;}
-.cw{position:relative;width:100%;height:340px;}
-.cw canvas{position:absolute;inset:0;width:100%!important;height:100%!important;}
+.chart-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  position: relative;
+}
+.chart-card.fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9998 !important;
+  margin: 0 !important;
+  border: none !important;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px;
+  background: var(--bg) !important;
+}
+.chart-card.fullscreen .cw { flex: 1; height: auto !important; }
 
-/* 2D TABLE
-   SATIRLAR = değerler (mavi etiket)
-   SÜTUNLAR = adımlar  (t+1 … t+N)
-   ALT SATIRLAR: En Olası + 2. Olası (sütun başına)
-   Mavi yoğunluk → sütun bazlı normalize
-   Yeşil çerçeve → o sütunda en yüksek %
-   Sarı çerçeve  → o satırda en yüksek % olan adım
-*/
-.p2d-outer{overflow-x:auto;margin-top:4px;}
-.p2d{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;}
-.p2d th{padding:7px 10px;background:var(--ink);color:var(--bg);font-size:9px;letter-spacing:2px;
-  text-transform:uppercase;border:1px solid var(--ink2);white-space:nowrap;text-align:center;}
-.p2d th.rh{background:var(--ink2);}
-.p2d td{padding:6px 9px;border:1px solid var(--rule);text-align:center;white-space:nowrap;font-size:11px;font-weight:700;}
-.p2d tr:hover td{filter:brightness(.96);}
-.p2d td.sh{background:var(--paper)!important;color:var(--blue);font-size:11px;font-weight:700;text-align:left;padding-left:10px;}
-/* Alt özet satırları */
-.p2d td.bt{background:var(--paper)!important;color:var(--green);font-weight:700;font-size:10px;}
-.p2d td.bs{background:var(--paper)!important;color:var(--amber);font-weight:700;font-size:10px;}
-.p2d tr.foot-row td{background:var(--paper)!important;}
-.tbl-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:10px;align-items:center;}
-.tll{display:flex;align-items:center;gap:5px;}
-.tlb{width:15px;height:15px;border:1px solid #aaa;}
+.chart-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.chart-ttl {
+  font-family: 'Orbitron', monospace;
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--cyan);
+  text-transform: uppercase;
+}
+.cbts { display: flex; gap: 4px; }
+.cbt {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 13px;
+  width: 28px; height: 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all .12s;
+  font-family: 'Share Tech Mono', monospace;
+}
+.cbt:hover { border-color: var(--cyan); color: var(--cyan); }
+
+.leg-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  margin-bottom: 12px;
+  align-items: center;
+  color: var(--text2);
+}
+.leg { display: flex; align-items: center; gap: 5px; }
+.ll { width: 20px; height: 3px; border-radius: 1px; }
+
+.cw { position: relative; width: 100%; height: 300px; }
+.cw canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+
+/* 2D TABLE */
+.p2d-outer { overflow-x: auto; margin-top: 4px; }
+.p2d {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 11px;
+  width: 100%;
+  font-family: 'Share Tech Mono', monospace;
+}
+.p2d th {
+  padding: 7px 10px;
+  background: var(--bg3);
+  color: var(--cyan2);
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+  text-align: center;
+  font-family: 'Orbitron', monospace;
+}
+.p2d th.rh { background: var(--bg2); color: var(--text2); }
+.p2d td {
+  padding: 5px 8px;
+  border: 1px solid rgba(0,245,255,0.06);
+  text-align: center;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  transition: filter .1s;
+}
+.p2d tr:hover td { filter: brightness(1.3); }
+.p2d td.sh {
+  background: var(--bg2) !important;
+  color: var(--cyan);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+  padding-left: 10px;
+  border-color: var(--border);
+}
+.p2d td.bt { background: var(--bg2) !important; color: var(--green); font-weight: 700; font-size: 10px; }
+.p2d td.bs { background: var(--bg2) !important; color: var(--amber); font-weight: 700; font-size: 10px; }
+.p2d tr.foot-row td { background: var(--bg2) !important; }
+
+.tbl-legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  font-size: 10px;
+  align-items: center;
+  color: var(--text2);
+}
+.tll { display: flex; align-items: center; gap: 6px; }
+.tlb { width: 14px; height: 14px; border: 1px solid var(--border); }
+
+/* SIM AYAR & HEDEF PANEL */
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.input-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text3);
+  font-family: 'Orbitron', monospace;
+}
+
+/* HEDEF SONUÇ */
+.target-result-box {
+  border: 1px solid var(--border2);
+  padding: 20px 24px;
+  background: var(--bg2);
+  position: relative;
+  overflow: hidden;
+}
+.target-result-box::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: var(--cyan);
+  box-shadow: 0 0 12px var(--cyan);
+}
+.target-big-pct {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(40px, 8vw, 80px);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 2px;
+}
+.target-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.td-item {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+}
+.td-key { font-size: 9px; letter-spacing: 1px; color: var(--text3); text-transform: uppercase; margin-bottom: 4px; }
+.td-val { font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 700; color: var(--text); }
+
+/* Glow pulse animation */
+@keyframes glowPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+.glow-pulse { animation: glowPulse 2s infinite; }
+
+/* Flicker on load */
+@keyframes flicker {
+  0% { opacity: 0; }
+  10% { opacity: 0.9; }
+  12% { opacity: 0.2; }
+  14% { opacity: 1; }
+  100% { opacity: 1; }
+}
+.wrap { animation: flicker 0.4s ease-out; }
+
+/* Corner decorations */
+.corner-dec {
+  position: absolute;
+  width: 10px; height: 10px;
+  border-color: var(--cyan);
+  border-style: solid;
+  opacity: 0.5;
+}
+.corner-dec.tl { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+.corner-dec.tr { top: -1px; right: -1px; border-width: 1px 1px 0 0; }
+.corner-dec.bl { bottom: -1px; left: -1px; border-width: 0 0 1px 1px; }
+.corner-dec.br { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+/* Status indicator */
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  display: inline-block;
+  animation: glowPulse 1.5s infinite;
+}
+
+/* Divider */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 20px 0;
+  position: relative;
+}
+.divider::after {
+  content: '//';
+  position: absolute;
+  top: -8px; left: 20px;
+  background: var(--bg);
+  padding: 0 8px;
+  font-size: 10px;
+  color: var(--text3);
+  font-family: 'Orbitron', monospace;
+}
+
+/* Quick preset buttons */
+.preset-row { display: flex; gap: 6px; flex-wrap: wrap; }
 </style>
 </head>
 <body>
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">// Ensemble · NB(hiyerarşik) + NHiTS(pencere-3) + DTW(1-NN) + CRF(koşullu rastsal alan) · 8000 Sim · %90 Güven · 15 Adım</div>
-  <h1><em>SERİ</em> <strong>TAHMİN</strong></h1>
+  <div class="eyebrow">// NEXUS PREDICTION ENGINE · ENSEMBLE[NB+NHiTS+DTW+CRF] · MONTE CARLO · %90 GÜVEN</div>
+  <h1>NEXUS <span class="slash">//</span> <span class="accent">SERİ TAHMİN</span></h1>
+  <div class="header-sub">
+    <span class="status-dot"></span>&nbsp; SİSTEM AKTİF &nbsp;·&nbsp; VERİ GİRİŞİ BEKLENİYOR
+  </div>
 </header>
 
-<!-- VERİ SERİSİ PANELİ -->
-<div class="panel rd" data-lbl="veri serisi">
+<!-- VERİ PANELİ -->
+<div class="panel red" data-lbl="// veri serisi">
+  <div class="corner-dec tl"></div><div class="corner-dec tr"></div>
+  <div class="corner-dec bl"></div><div class="corner-dec br"></div>
   <textarea id="seriesInput"
-    placeholder="3,3,3.2,3.2,3.4,3.4,3.2,3,3,3.2&#10;Virgül, noktalı virgül veya yeni satırla ayır."
+    placeholder="-1,-1,0,1,1,0,-1,-2,-1,0,1,2,1,0&#10;Virgül, noktalı virgül veya yeni satırla ayrılmış sayılar"
     oninput="onSeriesInput()"></textarea>
 
-  <!-- ADIM KÜMESİ: otomatik oluşur, +/- ile düzenlenebilir -->
-  <div class="set-lbl">Otomatik Adım Kümesi</div>
+  <div class="set-lbl">// OTOMATİK ADIM KÜMESİ</div>
   <div id="setPreview"></div>
 
-  <!-- Yeni değer ekleme -->
   <div class="set-add-row">
-    <input id="newValInput" type="number" step="any" placeholder="Yeni değer">
-    <button class="add-btn" onclick="addSetVal()">+ Ekle</button>
+    <input id="newValInput" type="number" step="any" placeholder="Yeni değer ekle" class="mono-input sm">
+    <button class="btn btn-cyan btn-sm" onclick="addSetVal()">+ EKLE</button>
   </div>
 
-  <!-- Analiz butonu -->
   <div class="btn-row">
-    <button class="btn g" onclick="runAnalysis()">&#9654; ANALİZ ET</button>
-    <button class="btn r" onclick="loadExample()">ÖRNEK</button>
+    <button class="btn btn-cyan" onclick="runAnalysis()">&#9654;&nbsp; ANALİZ ET</button>
+    <button class="btn btn-amber btn-sm" onclick="loadExample()">ÖRNEK YÜKle</button>
   </div>
 </div>
 
-<!-- SİMÜLASYON SAYISI -->
-<div class="panel" data-lbl="simülasyon ayarı" style="margin-bottom:20px;">
-  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-    <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);">Simülasyon Sayısı</div>
-    <input id="simCountInput" type="number" min="100" max="500000" step="1000" value="8000"
-      style="background:transparent;border:1px solid var(--rule);color:var(--ink);font-family:'Space Mono',monospace;font-size:13px;font-weight:700;padding:6px 10px;width:130px;outline:none;"
-      oninput="N_SIM=Math.max(100,parseInt(this.value)||8000)">
-    <div style="font-size:10px;color:var(--ink3);">&#8593; Artırınca daha hassas sonuç, daha uzun süre</div>
-    <div style="display:flex;gap:6px;margin-left:auto;">
-      <button class="add-btn" onclick="setSimCount(1000)">1K</button>
-      <button class="add-btn" onclick="setSimCount(8000)">8K</button>
-      <button class="add-btn" onclick="setSimCount(20000)">20K</button>
-      <button class="add-btn" onclick="setSimCount(50000)">50K</button>
+<!-- SİMÜLASYON AYARI -->
+<div class="panel" data-lbl="// simülasyon ayarı">
+  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+    <div class="input-group">
+      <div class="input-label">Simülasyon Sayısı</div>
+      <input id="simCountInput" type="number" min="100" max="1000000" step="1000" value="8000"
+        class="mono-input num" oninput="N_SIM=Math.max(100,parseInt(this.value)||8000)">
+    </div>
+    <div style="font-size:10px;color:var(--text3);line-height:1.6;">
+      Daha fazla = daha hassas<br>Daha az = daha hızlı
+    </div>
+    <div class="preset-row" style="margin-left:auto;">
+      <button class="btn btn-sm" onclick="setSimCount(1000)">1K</button>
+      <button class="btn btn-sm" onclick="setSimCount(5000)">5K</button>
+      <button class="btn btn-sm" onclick="setSimCount(8000)">8K</button>
+      <button class="btn btn-sm" onclick="setSimCount(20000)">20K</button>
+      <button class="btn btn-sm" onclick="setSimCount(50000)">50K</button>
+      <button class="btn btn-sm" onclick="setSimCount(100000)">100K</button>
     </div>
   </div>
 </div>
 
 <!-- HEDEF OLASILIK PANELİ -->
-<div class="panel" data-lbl="hedef olasılık hesabı" style="margin-bottom:20px;">
-  <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin-bottom:12px;">K. Adımda Kümülatif Değerin A1&#8211;A2 Bandına Girme Olasılığı</div>
-  <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;">
-    <div style="display:flex;flex-direction:column;gap:4px;">
-      <div style="font-size:9px;letter-spacing:1px;color:var(--ink3);">K &#8212; Hedef Adım</div>
-      <input id="targetStep" type="number" min="1" value="300" placeholder="örn. 300"
-        style="background:transparent;border:1px solid var(--rule);color:var(--ink);font-family:'Space Mono',monospace;font-size:13px;font-weight:700;padding:6px 10px;width:120px;outline:none;">
-    </div>
-    <div style="display:flex;flex-direction:column;gap:4px;">
-      <div style="font-size:9px;letter-spacing:1px;color:var(--ink3);">A1 &#8212; Alt Sınır</div>
-      <input id="targetLow" type="number" value="-20" placeholder="örn. -20"
-        style="background:transparent;border:1px solid var(--rule);color:var(--ink);font-family:'Space Mono',monospace;font-size:13px;font-weight:700;padding:6px 10px;width:120px;outline:none;">
-    </div>
-    <div style="display:flex;flex-direction:column;gap:4px;">
-      <div style="font-size:9px;letter-spacing:1px;color:var(--ink3);">A2 &#8212; Üst Sınır</div>
-      <input id="targetHigh" type="number" value="0" placeholder="örn. 0"
-        style="background:transparent;border:1px solid var(--rule);color:var(--ink);font-family:'Space Mono',monospace;font-size:13px;font-weight:700;padding:6px 10px;width:120px;outline:none;">
-    </div>
-    <button class="btn" style="background:var(--blue);border-color:var(--blue);color:#fff;height:38px;margin-top:auto;" onclick="runTargetAnalysis()">&#9654; HESAPLA</button>
+<div class="panel green" data-lbl="// hedef olasılık hesabı">
+  <div class="corner-dec tl"></div><div class="corner-dec tr"></div>
+  <div style="font-size:10px;color:var(--text3);margin-bottom:16px;letter-spacing:1px;">
+    K. ADIMDA KÜMÜLATİF TOPLAMIN [A1, A2] BANDINDAN GEÇMESİ OLASILIGI
   </div>
-  <div id="targetProgress" style="display:none;margin-bottom:10px;">
-    <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin-bottom:5px;" id="targetProgLbl">Hesaplanıyor...</div>
-    <div style="width:100%;height:4px;background:var(--rule);"><div id="targetProgBar" style="height:100%;background:var(--blue);transition:width .1s;width:0%"></div></div>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;">
+    <div class="input-group">
+      <div class="input-label">K — Hedef Adım</div>
+      <input id="targetStep" type="number" min="1" value="300" class="mono-input num">
+    </div>
+    <div class="input-group">
+      <div class="input-label">A1 — Alt Sınır</div>
+      <input id="targetLow" type="number" value="-20" class="mono-input num">
+    </div>
+    <div class="input-group">
+      <div class="input-label">A2 — Üst Sınır</div>
+      <input id="targetHigh" type="number" value="0" class="mono-input num">
+    </div>
+    <button class="btn btn-green" style="margin-bottom:1px;" onclick="runTargetAnalysis()">&#9654;&nbsp; HESAPLA</button>
   </div>
+
+  <!-- Progress -->
+  <div id="targetProgress" style="display:none;margin-bottom:14px;">
+    <div class="prog-lbl" id="targetProgLbl">Simülasyon çalışıyor...</div>
+    <div class="prog-outer"><div id="targetProgBar" class="prog-inner" style="width:0%"></div></div>
+    <div class="prog-txt" id="targetProgTxt">0%</div>
+  </div>
+
+  <!-- Sonuç -->
   <div id="targetResult" style="display:none;"></div>
-  <div id="targetChartWrap" style="display:none;margin-top:16px;">
-    <div class="chart-card" style="margin-bottom:0;padding:16px 18px;">
-      <div class="chart-top" style="margin-bottom:8px;">
-        <div class="chart-ttl" style="font-size:15px;">KÜMÜLATİF SİMÜLASYON &#8212; HEDEF KESİŞİMİ</div>
-      </div>
-      <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:10px;margin-bottom:10px;align-items:center;" id="targetLegend"></div>
-      <div class="cw" style="height:400px;"><canvas id="targetChart"></canvas></div>
+
+  <!-- Grafik -->
+  <div id="targetChartWrap" style="display:none;margin-top:18px;">
+    <div class="chart-top" style="margin-bottom:8px;">
+      <div class="chart-ttl">KÜMÜLATİF SİMÜLASYON // HEDEF KESİŞİMİ</div>
     </div>
+    <div id="targetLegend" class="leg-row"></div>
+    <div class="cw" style="height:380px;"><canvas id="targetChart"></canvas></div>
   </div>
 </div>
 
-<!-- PROGRESS BAR -->
+<!-- PROGRESS BAR (ana analiz) -->
 <div class="prog-wrap" id="progWrap">
   <div class="prog-lbl" id="progLbl">Başlatılıyor...</div>
   <div class="prog-outer"><div class="prog-inner" id="progBar" style="width:0%"></div></div>
@@ -222,16 +731,14 @@ textarea:focus{border-color:var(--ink);}
 </div>
 
 <!-- 2B OLASILIK TABLOSU -->
-<div class="rc" id="sec_table" style="display:none">
-  <div class="rc-title">2B OLASILIK TABLOSU
-    <span class="rc-sub">Satır=değer · Sütun=adım · Hücre=% olasılık</span>
-  </div>
+<div class="card" id="sec_table" style="display:none;">
+  <div class="card-title">2B OLASILIK TABLOSU <span class="card-sub">· Satır=değer · Sütun=adım · Hücre=% olasılık</span></div>
   <div class="p2d-outer" id="p2dWrap"></div>
   <div class="tbl-legend" id="tblLeg"></div>
 </div>
 
-<!-- HAM VERİ + TAHMİN -->
-<div class="chart-card" id="sec_chart1" style="display:none">
+<!-- HAM VERİ + TAHMİN GRAFİĞİ -->
+<div class="chart-card" id="sec_chart1" style="display:none;">
   <div class="chart-top">
     <div class="chart-ttl">VERİ + TAHMİN</div>
     <div class="cbts">
@@ -242,20 +749,18 @@ textarea:focus{border-color:var(--ink);}
     </div>
   </div>
   <div class="leg-row">
-    <div class="leg"><div class="ll" style="background:var(--blue)"></div>Gözlem</div>
-    <div class="leg"><div class="ll" style="border-top:2px dashed var(--green);height:0;width:22px"></div>Medyan</div>
-    <div class="leg"><div class="ll" style="height:10px;width:22px;background:rgba(31,122,69,.12);border:1px solid rgba(31,122,69,.35)"></div>%90 Bant</div>
-    <span style="font-size:9px;color:var(--ink3);margin-left:auto;">scroll zoom · sürükle pan · ESC tam ekran</span>
+    <div class="leg"><div class="ll" style="background:var(--cyan)"></div>Gözlem</div>
+    <div class="leg"><div class="ll" style="border-top:2px dashed var(--green);height:0;width:20px;"></div>Medyan</div>
+    <div class="leg"><div class="ll" style="height:10px;width:20px;background:rgba(0,255,136,0.12);border:1px solid rgba(0,255,136,0.3)"></div>%90 Bant</div>
+    <span style="font-size:9px;color:var(--text3);margin-left:auto;">scroll zoom · sürükle pan · ESC tam ekran</span>
   </div>
   <div class="cw"><canvas id="chart1"></canvas></div>
 </div>
 
 <!-- KÜMÜLATİF GRAFİK -->
-<div class="chart-card" id="sec_chart2" style="display:none">
+<div class="chart-card" id="sec_chart2" style="display:none;">
   <div class="chart-top">
-    <div class="chart-ttl">KÜMÜLATİF SERİ
-      <span style="font-size:12px;font-weight:400;font-family:'Space Mono',monospace;letter-spacing:0;color:var(--ink3)">gözlem + tahmin</span>
-    </div>
+    <div class="chart-ttl">KÜMÜLATİF SERİ <span style="font-size:10px;color:var(--text3);font-family:'Share Tech Mono',monospace;letter-spacing:0;">// gözlem + tahmin</span></div>
     <div class="cbts">
       <button class="cbt" onclick="c2zi()">+</button>
       <button class="cbt" onclick="c2zo()">-</button>
@@ -264,17 +769,17 @@ textarea:focus{border-color:var(--ink);}
     </div>
   </div>
   <div class="leg-row">
-    <div class="leg"><div class="ll" style="background:var(--blue)"></div>Gözlem (kümülatif)</div>
-    <div class="leg"><div class="ll" style="background:var(--amber)"></div>Tahmin medyanı (kümülatif)</div>
-    <div class="leg"><div class="ll" style="height:10px;width:22px;background:rgba(232,160,32,.15);border:1px solid rgba(232,160,32,.4)"></div>Güven bandı</div>
+    <div class="leg"><div class="ll" style="background:var(--cyan)"></div>Gözlem (kümülatif)</div>
+    <div class="leg"><div class="ll" style="background:var(--amber)"></div>Tahmin medyanı</div>
+    <div class="leg"><div class="ll" style="height:10px;width:20px;background:rgba(255,184,0,0.15);border:1px solid rgba(255,184,0,0.4)"></div>%90 Bant</div>
   </div>
   <div class="cw"><canvas id="chart2"></canvas></div>
 </div>
 
-<!-- ANALİZ BULGULARI + TAHMİN ÖZETİ -->
-<div class="results-grid" id="sec_results" style="display:none">
-  <div class="rc"><div class="rc-title">ANALİZ BULGULARI</div><div id="findings"></div></div>
-  <div class="rc"><div class="rc-title">TAHMİN ÖZETİ</div><div id="predSummary"></div></div>
+<!-- ANALİZ BULGULARI -->
+<div class="results-grid" id="sec_results" style="display:none;">
+  <div class="card"><div class="card-title">ANALİZ BULGULARI</div><div id="findings"></div></div>
+  <div class="card"><div class="card-title">TAHMİN ÖZETİ</div><div id="predSummary"></div></div>
 </div>
 
 </div><!-- /wrap -->
@@ -286,100 +791,88 @@ var N_SIM   = 8000;
 var N_STEPS = 15;
 var CONF    = 0.90;
 var ALPHA   = (1 - CONF) / 2;
-/* Sabit ensemble: NB(hiyerarşik) + NHiTS(pencere-3) + DTW(1-NN) + CRF(koşullu rastsal alan) */
 var ENS_METHODS = ['nbwin','nhits','dtw1nn','crf'];
 
-var _set=[], _data=[], _chart1=null, _chart2=null;
+var _set=[], _data=[], _chart1=null, _chart2=null, _targetChart=null;
 
-function $(id){return document.getElementById(id);}
-function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+function $(id){ return document.getElementById(id); }
+function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+
 function setP(p,lbl,txt){
-  $('progBar').style.width=Math.min(100,p)+'%';
-  $('progTxt').textContent=txt||Math.round(p)+'%';
-  if(lbl)$('progLbl').textContent=lbl;
+  $('progBar').style.width = Math.min(100,p)+'%';
+  $('progTxt').textContent = txt||Math.round(p)+'%';
+  if(lbl) $('progLbl').textContent = lbl;
 }
-function show(id){$(id).style.display='block';}
-function hide(id){$(id).style.display='none';}
+function show(id){ $(id).style.display='block'; }
+function hide(id){ $(id).style.display='none'; }
 
 /* ── MATH ── */
-function mean(a){if(!a||!a.length)return 0;var s=0;for(var i=0;i<a.length;i++)s+=a[i];return s/a.length;}
-function vari(a){if(!a||a.length<2)return 0;var m=mean(a),s=0;for(var i=0;i<a.length;i++)s+=(a[i]-m)*(a[i]-m);return s/a.length;}
-function std(a){return Math.sqrt(vari(a));}
+function mean(a){ if(!a||!a.length)return 0; var s=0; for(var i=0;i<a.length;i++)s+=a[i]; return s/a.length; }
+function vari(a){ if(!a||a.length<2)return 0; var m=mean(a),s=0; for(var i=0;i<a.length;i++)s+=(a[i]-m)*(a[i]-m); return s/a.length; }
+function std(a){ return Math.sqrt(vari(a)); }
 function acf1(a){
-  var n=a.length,m=mean(a),num=0,den=0;
-  for(var i=1;i<n;i++)num+=(a[i]-m)*(a[i-1]-m);
-  for(var i=0;i<n;i++)den+=(a[i]-m)*(a[i]-m);
+  var n=a.length, m=mean(a), num=0, den=0;
+  for(var i=1;i<n;i++) num+=(a[i]-m)*(a[i-1]-m);
+  for(var i=0;i<n;i++) den+=(a[i]-m)*(a[i]-m);
   return den<1e-12?0:num/den;
 }
-function pct(a,p){var s=a.slice().sort(function(x,y){return x-y;});return s[Math.max(0,Math.min(s.length-1,Math.floor(p*(s.length-1))))];}
-function linTrend(a){var n=a.length,sx=0,sy=0,sxy=0,sxx=0;for(var i=0;i<n;i++){sx+=i;sy+=a[i];sxy+=i*a[i];sxx+=i*i;}var d=n*sxx-sx*sx;return d<1e-12?0:(n*sxy-sx*sy)/d;}
+function pct(a,p){ var s=a.slice().sort(function(x,y){return x-y;}); return s[Math.max(0,Math.min(s.length-1,Math.floor(p*(s.length-1))))]; }
+function linTrend(a){ var n=a.length,sx=0,sy=0,sxy=0,sxx=0; for(var i=0;i<n;i++){sx+=i;sy+=a[i];sxy+=i*a[i];sxx+=i*i;} var d=n*sxx-sx*sx; return d<1e-12?0:(n*sxy-sx*sy)/d; }
 function entropy(data,set){
   if(!set.length)return 0;
   var cnt={},n=data.length;
   for(var i=0;i<set.length;i++)cnt[set[i]]=0;
   for(var i=0;i<n;i++){var k=snap(data[i],set);cnt[k]=(cnt[k]||0)+1;}
-  var h=0;for(var k in cnt){var p=cnt[k]/n;if(p>0)h-=p*Math.log2(p);}return h;
+  var h=0; for(var k in cnt){var p=cnt[k]/n;if(p>0)h-=p*Math.log2(p);} return h;
 }
-function grnd(){var u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
-function snap(v,set){if(!set||!set.length)return v;var best=set[0];for(var i=1;i<set.length;i++)if(Math.abs(set[i]-v)<Math.abs(best-v))best=set[i];return best;}
+function grnd(){ var u=0,v=0; while(!u)u=Math.random(); while(!v)v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+function snap(v,set){ if(!set||!set.length)return v; var best=set[0]; for(var i=1;i<set.length;i++)if(Math.abs(set[i]-v)<Math.abs(best-v))best=set[i]; return best; }
 
-/* ── ADIM KÜMESİ YÖNETİMİ ── */
+/* ── ADIM KÜMESİ ── */
 function parseSeries(){
-  var parts=$('seriesInput').value.split(/[\n,;]+/),out=[];
-  for(var i=0;i<parts.length;i++){var n=parseFloat(parts[i].trim());if(!isNaN(n))out.push(n);}
+  var parts=$('seriesInput').value.split(/[\n,;]+/), out=[];
+  for(var i=0;i<parts.length;i++){ var n=parseFloat(parts[i].trim()); if(!isNaN(n))out.push(n); }
   return out;
 }
 function buildAutoSet(data){
   var seen={},vals=[];
-  for(var i=0;i<data.length;i++){var k=data[i].toString();if(!seen[k]){seen[k]=true;vals.push(data[i]);}}
+  for(var i=0;i<data.length;i++){ var k=data[i].toString(); if(!seen[k]){seen[k]=true;vals.push(data[i]);} }
   vals.sort(function(a,b){return a-b;});
   return vals;
 }
 function renderSetPreview(){
-  $('setPreview').innerHTML=_set.map(function(v,i){
+  $('setPreview').innerHTML = _set.map(function(v,i){
     return '<span class="tag-wrap">'
       +'<span class="tag-val">'+v+'</span>'
-      +'<button class="tag-btn" title="Kaldır" onclick="removeSetVal('+i+')">&#x2212;</button>'
+      +'<button class="tag-btn" onclick="removeSetVal('+i+')" title="Kaldır">&#x2212;</button>'
       +'</span>';
   }).join('');
 }
-function removeSetVal(idx){
-  _set.splice(idx,1);
-  renderSetPreview();
-}
+function removeSetVal(idx){ _set.splice(idx,1); renderSetPreview(); }
 function addSetVal(){
   var v=parseFloat($('newValInput').value);
-  if(isNaN(v)){return;}
-  /* Zaten var mı? */
-  for(var i=0;i<_set.length;i++) if(Math.abs(_set[i]-v)<1e-9) return;
-  _set.push(v);
-  _set.sort(function(a,b){return a-b;});
-  renderSetPreview();
-  $('newValInput').value='';
+  if(isNaN(v))return;
+  for(var i=0;i<_set.length;i++) if(Math.abs(_set[i]-v)<1e-9)return;
+  _set.push(v); _set.sort(function(a,b){return a-b;}); renderSetPreview(); $('newValInput').value='';
 }
 function onSeriesInput(){
   var data=parseSeries();
-  if(data.length>0){
-    _set=buildAutoSet(data);
-    renderSetPreview();
-  }else{
-    _set=[];
-    $('setPreview').innerHTML='';
-  }
+  if(data.length>0){ _set=buildAutoSet(data); renderSetPreview(); }
+  else { _set=[]; $('setPreview').innerHTML=''; }
 }
-/* Enter ile de ekle */
+
 document.addEventListener('DOMContentLoaded',function(){
-  $('newValInput').addEventListener('keydown',function(e){if(e.key==='Enter')addSetVal();});
+  $('newValInput').addEventListener('keydown',function(e){ if(e.key==='Enter')addSetVal(); });
 });
 
-/* ── TRANSITION / FALLBACK ── */
+/* ── TRANSITION ── */
 function buildTrans(data,set){
-  var n=set.length;if(!n)return null;
-  function idx(v){for(var i=0;i<set.length;i++)if(Math.abs(set[i]-v)<1e-9)return i;return -1;}
+  var n=set.length; if(!n)return null;
+  function idx(v){ for(var i=0;i<set.length;i++)if(Math.abs(set[i]-v)<1e-9)return i; return -1; }
   var T=[];
-  for(var i=0;i<n;i++){T.push([]);for(var j=0;j<n;j++)T[i].push(0.1);}
-  for(var i=1;i<data.length;i++){var fi=idx(data[i-1]),ti=idx(data[i]);if(fi>=0&&ti>=0)T[fi][ti]++;}
-  for(var i=0;i<n;i++){var s=0;for(var j=0;j<n;j++)s+=T[i][j];for(var j=0;j<n;j++)T[i][j]/=s;}
+  for(var i=0;i<n;i++){ T.push([]); for(var j=0;j<n;j++)T[i].push(0.1); }
+  for(var i=1;i<data.length;i++){ var fi=idx(data[i-1]),ti=idx(data[i]); if(fi>=0&&ti>=0)T[fi][ti]++; }
+  for(var i=0;i<n;i++){ var s=0; for(var j=0;j<n;j++)s+=T[i][j]; for(var j=0;j<n;j++)T[i][j]/=s; }
   return T;
 }
 function mcFallback(data,steps,set,T){
@@ -388,8 +881,8 @@ function mcFallback(data,steps,set,T){
     for(var i=0;i<steps;i++){last=last*a+m*(1-Math.abs(a))+s*grnd()*(1-Math.abs(a));path.push(last);}
     return path;
   }
-  function idx(v){for(var i=0;i<set.length;i++)if(Math.abs(set[i]-v)<1e-9)return i;return -1;}
-  var cur=idx(data[data.length-1]);if(cur<0)cur=Math.floor(set.length/2);
+  function idx(v){ for(var i=0;i<set.length;i++)if(Math.abs(set[i]-v)<1e-9)return i; return -1; }
+  var cur=idx(data[data.length-1]); if(cur<0)cur=Math.floor(set.length/2);
   var path=[];
   for(var i=0;i<steps;i++){
     var row=T[cur],r=Math.random(),cum=0;
@@ -399,14 +892,13 @@ function mcFallback(data,steps,set,T){
   return path;
 }
 
-/* ════ 1. NAIVE BAYES — hiyerarşik (pencere-3) ════ */
+/* ════ 1. NAIVE BAYES — hiyerarşik pencere-3 ════ */
 function nbPredict(data,steps,set){
   var es=set.length?set:buildAutoSet(data);
   var win=3;
   if(!es.length||data.length<win+1){var T2=buildTrans(data,es);return mcFallback(data,steps,es,T2);}
-  function idx(v){for(var i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i;return 0;}
-  function key(w){return w.map(function(v){return Math.max(0,idx(v));}).join('-');}
-  /* Hiyerarşik: pencere-3, pencere-2, pencere-1 (uzun→kısa fallback) */
+  function idx(v){ for(var i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i; return 0; }
+  function key(w){ return w.map(function(v){return Math.max(0,idx(v));}).join('-'); }
   var cnts={};
   for(var ww=1;ww<=win;ww++){
     cnts[ww]={};
@@ -418,12 +910,8 @@ function nbPredict(data,steps,set){
   }
   var w=data.slice(-win),path=[];
   for(var i=0;i<steps;i++){
-    /* En uzun pencereden başla, bulunamazsa kısalt */
     var row=null;
-    for(var ww=win;ww>=1;ww--){
-      var k=key(w.slice(win-ww));
-      if(cnts[ww][k]){row=cnts[ww][k];break;}
-    }
+    for(var ww=win;ww>=1;ww--){ var k=key(w.slice(win-ww)); if(cnts[ww][k]){row=cnts[ww][k];break;} }
     if(!row){row=[];for(var j=0;j<es.length;j++)row.push(1);}
     var tot=0;for(var j=0;j<row.length;j++)tot+=row[j];
     var r=Math.random()*tot,cum=0,ch=0;
@@ -433,9 +921,9 @@ function nbPredict(data,steps,set){
   return path;
 }
 
-/* ════ 2. N-HiTS — pencere-3 ════ */
+/* ════ 2. N-HiTS ════ */
 function fitAR(data,p){
-  var n=data.length;if(n<=p||p<1)return[0];
+  var n=data.length; if(n<=p||p<1)return[0];
   var m=mean(data),c=[];
   for(var k=0;k<=p;k++){var s=0;for(var i=k;i<n;i++)s+=(data[i]-m)*(data[i-k]-m);c.push(s/(n-k));}
   var phi=[c[1]/(c[0]||1e-10)],V=c[0]*(1-phi[0]*phi[0]);
@@ -507,7 +995,7 @@ function nhitsPredict(data,steps,set){
   });
 }
 
-/* ════ 3. DTW yardımcısı ════ */
+/* ════ 3. DTW ════ */
 function dtwDist(a,b){
   var n=a.length,m=b.length;
   var dtw=[];for(var i=0;i<=n;i++){dtw.push([]);for(var j=0;j<=m;j++)dtw[i].push(Infinity);}
@@ -518,20 +1006,16 @@ function dtwDist(a,b){
   }
   return dtw[n][m];
 }
-
-/* ════ 4. DTW — Saf 1-NN ════ */
 function dtw1nnPredict(data,steps,set){
   var wlen=Math.min(8,Math.max(3,Math.floor(data.length*0.3)));
   var query=data.slice(-wlen);
   var best=null,bestD=Infinity;
-  /* En benzer tek pencereyi bul */
   for(var i=0;i<=data.length-wlen-steps;i++){
     var cand=data.slice(i,i+wlen);
     var d=dtwDist(query,cand);
     if(d<bestD){bestD=d;best=i;}
   }
   if(best===null){var T3=buildTrans(data,set);return mcFallback(data,steps,set,T3);}
-  /* O pencereden sonra gelen değerler tahmin */
   var path=[];
   for(var s=0;s<steps;s++){
     var v=data[best+wlen+s]!==undefined?data[best+wlen+s]:data[data.length-1];
@@ -541,13 +1025,13 @@ function dtw1nnPredict(data,steps,set){
   return path;
 }
 
-/* ════ 5. CRF — koşullu rastsal alan (pseudo-likelihood + softmax) ════ */
+/* ════ 4. CRF ════ */
 function crfPredict(data,steps,set){
   var es=set.length?set:buildAutoSet(data);
-  var N=es.length;if(!N)return Array(steps).fill(data[data.length-1]);
-  function idx(v){for(var i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i;return 0;}
-  var wT=[];for(var i=0;i<N;i++){wT.push([]);for(var j=0;j<N;j++)wT[i].push(0.0);}
-  var wE=[];for(var i=0;i<N;i++){wE.push([]);for(var j=0;j<N;j++)wE[i].push(0.0);}
+  var N=es.length; if(!N)return Array(steps).fill(data[data.length-1]);
+  function idx(v){ for(var i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i; return 0; }
+  var wT=[],wE=[];
+  for(var i=0;i<N;i++){wT.push([]);wE.push([]);for(var j=0;j<N;j++){wT[i].push(0);wE[i].push(0);}}
   var lr=0.1,obs2=data.map(idx);
   for(var pass=0;pass<5;pass++){
     for(var t=1;t<obs2.length;t++){
@@ -577,11 +1061,7 @@ function crfPredict(data,steps,set){
   return path;
 }
 
-/* ════ ENSEMBLE — orijinal ile birebir aynı: çoğunluk oylaması ════
-   Her adım için her yöntemden 1 tahmin gelir.
-   set varsa → değerleri snap et, freq sayımı yap, en çok oy alanı seç (majority vote)
-   set yoksa → ortalamasını al
-*/
+/* ════ ENSEMBLE ════ */
 function callMethod(name,data,steps,set,T){
   if(name==='nbwin')  return nbPredict(data,steps,set);
   if(name==='nhits')  return nhitsPredict(data,steps,set);
@@ -594,34 +1074,22 @@ function ensemblePath(data,steps,set,T){
   return Array.from({length:steps},function(_,s){
     var vals=paths.map(function(p){return p[s];});
     if(set.length){
-      /* Çoğunluk oylaması: her yöntemin tahmini snap'lenir, freq sayılır */
       var freq={};
-      vals.forEach(function(v){
-        var k=snap(v,set).toString();
-        freq[k]=(freq[k]||0)+1;
-      });
+      vals.forEach(function(v){var k=snap(v,set).toString();freq[k]=(freq[k]||0)+1;});
       return parseFloat(Object.entries(freq).sort(function(a,b){return b[1]-a[1];})[0][0]);
     }
     return mean(vals);
   });
 }
 
-/* ════ MAIN ════ */
+/* ════ ANA ANALİZ ════ */
 async function runAnalysis(){
-  _data=parseSeries();
+  _data = parseSeries();
   if(_data.length<6){alert('En az 6 veri noktası gerekli.');return;}
-
-  /* Adım kümesi henüz boşsa otomatik oluştur */
-  if(!_set.length){
-    _set=buildAutoSet(_data);
-    renderSetPreview();
-  }
-
+  if(!_set.length){_set=buildAutoSet(_data);renderSetPreview();}
   var effSet=_set.slice().sort(function(a,b){return a-b;});
   var bad=_data.filter(function(v){return!effSet.some(function(s){return Math.abs(s-v)<1e-9;});}).length;
   var m=mean(_data),s=std(_data),a1=acf1(_data),tr=linTrend(_data),ent=entropy(_data,effSet);
-
-  /* Stat bar kaldırıldı — değerleri sadece bulgularda gösteriyoruz */
 
   ['sec_table','sec_chart1','sec_results','sec_chart2'].forEach(hide);
   show('progWrap');setP(4,'Modeller hazırlanıyor...');await sleep(20);
@@ -651,7 +1119,6 @@ async function runAnalysis(){
     predHi.push(pct(vals,1-ALPHA));
   }
 
-  /* prob2d[adım][değerIdx] */
   var prob2d=Array.from({length:N_STEPS},function(_,step){
     var vals=simPaths.map(function(p){return p[step];});
     var cnt={};effSet.forEach(function(v){cnt[v]=0;});
@@ -666,9 +1133,7 @@ async function runAnalysis(){
   renderResults(predMed,predLo,predHi,m,s,a1,tr,simPaths.length,ent,effSet,bad);
 
   setP(100,'Tamamlandı','100%');
-  show('sec_table');
-  show('sec_chart1');
-  show('sec_chart2');
+  show('sec_table');show('sec_chart1');show('sec_chart2');
   $('sec_results').style.display='grid';
   hide('progWrap');
 }
@@ -683,17 +1148,25 @@ function drawChart1(predMed,predLo,predHi){
   var lo=[].concat(Array(oLen-1).fill(null),[_data[oLen-1]],predLo);
   var hi=[].concat(Array(oLen-1).fill(null),[_data[oLen-1]],predHi);
   _chart1=new Chart($('chart1').getContext('2d'),{type:'line',data:{labels:labels,datasets:[
-    {label:'Hi',data:hi,borderColor:'transparent',backgroundColor:'rgba(31,122,69,.10)',pointRadius:0,fill:'+1',tension:.35},
-    {label:'Lo',data:lo,borderColor:'rgba(31,122,69,.25)',borderWidth:1,borderDash:[3,2],backgroundColor:'rgba(31,122,69,.10)',pointRadius:0,fill:false,tension:.35},
-    {label:'Medyan',data:med,borderColor:'#1f7a45',borderWidth:2.5,borderDash:[6,3],pointRadius:0,fill:false,tension:.35},
-    {label:'Gözlem',data:obs,borderColor:'#1a5c8a',borderWidth:2,pointRadius:2.5,pointBackgroundColor:'#1a5c8a',fill:false,tension:.2},
-  ]},options:{animation:false,responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false},
-      zoom:{pan:{enabled:true,mode:'x'},zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}}},
+    {label:'Hi',data:hi,borderColor:'transparent',backgroundColor:'rgba(0,255,136,0.08)',pointRadius:0,fill:'+1',tension:.35},
+    {label:'Lo',data:lo,borderColor:'rgba(0,255,136,0.3)',borderWidth:1,borderDash:[3,2],backgroundColor:'rgba(0,255,136,0.08)',pointRadius:0,fill:false,tension:.35},
+    {label:'Medyan',data:med,borderColor:'#00ff88',borderWidth:2,borderDash:[6,3],pointRadius:0,fill:false,tension:.35},
+    {label:'Gözlem',data:obs,borderColor:'#00f5ff',borderWidth:2,pointRadius:2,pointBackgroundColor:'#00f5ff',fill:false,tension:.2},
+  ]},options:{
+    animation:false,responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{mode:'index',intersect:false,
+        backgroundColor:'rgba(8,13,26,0.9)',borderColor:'rgba(0,245,255,0.3)',borderWidth:1,
+        titleColor:'#00f5ff',bodyColor:'#c8d8e8',titleFont:{family:'Orbitron',size:10},
+      },
+      zoom:{pan:{enabled:true,mode:'x'},zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}}
+    },
     scales:{
-      x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6e6050',font:{family:'Space Mono',size:9},maxTicksLimit:14}},
-      y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6e6050',font:{family:'Space Mono',size:9},maxTicksLimit:8}}
-    },elements:{point:{radius:0}}
+      x:{grid:{color:'rgba(0,245,255,0.04)'},ticks:{color:'#3a5a7a',font:{family:'Share Tech Mono',size:9},maxTicksLimit:14}},
+      y:{grid:{color:'rgba(0,245,255,0.04)'},ticks:{color:'#3a5a7a',font:{family:'Share Tech Mono',size:9},maxTicksLimit:8}}
+    },
+    elements:{point:{radius:0}}
   }});
 }
 function c1zi(){if(_chart1)_chart1.zoom(1.35);}
@@ -706,29 +1179,33 @@ function drawChart2(predMed,predLo,predHi){
   var oLen=_data.length,cumObs=[],acc=0;
   for(var i=0;i<oLen;i++){acc+=_data[i];cumObs.push(acc);}
   var cumMed=[],cumLo=[],cumHi=[],accM=acc,accL=acc,accH=acc;
-  for(var i=0;i<predMed.length;i++){
-    accM+=predMed[i];cumMed.push(accM);
-    accL+=predLo[i];cumLo.push(accL);
-    accH+=predHi[i];cumHi.push(accH);
-  }
+  for(var i=0;i<predMed.length;i++){accM+=predMed[i];cumMed.push(accM);accL+=predLo[i];cumLo.push(accL);accH+=predHi[i];cumHi.push(accH);}
   var labels=Array.from({length:oLen+predMed.length},function(_,i){return i;});
   var obsDs=[].concat(cumObs,Array(predMed.length).fill(null));
   var medDs=[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumMed);
   var loDs=[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumLo);
   var hiDs=[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumHi);
   _chart2=new Chart($('chart2').getContext('2d'),{type:'line',data:{labels:labels,datasets:[
-    {label:'TahHi',data:hiDs,borderColor:'transparent',backgroundColor:'rgba(232,160,32,.12)',pointRadius:0,fill:'+1',tension:.35},
-    {label:'TahLo',data:loDs,borderColor:'rgba(232,160,32,.3)',borderWidth:1,borderDash:[3,2],backgroundColor:'rgba(232,160,32,.12)',pointRadius:0,fill:false,tension:.35},
-    {label:'Tah Medyan',data:medDs,borderColor:'#e8a020',borderWidth:2.5,borderDash:[6,3],pointRadius:0,fill:false,tension:.35},
-    {label:'Gözlem Kümülatif',data:obsDs,borderColor:'#1a5c8a',borderWidth:2,pointRadius:2,pointBackgroundColor:'#1a5c8a',fill:false,tension:.2},
-  ]},options:{animation:false,responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false},
-      zoom:{pan:{enabled:true,mode:'x'},zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}}},
+    {label:'TahHi',data:hiDs,borderColor:'transparent',backgroundColor:'rgba(255,184,0,0.08)',pointRadius:0,fill:'+1',tension:.35},
+    {label:'TahLo',data:loDs,borderColor:'rgba(255,184,0,0.3)',borderWidth:1,borderDash:[3,2],backgroundColor:'rgba(255,184,0,0.08)',pointRadius:0,fill:false,tension:.35},
+    {label:'Medyan',data:medDs,borderColor:'#ffb800',borderWidth:2,borderDash:[6,3],pointRadius:0,fill:false,tension:.35},
+    {label:'Gözlem',data:obsDs,borderColor:'#00f5ff',borderWidth:2,pointRadius:2,pointBackgroundColor:'#00f5ff',fill:false,tension:.2},
+  ]},options:{
+    animation:false,responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{mode:'index',intersect:false,
+        backgroundColor:'rgba(8,13,26,0.9)',borderColor:'rgba(0,245,255,0.3)',borderWidth:1,
+        titleColor:'#00f5ff',bodyColor:'#c8d8e8',
+      },
+      zoom:{pan:{enabled:true,mode:'x'},zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}}
+    },
     scales:{
-      x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6e6050',font:{family:'Space Mono',size:9},maxTicksLimit:14}},
-      y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6e6050',font:{family:'Space Mono',size:9},maxTicksLimit:8},
-        title:{display:true,text:'Kümülatif Toplam',color:'#6e6050',font:{family:'Space Mono',size:9}}}
-    },elements:{point:{radius:0}}
+      x:{grid:{color:'rgba(0,245,255,0.04)'},ticks:{color:'#3a5a7a',font:{family:'Share Tech Mono',size:9},maxTicksLimit:14}},
+      y:{grid:{color:'rgba(0,245,255,0.04)'},ticks:{color:'#3a5a7a',font:{family:'Share Tech Mono',size:9},maxTicksLimit:8},
+         title:{display:true,text:'Kümülatif Toplam',color:'#3a5a7a',font:{family:'Share Tech Mono',size:9}}}
+    },
+    elements:{point:{radius:0}}
   }});
 }
 function c2zi(){if(_chart2)_chart2.zoom(1.35);}
@@ -754,423 +1231,300 @@ document.addEventListener('keydown',function(e){
   }
 });
 
-/* ════════════════════════════════════════════════════
-   2D TABLE — TRANSPOZE + ÇİFT RENK KANALI
-   prob2d[adım][değerIdx]
-
-   Satırlar  = değerler — BÜYÜKTEN KÜÇÜĞE sıralı
-   Sütunlar  = adımlar  (t+1 … t+N)
-
-   RENK SİSTEMİ:
-   ─ Yeşil kanalı  → SÜTUN bazlı normalize: o adımda bu değer ne kadar yüksek?
-                     (0=krem, 1=koyu --green)
-   ─ Mavi kanalı   → SATIR bazlı normalize: bu değer adımlar içinde ne kadar yüksek?
-                     (0=krem, 1=koyu --blue)
-   ─ İki kanal aynı anda aktifse hücre karışık tona gider (hem satır hem sütunda zirve)
-   ─ İkisi de düşükse krem/beyaza yakın
-
-   Alt satır 1: EN OLASI (sütun bazında)
-   Alt satır 2: 2. OLASI (sütun bazında)
-   ════════════════════════════════════════════════════ */
+/* ════ 2D TABLE ════ */
 function renderTable(prob2d,effSet,nPred){
-  var nSteps=nPred, nVals=effSet.length;
+  var nSteps=nPred,nVals=effSet.length;
+  var sortedIdx=Array.from({length:nVals},function(_,i){return i;}).sort(function(a,b){return effSet[b]-effSet[a];});
 
-  /* Değerleri büyükten küçüğe sıralanmış index listesi */
-  var sortedIdx=Array.from({length:nVals},function(_,i){return i;})
-    .sort(function(a,b){return effSet[b]-effSet[a];});
-  var sortedVals=sortedIdx.map(function(i){return effSet[i];});
-
-  /* SÜTUN MAX — yeşil kanal için */
   var colMax=Array.from({length:nSteps},function(_,ci){
-    var mx=0;
-    for(var ri=0;ri<nVals;ri++) if(prob2d[ci][ri]>mx) mx=prob2d[ci][ri];
-    return mx||1e-9;
+    var mx=0;for(var ri=0;ri<nVals;ri++)if(prob2d[ci][ri]>mx)mx=prob2d[ci][ri];return mx||1e-9;
   });
-
-  /* SATIR MAX — mavi kanal için */
   var rowMax=Array.from({length:nVals},function(_,ri){
-    var mx=0;
-    for(var ci=0;ci<nSteps;ci++) if(prob2d[ci][ri]>mx) mx=prob2d[ci][ri];
-    return mx||1e-9;
+    var mx=0;for(var ci=0;ci<nSteps;ci++)if(prob2d[ci][ri]>mx)mx=prob2d[ci][ri];return mx||1e-9;
   });
-
-  /* Her sütun için sıralı değer listesi (En Olası / 2. Olası) */
   var colRanked=Array.from({length:nSteps},function(_,ci){
-    return effSet.map(function(v,ri){return{v:v,p:prob2d[ci][ri]};})
-      .sort(function(a,b){return b.p-a.p;});
+    return effSet.map(function(v,ri){return{v:v,p:prob2d[ci][ri]};}).sort(function(a,b){return b.p-a.p;});
   });
 
-  /* Tema renkleri (RGB sayısal) */
-  /* --paper: #faf6ed  → base (düşük olasılık) */
-  /* --blue:  #1a5c8a  → satır kanalı zirve  */
-  /* --green: #1f7a45  → sütun kanalı zirve  */
-  /* Karışım: her kanalı bağımsız hesapla, sonra RGB interpolasyonu */
-  function cellBg(gN, bN){
-    /* gN = yeşil normalize [0,1],  bN = mavi normalize [0,1] */
-    /* Base = paper: 250,246,237 */
-    /* Green peak = 31,122,69  */
-    /* Blue peak  = 26,92,138  */
-    /* Her kanal paper'dan kendi peak'ine doğru gidiyor, sonra topluyoruz */
-    var pr=250, pg=246, pb_=237;
-    var gr_r=31,  gr_g=122, gr_b=69;
-    var bl_r=26,  bl_g=92,  bl_b=138;
-
-    /* Katkılar — iki kanal birbirinden bağımsız rengi paperdan çeker */
-    var r=Math.round(pr + gN*(gr_r-pr) + bN*(bl_r-pr));
-    var g=Math.round(pg + gN*(gr_g-pg) + bN*(bl_g-pg));
-    var b=Math.round(pb_ + gN*(gr_b-pb_) + bN*(bl_b-pb_));
-
-    /* Clamp */
-    r=Math.max(0,Math.min(255,r));
-    g=Math.max(0,Math.min(255,g));
-    b=Math.max(0,Math.min(255,b));
-
-    /* Metin rengi: toplam koyuluğa bakarak seç */
-    var lum=(r*0.299+g*0.587+b*0.114);
-    var tc=lum<148?'#faf6ed':'#1c1710';
-    return {bg:'rgb('+r+','+g+','+b+')',tc:tc};
+  // Cyber color: dark bg with cyan/amber channels
+  function cellBg(gN,bN){
+    // base: #0a0f1e (10,15,30), cyan peak: #00f5ff (0,245,255), amber peak: #ffb800
+    var br=10,bg=15,bb=30;
+    var cr=0,cg=245,cb=255;
+    var ar=255,ag=184,ab=0;
+    var r=Math.round(br+gN*(cr-br)*0.7+bN*(ar-br)*0.5);
+    var g=Math.round(bg+gN*(cg-bg)*0.7+bN*(ag-bg)*0.5);
+    var b=Math.round(bb+gN*(cb-bb)*0.7+bN*(ab-bb)*0.5);
+    r=Math.max(0,Math.min(255,r));g=Math.max(0,Math.min(255,g));b=Math.max(0,Math.min(255,b));
+    var lum=r*0.299+g*0.587+b*0.114;
+    var tc=lum<100?'rgba(200,216,232,0.9)':'#050810';
+    return{bg:'rgb('+r+','+g+','+b+')',tc:tc};
   }
 
-  /* BAŞLIK */
   var hdr='<tr>'
-    +'<th class="rh" style="min-width:72px;text-align:left;padding-left:10px;">Değer ↓</th>'
-    +Array.from({length:nSteps},function(_,ci){return '<th>t+'+(ci+1)+'</th>';}).join('')
+    +'<th class="rh" style="min-width:70px;text-align:left;padding-left:10px;">Değer</th>'
+    +Array.from({length:nSteps},function(_,ci){return'<th>t+'+(ci+1)+'</th>';}).join('')
     +'</tr>';
 
-  /* GÖVDE — satırlar büyükten küçüğe */
   var rows=sortedIdx.map(function(ri){
     var val=effSet[ri];
     var cells=Array.from({length:nSteps},function(_,ci){
       var p=prob2d[ci][ri];
-      var pStr=(p*100).toFixed(1);
-      var gN=colMax[ci]>0?p/colMax[ci]:0;   /* sütun normalize → yeşil */
-      var bN=rowMax[ri]>0?p/rowMax[ri]:0;   /* satır normalize → mavi  */
+      var gN=colMax[ci]>0?p/colMax[ci]:0;
+      var bN=rowMax[ri]>0?p/rowMax[ri]:0;
       var col=cellBg(gN,bN);
-      return '<td style="background:'+col.bg+';color:'+col.tc+';">'+pStr+'%</td>';
+      return'<td style="background:'+col.bg+';color:'+col.tc+';">'+(p*100).toFixed(1)+'%</td>';
     }).join('');
-    return '<tr><td class="sh">'+val+'</td>'+cells+'</tr>';
+    return'<tr><td class="sh">'+val+'</td>'+cells+'</tr>';
   }).join('');
 
-  /* ALT SATIR 1: EN OLASI */
   var footBest='<tr class="foot-row">'
     +'<td class="sh" style="font-size:9px;color:var(--green);letter-spacing:1px;">EN OLASI</td>'
     +Array.from({length:nSteps},function(_,ci){
       var best=colRanked[ci][0];
-      return '<td class="bt">'+best.v
-        +'<br><span style="font-size:9px;font-weight:400;color:var(--ink3)">('+
-        (best.p*100).toFixed(1)+'%)</span></td>';
+      return'<td class="bt">'+best.v+'<br><span style="font-size:9px;color:var(--text3)">'+(best.p*100).toFixed(1)+'%</span></td>';
     }).join('')+'</tr>';
 
-  /* ALT SATIR 2: 2. OLASI */
   var footSec='<tr class="foot-row">'
     +'<td class="sh" style="font-size:9px;color:var(--amber);letter-spacing:1px;">2. OLASI</td>'
     +Array.from({length:nSteps},function(_,ci){
       var sec=colRanked[ci][1]||colRanked[ci][0];
-      return '<td class="bs">'+sec.v
-        +'<br><span style="font-size:9px;font-weight:400;color:var(--ink3)">('+
-        (sec.p*100).toFixed(1)+'%)</span></td>';
+      return'<td class="bs">'+sec.v+'<br><span style="font-size:9px;color:var(--text3)">'+(sec.p*100).toFixed(1)+'%</span></td>';
     }).join('')+'</tr>';
 
   $('p2dWrap').innerHTML='<table class="p2d"><thead>'+hdr+'</thead><tbody>'+rows+footBest+footSec+'</tbody></table>';
-
-  /* LEGEND */
   $('tblLeg').innerHTML=
-    '<div class="tll">'
-      +'<div class="tlb" style="background:linear-gradient(135deg,#1f7a45,#faf6ed)"></div>'
-      +'<span><b>Yeşil yoğunluk</b> = o sütunda (adımda) ne kadar baskın — sütun normalize</span>'
-    +'</div>'
-    +'<div class="tll">'
-      +'<div class="tlb" style="background:linear-gradient(135deg,#1a5c8a,#faf6ed)"></div>'
-      +'<span><b>Mavi yoğunluk</b> = o satırda (değerde) ne kadar baskın — satır normalize</span>'
-    +'</div>'
-    +'<div class="tll">'
-      +'<div class="tlb" style="background:linear-gradient(135deg,#0d3d3a,#faf6ed)"></div>'
-      +'<span><b>Koyu karışık ton</b> = hem satırda hem sütunda yüksek (çift baskınlık)</span>'
-    +'</div>'
-    +'<div class="tll">'
-      +'<div class="tlb" style="background:#faf6ed;border:1px solid #d6c9b4"></div>'
-      +'<span><b>Krem/boş</b> = her iki eksende de düşük olasılık</span>'
-    +'</div>';
+    '<div class="tll"><div class="tlb" style="background:linear-gradient(135deg,#00f5ff,#0a0f1e)"></div>Cyan = sütunda baskın (adım normalize)</div>'+
+    '<div class="tll"><div class="tlb" style="background:linear-gradient(135deg,#ffb800,#0a0f1e)"></div>Amber = satırda baskın (değer normalize)</div>'+
+    '<div class="tll"><div class="tlb" style="background:#0a0f1e;border-color:var(--border)"></div>Karanlık = düşük olasılık</div>';
 }
 
 /* ── RESULTS ── */
 function renderResults(predMed,predLo,predHi,m,s,a1,tr,nSim,ent,effSet,bad){
   var last=_data[_data.length-1],fMed=predMed[N_STEPS-1],fLo=predLo[N_STEPS-1],fHi=predHi[N_STEPS-1];
-  var acfI=Math.abs(a1)>0.5?'Güçlü':Math.abs(a1)>0.2?'Orta':'Zayıf';
-  var trendStr=Math.abs(tr)<0.0005?'Sabit':(tr>0?'↑ Yükseliyor':'↓ Düşüyor');
+  var acfI=Math.abs(a1)>0.5?'GÜÇlÜ':Math.abs(a1)>0.2?'ORTA':'ZAYIF';
+  var trendStr=Math.abs(tr)<0.0005?'SABİT':(tr>0?'YÜKSELİYOR':'DÜŞÜYOR');
   var freq={};_data.forEach(function(v){var k=v.toString();freq[k]=(freq[k]||0)+1;});
   var top=Object.entries(freq).sort(function(a,b){return b[1]-a[1];})[0];
 
   $('findings').innerHTML=
-    '<div class="fr"><span class="fr-l">Veri uzunluğu</span><span class="fr-r">'+_data.length+' nokta</span></div>'+
-    '<div class="fr"><span class="fr-l">Küme boyutu</span><span class="fr-r">'+effSet.length+' değer</span></div>'+
+    '<div class="fr"><span class="fr-l">Veri uzunluğu</span><span class="fr-r cyan">'+_data.length+' nokta</span></div>'+
+    '<div class="fr"><span class="fr-l">Küme boyutu</span><span class="fr-r cyan">'+effSet.length+' değer</span></div>'+
     (bad>0?'<div class="fr"><span class="fr-l">Geçersiz nokta</span><span class="fr-r err">'+bad+' !</span></div>':'')+
     '<div class="fr"><span class="fr-l">Ortalama / Std</span><span class="fr-r">'+m.toFixed(3)+' / '+s.toFixed(3)+'</span></div>'+
     '<div class="fr"><span class="fr-l">En sık değer</span><span class="fr-r ok">'+top[0]+' (%'+((top[1]/_data.length)*100).toFixed(1)+')</span></div>'+
     '<div class="fr"><span class="fr-l">ACF(1)</span><span class="fr-r '+(Math.abs(a1)>0.3?'ok':'warn')+'">'+a1.toFixed(4)+' — '+acfI+'</span></div>'+
-    '<div class="fr"><span class="fr-l">Entropi</span><span class="fr-r '+(ent>2?'warn':'')+'">'+ent.toFixed(3)+' / '+Math.log2(effSet.length||1).toFixed(2)+' bit</span></div>'+
-    '<div class="fr"><span class="fr-l">Trend</span><span class="fr-r '+(Math.abs(tr)<0.0005?'':'tr>0?\'ok\':\'err\'')+'"">'+trendStr+' ('+tr.toFixed(5)+')</span></div>'+
-    '<div class="fr"><span class="fr-l">Yöntem</span><span class="fr-r">NB · NHiTS · DTW(1-NN) · CRF</span></div>'+
-    '<div class="fr"><span class="fr-l">Simülasyon</span><span class="fr-r">'+nSim.toLocaleString()+' yol</span></div>';
+    '<div class="fr"><span class="fr-l">Entropi</span><span class="fr-r '+(ent>2?'warn':'cyan')+'">'+ent.toFixed(3)+' / '+Math.log2(effSet.length||1).toFixed(2)+' bit</span></div>'+
+    '<div class="fr"><span class="fr-l">Trend</span><span class="fr-r '+(Math.abs(tr)<0.0005?'cyan':tr>0?'ok':'err')+'">'+trendStr+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Simülasyon</span><span class="fr-r cyan">'+nSim.toLocaleString()+' yol</span></div>';
 
   $('predSummary').innerHTML=
-    '<div class="fr"><span class="fr-l">Son gözlem</span><span class="fr-r">'+last+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Son gözlem</span><span class="fr-r cyan">'+last+'</span></div>'+
     '<div class="fr"><span class="fr-l">t+'+N_STEPS+' medyan</span><span class="fr-r ok">'+(typeof fMed==='number'?fMed.toFixed(4):fMed)+'</span></div>'+
     '<div class="fr"><span class="fr-l">Alt %90</span><span class="fr-r warn">'+(typeof fLo==='number'?fLo.toFixed(4):fLo)+'</span></div>'+
     '<div class="fr"><span class="fr-l">Üst %90</span><span class="fr-r warn">'+(typeof fHi==='number'?fHi.toFixed(4):fHi)+'</span></div>'+
-    '<div class="fr"><span class="fr-l">Yön</span><span class="fr-r '+(fMed>last?'ok':fMed<last?'err':'')+'">'+
-      (fMed>last?'Yükseliyor':fMed<last?'Düşüyor':'Sabit')+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Yön</span><span class="fr-r '+(fMed>last?'ok':fMed<last?'err':'cyan')+'">'+(fMed>last?'YÜKSELİYOR':fMed<last?'DÜŞÜYOR':'SABİT')+'</span></div>'+
     '<div class="fr"><span class="fr-l">Belirsizlik +/-</span><span class="fr-r">'+((fHi-fLo)/2).toFixed(4)+'</span></div>';
 }
 
-/* ── SİMÜLASYON SAYISI AYARLA ── */
+/* ════ SİMÜLASYON SAYISI ════ */
 function setSimCount(n){
   N_SIM=n;
-  var inp=document.getElementById('simCountInput');
+  var inp=$('simCountInput');
   if(inp)inp.value=n;
 }
 
-/* ════════════════════════════════════════════════════
-   HEDEF OLASILIK ANALİZİ
-   - Kullanıcının girdiği ham veri + otomatik küme
-   - K adım simülasyon (15 ile sınırlı değil)
-   - Her simülasyon yolunda kümülatif toplam hesaplanır
-   - K. adımda [A1, A2] bandına giren yol sayısı / toplam = olasılık
-   - Grafik: gözlem kümülatifi + simülasyon yollarının fanı + band çizgileri + dikey hedef çizgisi
-   ════════════════════════════════════════════════════ */
-var _targetChart = null;
-
+/* ════ HEDEF OLASILIK ANALİZİ ════ */
 async function runTargetAnalysis(){
-  var data = parseSeries();
-  if(data.length < 6){ alert('Önce en az 6 veri noktası girin.'); return; }
+  var data=parseSeries();
+  if(data.length<6){alert('Önce en az 6 veri noktası girin.');return;}
 
-  var k    = parseInt(document.getElementById('targetStep').value);
-  var a1   = parseFloat(document.getElementById('targetLow').value);
-  var a2   = parseFloat(document.getElementById('targetHigh').value);
+  var k   =parseInt($('targetStep').value);
+  var a1  =parseFloat($('targetLow').value);
+  var a2  =parseFloat($('targetHigh').value);
 
-  if(isNaN(k)||k<1){ alert('Geçerli bir K adım sayısı girin.'); return; }
-  if(isNaN(a1)||isNaN(a2)){ alert('Geçerli A1 ve A2 değerleri girin.'); return; }
-  if(a1 > a2){ var tmp=a1; a1=a2; a2=tmp; } // swap if reversed
+  if(isNaN(k)||k<1){alert('Geçerli K adım sayısı girin.');return;}
+  if(isNaN(a1)||isNaN(a2)){alert('Geçerli A1 ve A2 değerleri girin.');return;}
+  if(a1>a2){var tmp=a1;a1=a2;a2=tmp;}
 
-  var effSet = _set.length ? _set.slice() : buildAutoSet(data);
+  var effSet=_set.length?_set.slice():buildAutoSet(data);
   effSet.sort(function(a,b){return a-b;});
-  var T = buildTrans(data, effSet);
+  var T=buildTrans(data,effSet);
 
-  // Başlangıç kümülatif = girilen verinin toplamı
-  var baseCum = 0;
-  for(var i=0;i<data.length;i++) baseCum += data[i];
+  var baseCum=0;
+  for(var i=0;i<data.length;i++)baseCum+=data[i];
 
-  // Progress göster
-  document.getElementById('targetProgress').style.display='block';
-  document.getElementById('targetResult').style.display='none';
-  document.getElementById('targetChartWrap').style.display='none';
+  $('targetProgress').style.display='block';
+  $('targetResult').style.display='none';
+  $('targetChartWrap').style.display='none';
 
-  var simN = N_SIM;
-  var bSz  = 200;
-  var hits = 0;
+  var simN=N_SIM;
+  var bSz=200;
+  var hits=0;
 
-  // Yolları saklayacağız (grafik için örnekleme)
-  var SAMPLE_PATHS = Math.min(simN, 300); // grafik için max 300 yol çiziyoruz
-  var sampleInterval = Math.max(1, Math.floor(simN / SAMPLE_PATHS));
-  var storedPaths = []; // her biri k uzunluklu kümülatif dizi
+  var SAMPLE_PATHS=Math.min(simN,400);
+  var sampleInterval=Math.max(1,Math.floor(simN/SAMPLE_PATHS));
+  var storedPaths=[];
 
   for(var i=0;i<simN;i+=bSz){
-    var nb = Math.min(bSz, simN-i);
+    var nb=Math.min(bSz,simN-i);
     for(var b=0;b<nb;b++){
-      var path = ensemblePath(data, k, effSet, T);
-      // Kümülatif hesapla
-      var cum = baseCum;
-      var cumPath = [];
-      for(var s=0;s<k;s++){ cum += path[s]; cumPath.push(cum); }
-      var finalCum = cumPath[k-1];
-      if(finalCum >= a1 && finalCum <= a2) hits++;
-      // Örnekleme: grafik için sakla
-      if((i+b) % sampleInterval === 0) storedPaths.push(cumPath);
+      var path=ensemblePath(data,k,effSet,T);
+      var cum=baseCum;
+      var cumPath=[];
+      for(var s=0;s<k;s++){cum+=path[s];cumPath.push(cum);}
+      var finalCum=cumPath[k-1];
+      if(finalCum>=a1&&finalCum<=a2)hits++;
+      if((i+b)%sampleInterval===0)storedPaths.push({path:cumPath,hit:(finalCum>=a1&&finalCum<=a2)});
     }
-    var pct2 = Math.round(((i+bSz)/simN)*100);
-    document.getElementById('targetProgBar').style.width = Math.min(100,pct2)+'%';
-    document.getElementById('targetProgLbl').textContent = 'Simülasyon: '+Math.min(i+bSz,simN)+'/'+simN;
+    var pp=Math.round(((i+bSz)/simN)*100);
+    $('targetProgBar').style.width=Math.min(100,pp)+'%';
+    $('targetProgLbl').textContent='SİMÜLASYON: '+Math.min(i+bSz,simN).toLocaleString()+' / '+simN.toLocaleString();
+    $('targetProgTxt').textContent=Math.min(100,pp)+'%';
     await sleep(0);
   }
 
-  document.getElementById('targetProgress').style.display='none';
+  $('targetProgress').style.display='none';
 
-  var prob = hits / simN;
-  var pctStr = (prob * 100).toFixed(2);
+  var prob=hits/simN;
+  var pctStr=(prob*100).toFixed(2);
+  var probColor=prob>=0.5?'var(--green)':prob>=0.2?'var(--amber)':'var(--red)';
+  var probColorHex=prob>=0.5?'#00ff88':prob>=0.2?'#ffb800':'#ff2d55';
 
-  // Renk: yüksekse yeşil, orta sarı, düşükse kırmızı
-  var probColor = prob >= 0.5 ? 'var(--green)' : prob >= 0.2 ? 'var(--amber)' : 'var(--red)';
-
-  // Sonuç kutusu
-  var resEl = document.getElementById('targetResult');
-  resEl.style.display = 'block';
-  resEl.innerHTML =
-    '<div style="border:2px solid '+probColor+';padding:18px 22px;background:var(--paper);position:relative;margin-bottom:12px;">'
-    +'<div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--ink3);margin-bottom:6px;">Hesap Sonucu</div>'
-    +'<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;">'
-    +'<div style="font-family:'Bebas Neue',sans-serif;font-size:clamp(36px,8vw,72px);color:'+probColor+';line-height:1;">'+pctStr+'%</div>'
-    +'<div style="font-size:11px;color:var(--ink2);line-height:1.6;">'
-    +'<b>'+data.length+'. adımdan</b> itibaren <b>'+k+'</b> adım sonra<br>'
-    +'kümülatif toplamın <b>['+a1+', '+a2+']</b> bandına girme olasılığı<br>'
-    +'<span style="color:var(--ink3);font-size:10px;">'+hits.toLocaleString()+' / '+simN.toLocaleString()+' simülasyon yolu bandı geçti</span>'
+  var resEl=$('targetResult');
+  resEl.style.display='block';
+  resEl.innerHTML=
+    '<div class="target-result-box" style="border-color:'+probColorHex+';">'
+    +'<div style="position:absolute;top:0;left:0;width:3px;height:100%;background:'+probColorHex+';box-shadow:0 0 14px '+probColorHex+';"></div>'
+    +'<div style="font-size:9px;letter-spacing:3px;color:var(--text3);margin-bottom:8px;font-family:\'Orbitron\',monospace;">HESAP SONUCU</div>'
+    +'<div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;">'
+    +'<div class="target-big-pct" style="color:'+probColorHex+';text-shadow:0 0 20px '+probColorHex+',0 0 40px '+probColorHex+';">'+pctStr+'%</div>'
+    +'<div style="font-size:11px;color:var(--text2);line-height:1.8;font-family:\'Share Tech Mono\',monospace;">'
+    +'veri uzunluğu <span style="color:var(--cyan)">'+data.length+'</span>\'den itibaren<br>'
+    +'<span style="color:'+probColorHex+'">'+k+'</span>. adımda kümülatif<br>'
+    +'[<span style="color:var(--text)">'+a1+'</span>, <span style="color:var(--text)">'+a2+'</span>] bandına girme olasılığı'
     +'</div>'
     +'</div>'
-    +'<div style="display:flex;gap:20px;margin-top:12px;flex-wrap:wrap;">'
-    +'<div class="fr" style="min-width:180px;"><span class="fr-l">Mevcut kümülatif</span><span class="fr-r">'+baseCum.toFixed(2)+'</span></div>'
-    +'<div class="fr" style="min-width:180px;"><span class="fr-l">Hedef adım</span><span class="fr-r">'+k+'</span></div>'
-    +'<div class="fr" style="min-width:180px;"><span class="fr-l">Bant genişliği</span><span class="fr-r">'+(a2-a1)+'</span></div>'
-    +'<div class="fr" style="min-width:180px;"><span class="fr-l">Simülasyon sayısı</span><span class="fr-r">'+simN.toLocaleString()+'</span></div>'
+    +'<div class="target-detail-grid">'
+    +'<div class="td-item"><div class="td-key">Başarılı Yol</div><div class="td-val" style="color:var(--green)">'+hits.toLocaleString()+' / '+simN.toLocaleString()+'</div></div>'
+    +'<div class="td-item"><div class="td-key">Mevcut Kümülatif</div><div class="td-val" style="color:var(--cyan)">'+baseCum.toFixed(2)+'</div></div>'
+    +'<div class="td-item"><div class="td-key">Hedef Adım</div><div class="td-val">'+k+'</div></div>'
+    +'<div class="td-item"><div class="td-key">Bant [A1, A2]</div><div class="td-val">['+a1+', '+a2+']</div></div>'
+    +'<div class="td-item"><div class="td-key">Simülasyon</div><div class="td-val">'+simN.toLocaleString()+'</div></div>'
+    +'<div class="td-item"><div class="td-key">Bant Genişliği</div><div class="td-val">'+(a2-a1)+'</div></div>'
     +'</div>'
     +'</div>';
 
-  // Grafik çiz
-  drawTargetChart(data, baseCum, storedPaths, k, a1, a2, hits, simN);
+  drawTargetChart(data,baseCum,storedPaths,k,a1,a2,hits,simN,probColorHex);
 }
 
-function drawTargetChart(data, baseCum, storedPaths, k, a1, a2, hits, simN){
-  if(_targetChart){ _targetChart.destroy(); _targetChart=null; }
+function drawTargetChart(data,baseCum,storedPaths,k,a1,a2,hits,simN,probColorHex){
+  if(_targetChart){_targetChart.destroy();_targetChart=null;}
 
-  var oLen = data.length;
+  var oLen=data.length;
+  var cumObs=[],acc=0;
+  for(var i=0;i<oLen;i++){acc+=data[i];cumObs.push(acc);}
+
+  var totalLen=oLen+k;
+  var labels=Array.from({length:totalLen},function(_,i){return i;});
+  var datasets=[];
+
+  // Kaçan yollar (kırmızı, saydam)
+  var failPaths=storedPaths.filter(function(p){return !p.hit;});
+  var hitPaths=storedPaths.filter(function(p){return p.hit;});
+
+  for(var pi=0;pi<Math.min(failPaths.length,150);pi++){
+    var ds=Array(oLen-1).fill(null).concat([baseCum]).concat(failPaths[pi].path);
+    datasets.push({data:ds,borderColor:'rgba(255,45,85,0.10)',borderWidth:1,pointRadius:0,fill:false,tension:.3});
+  }
+  for(var pi=0;pi<Math.min(hitPaths.length,150);pi++){
+    var ds=Array(oLen-1).fill(null).concat([baseCum]).concat(hitPaths[pi].path);
+    datasets.push({data:ds,borderColor:'rgba(0,255,136,0.18)',borderWidth:1.5,pointRadius:0,fill:false,tension:.3});
+  }
+
+  // Band sınırları
+  var a2Full=Array(oLen-1).fill(null).concat(Array(k+1).fill(a2));
+  var a1Full=Array(oLen-1).fill(null).concat(Array(k+1).fill(a1));
+  datasets.push({data:a2Full,borderColor:'rgba(255,45,85,0.7)',borderWidth:1.5,borderDash:[8,4],pointRadius:0,fill:false,tension:0});
+  datasets.push({data:a1Full,borderColor:'rgba(255,45,85,0.7)',borderWidth:1.5,borderDash:[8,4],pointRadius:0,fill:'-1',backgroundColor:'rgba(255,45,85,0.04)',tension:0});
 
   // Gözlem kümülatifi
-  var cumObs = [], acc = 0;
-  for(var i=0;i<oLen;i++){ acc+=data[i]; cumObs.push(acc); }
+  var obsDs=cumObs.concat(Array(k).fill(null));
+  datasets.push({data:obsDs,borderColor:'#00f5ff',borderWidth:2.5,pointRadius:2,pointBackgroundColor:'#00f5ff',fill:false,tension:.2});
 
-  // Toplam label sayısı: gözlem + tahmin
-  var totalLen = oLen + k;
-  var labels = Array.from({length:totalLen}, function(_,i){ return i; });
+  var prob=hits/simN;
+  var pColor=prob>=0.5?'#00ff88':prob>=0.2?'#ffb800':'#ff2d55';
 
-  // Datasets
-  var datasets = [];
+  $('targetLegend').innerHTML=
+    '<div class="leg"><div class="ll" style="background:#00f5ff"></div>Gözlem kümülatifi</div>'+
+    '<div class="leg"><div class="ll" style="background:rgba(0,255,136,0.5)"></div>Bandı geçen yollar</div>'+
+    '<div class="leg"><div class="ll" style="background:rgba(255,45,85,0.4)"></div>Kaçan yollar</div>'+
+    '<div class="leg"><div class="ll" style="border-top:1.5px dashed rgba(255,45,85,0.7);height:0;width:20px;"></div>A1/A2 sınırları</div>'+
+    '<span style="margin-left:auto;font-family:\'Orbitron\',monospace;font-size:11px;font-weight:700;color:'+pColor+';text-shadow:0 0 10px '+pColor+';">'+(prob*100).toFixed(2)+'%</span>';
 
-  // --- Simülasyon yolları (arka plan fan) ---
-  // Isı haritası yerine: başarılı yollar yeşil, başarısız kırmızı, saydam
-  var successPaths = [], failPaths = [];
-  for(var pi=0;pi<storedPaths.length;pi++){
-    var cp = storedPaths[pi];
-    var finalV = cp[k-1];
-    var isHit = (finalV >= a1 && finalV <= a2);
-    // Sadece gözlem kısmı null, tahmin kısmı dolu
-    var ds = Array(oLen-1).fill(null).concat([baseCum]).concat(cp);
-    if(isHit) successPaths.push(ds);
-    else failPaths.push(ds);
-  }
+  $('targetChartWrap').style.display='block';
 
-  // Başarısız yollar (kırmızı, çok saydam)
-  for(var pi=0;pi<Math.min(failPaths.length,120);pi++){
-    datasets.push({
-      data: failPaths[pi], borderColor:'rgba(184,50,50,0.12)',
-      borderWidth:1, pointRadius:0, fill:false, tension:.3, label:pi===0?'Kaçan Yollar':''
-    });
-  }
-  // Başarılı yollar (yeşil, biraz daha görünür)
-  for(var pi=0;pi<Math.min(successPaths.length,120);pi++){
-    datasets.push({
-      data: successPaths[pi], borderColor:'rgba(31,122,69,0.22)',
-      borderWidth:1.5, pointRadius:0, fill:false, tension:.3, label:pi===0?'Bandı Geçen Yollar':''
-    });
-  }
-
-  // Gözlem kümülatifi (mavi, kalın)
-  var obsDs = cumObs.concat(Array(k).fill(null));
-  datasets.push({
-    label:'Gözlem (kümülatif)', data:obsDs,
-    borderColor:'#1a5c8a', borderWidth:2.5, pointRadius:2,
-    pointBackgroundColor:'#1a5c8a', fill:false, tension:.2
-  });
-
-  // Hedef band çizgileri (yatay, k. adımda bitiyor)
-  var bandX = oLen + k - 1;
-  // A1 çizgisi
-  var a1Line = Array(totalLen).fill(null);
-  a1Line[bandX] = a1;
-  a1Line[bandX > 0 ? bandX-1 : 0] = a1;
-  // Dolu band için: sadece tahmin bölgesinde çiz
-  var a1Full = Array(oLen-1).fill(null).concat(Array(k+1).fill(a1));
-  var a2Full = Array(oLen-1).fill(null).concat(Array(k+1).fill(a2));
-
-  datasets.push({
-    label:'A2 (üst sınır)', data:a2Full,
-    borderColor:'rgba(184,50,50,0.7)', borderWidth:2, borderDash:[8,4],
-    pointRadius:0, fill:false, tension:0
-  });
-  datasets.push({
-    label:'A1 (alt sınır)', data:a1Full,
-    borderColor:'rgba(184,50,50,0.7)', borderWidth:2, borderDash:[8,4],
-    pointRadius:0, fill:'-1', backgroundColor:'rgba(184,50,50,0.06)', tension:0
-  });
-
-  // Legend güncelle
-  var prob = hits/simN;
-  var probColor = prob >= 0.5 ? '#1f7a45' : prob >= 0.2 ? '#e8a020' : '#b83232';
-  document.getElementById('targetLegend').innerHTML =
-    '<div class="leg"><div class="ll" style="background:#1a5c8a"></div>Gözlem kümülatifi</div>'+
-    '<div class="leg"><div class="ll" style="background:rgba(31,122,69,0.5)"></div>Bandı geçen yollar</div>'+
-    '<div class="leg"><div class="ll" style="background:rgba(184,50,50,0.4)"></div>Kaçan yollar</div>'+
-    '<div class="leg"><div class="ll" style="border-top:2px dashed rgba(184,50,50,0.7);height:0;width:22px;"></div>A1/A2 band sınırları</div>'+
-    '<span style="margin-left:auto;font-size:11px;font-weight:700;color:'+probColor+';">Olasılık: '+(prob*100).toFixed(2)+'%</span>';
-
-  document.getElementById('targetChartWrap').style.display='block';
-
-  _targetChart = new Chart(document.getElementById('targetChart').getContext('2d'),{
+  _targetChart=new Chart($('targetChart').getContext('2d'),{
     type:'line',
-    data:{labels:labels, datasets:datasets},
+    data:{labels:labels,datasets:datasets},
     options:{
-      animation:false, responsive:true, maintainAspectRatio:false,
+      animation:false,responsive:true,maintainAspectRatio:false,
       plugins:{
         legend:{display:false},
-        tooltip:{mode:'index', intersect:false,
-          filter:function(item){ return item.datasetIndex >= datasets.length-3; }
-        },
-        // Dikey çizgi için annotation plugin yok, custom plugin kullanıyoruz
+        tooltip:{
+          mode:'index',intersect:false,
+          filter:function(item){return item.datasetIndex>=datasets.length-3;},
+          backgroundColor:'rgba(5,8,16,0.95)',borderColor:'rgba(0,245,255,0.3)',borderWidth:1,
+          titleColor:'#00f5ff',bodyColor:'#c8d8e8',
+        }
       },
       scales:{
-        x:{grid:{color:'rgba(0,0,0,0.04)'}, ticks:{color:'#6e6050',font:{family:'Space Mono',size:9},maxTicksLimit:16}},
-        y:{grid:{color:'rgba(0,0,0,0.04)'}, ticks:{color:'#6e6050',font:{family:'Space Mono',size:9},maxTicksLimit:8},
-           title:{display:true,text:'Kümülatif Toplam',color:'#6e6050',font:{family:'Space Mono',size:9}}}
+        x:{grid:{color:'rgba(0,245,255,0.04)'},ticks:{color:'#3a5a7a',font:{family:'Share Tech Mono',size:9},maxTicksLimit:16}},
+        y:{grid:{color:'rgba(0,245,255,0.04)'},ticks:{color:'#3a5a7a',font:{family:'Share Tech Mono',size:9},maxTicksLimit:8},
+           title:{display:true,text:'Kümülatif Toplam',color:'#3a5a7a',font:{family:'Share Tech Mono',size:9}}}
       },
       elements:{point:{radius:0}}
     },
     plugins:[{
-      // Dikey hedef çizgisi ve band gölgesi custom plugin
       id:'targetLine',
       afterDraw:function(chart){
-        var ctx2 = chart.ctx;
-        var xScale = chart.scales.x;
-        var yScale = chart.scales.y;
-        var targetIdx = oLen + k - 1;
-        if(targetIdx >= labels.length) return;
-        var xPos = xScale.getPixelForValue(targetIdx);
-        var yTop = chart.chartArea.top;
-        var yBot = chart.chartArea.bottom;
+        var ctx2=chart.ctx;
+        var xScale=chart.scales.x;
+        var yScale=chart.scales.y;
+        var targetIdx=oLen+k-1;
+        if(targetIdx>=labels.length)return;
+        var xPos=xScale.getPixelForValue(targetIdx);
+        var yTop=chart.chartArea.top;
+        var yBot=chart.chartArea.bottom;
+
         // Dikey çizgi
         ctx2.save();
         ctx2.beginPath();
-        ctx2.setLineDash([6,4]);
-        ctx2.strokeStyle = 'rgba(26,92,138,0.6)';
-        ctx2.lineWidth = 2;
-        ctx2.moveTo(xPos, yTop);
-        ctx2.lineTo(xPos, yBot);
+        ctx2.setLineDash([5,4]);
+        ctx2.strokeStyle='rgba(0,245,255,0.5)';
+        ctx2.lineWidth=1.5;
+        ctx2.moveTo(xPos,yTop);
+        ctx2.lineTo(xPos,yBot);
         ctx2.stroke();
-        // Etiket
         ctx2.setLineDash([]);
-        ctx2.fillStyle = '#1a5c8a';
-        ctx2.font = 'bold 10px Space Mono, monospace';
-        ctx2.textAlign = 'center';
-        ctx2.fillText('t+'+k, xPos, yTop + 12);
-        // Band etiketi
-        var yA1 = yScale.getPixelForValue(a1);
-        var yA2 = yScale.getPixelForValue(a2);
-        if(yA1 > yTop && yA1 < yBot){
-          ctx2.fillStyle = '#b83232';
-          ctx2.textAlign = 'right';
-          ctx2.fillText('A1='+a1, xPos-6, yA1-4);
-        }
-        if(yA2 > yTop && yA2 < yBot){
-          ctx2.fillStyle = '#b83232';
-          ctx2.textAlign = 'right';
-          ctx2.fillText('A2='+a2, xPos-6, yA2-4);
-        }
+
+        // t+k etiketi
+        ctx2.fillStyle='#00f5ff';
+        ctx2.font='bold 9px Orbitron, monospace';
+        ctx2.textAlign='center';
+        ctx2.shadowColor='#00f5ff';
+        ctx2.shadowBlur=6;
+        ctx2.fillText('t+'+k,xPos,yTop+11);
+        ctx2.shadowBlur=0;
+
+        // Bant etiketleri
+        var yA1=yScale.getPixelForValue(a1);
+        var yA2=yScale.getPixelForValue(a2);
+        ctx2.font='9px Share Tech Mono, monospace';
+        ctx2.textAlign='right';
+        ctx2.fillStyle='rgba(255,45,85,0.8)';
+        if(yA1>yTop&&yA1<yBot) ctx2.fillText('A1='+a1,xPos-6,yA1-4);
+        if(yA2>yTop&&yA2<yBot) ctx2.fillText('A2='+a2,xPos-6,yA2-4);
         ctx2.restore();
       }
     }]
@@ -1179,7 +1533,7 @@ function drawTargetChart(data, baseCum, storedPaths, k, a1, a2, hits, simN){
 
 /* ── ÖRNEK ── */
 function loadExample(){
-  $('seriesInput').value='3,3,3.2,3.2,3.4,3.4,3.4,3.2,3.2,3,3,3,3.2,3.4,3.6,3.6,3.4,3.4,3.2,3.2,3,3,3.2,3.4,3.4,3.2,3.2,3,3,3.2';
+  $('seriesInput').value='-1,-1,0,1,1,0,-1,-2,-1,0,1,2,1,0,-1,-1,0,0,1,1,-1,-2,-1,0,1,1,0,-1,0,1';
   onSeriesInput();
 }
 </script>
