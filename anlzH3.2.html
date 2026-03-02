@@ -664,7 +664,7 @@ textarea::placeholder { color: var(--text3); }
   <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
     <div class="input-group">
       <div class="input-label">Simülasyon Sayısı</div>
-      <input id="simCountInput" type="number" min="100" max="1000000" step="1000" value="8000"
+      <input id="simCountInput" type="number" min="100" max="100000000" step="1000" value="8000"
         class="mono-input num" oninput="N_SIM=Math.max(100,parseInt(this.value)||8000)">
     </div>
     <div style="font-size:10px;color:var(--text3);line-height:1.6;">
@@ -677,6 +677,9 @@ textarea::placeholder { color: var(--text3); }
       <button class="btn btn-sm" onclick="setSimCount(20000)">20K</button>
       <button class="btn btn-sm" onclick="setSimCount(50000)">50K</button>
       <button class="btn btn-sm" onclick="setSimCount(100000)">100K</button>
+      <button class="btn btn-sm" onclick="setSimCount(1000000)">100K</button>
+      <button class="btn btn-sm" onclick="setSimCount(10000000)">100K</button>
+      <button class="btn btn-sm" onclick="setSimCount(100000000)">100K</button>
     </div>
   </div>
 </div>
