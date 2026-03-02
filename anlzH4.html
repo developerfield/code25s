@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kümülatif Olasılık Analizörü</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;800&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #080c12;
+    --surface: #0f1520;
+    --border: #1e2d45;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #7cfc5e;
+    --text: #c8d8e8;
+    --muted: #4a6080;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    padding: 32px 24px;
+    background-image: 
+      radial-gradient(ellipse at 10% 20%, rgba(0,212,255,0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 90% 80%, rgba(255,107,53,0.04) 0%, transparent 50%);
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  header h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(1.4rem, 4vw, 2.2rem);
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.02em;
+  }
+
+  header h1 span { color: var(--accent); }
+
+  header p {
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  .panel-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  label {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+    margin-top: 16px;
+  }
+
+  label:first-of-type { margin-top: 0; }
+
+  input, textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input:focus, textarea:focus {
+    border-color: var(--accent);
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 100px;
+  }
+
+  .row2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .row3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+  }
+
+  .info-box {
+    background: rgba(0,212,255,0.05);
+    border: 1px solid rgba(0,212,255,0.15);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 12px;
+    line-height: 1.6;
+  }
+
+  .info-box strong { color: var(--accent); }
+
+  btn-group {
+    display: block;
+    margin-top: 20px;
+  }
+
+  button {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  button:hover {
+    background: #33ddff;
+    transform: translateY(-1px);
+  }
+
+  button.secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    margin-top: 8px;
+    font-size: 0.75rem;
+  }
+
+  button.secondary:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: transparent;
+    transform: none;
+  }
+
+  .results-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+
+  @media (max-width: 700px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .stat-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+  }
+
+  .stat-card .val {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #fff;
+    display: block;
+  }
+
+  .stat-card .lbl {
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 4px;
+    display: block;
+  }
+
+  .prob-highlight {
+    background: linear-gradient(135deg, rgba(124,252,94,0.08), rgba(0,212,255,0.05));
+    border: 1px solid rgba(124,252,94,0.25);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+  }
+
+  .prob-highlight .big-prob {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 800;
+    color: var(--accent3);
+    display: block;
+    line-height: 1;
+  }
+
+  .prob-highlight .prob-label {
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    margin-top: 8px;
+    display: block;
+  }
+
+  .prob-highlight .prob-detail {
+    font-size: 0.78rem;
+    color: var(--text);
+    margin-top: 10px;
+    line-height: 1.6;
+  }
+
+  .chart-wrap {
+    position: relative;
+    height: 280px;
+  }
+
+  .dist-chart-wrap {
+    position: relative;
+    height: 200px;
+  }
+
+  .error {
+    background: rgba(255,107,53,0.1);
+    border: 1px solid rgba(255,107,53,0.3);
+    border-radius: 6px;
+    padding: 12px;
+    color: var(--accent2);
+    font-size: 0.78rem;
+  }
+
+  .hidden { display: none; }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+  }
+
+  .tag-possible { background: rgba(124,252,94,0.15); color: var(--accent3); }
+  .tag-impossible { background: rgba(255,107,53,0.15); color: var(--accent2); }
+  .tag-rare { background: rgba(0,212,255,0.15); color: var(--accent); }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 4px 0;
+  }
+
+  .sigma-bars {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .sigma-item {
+    flex: 1;
+    min-width: 80px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    text-align: center;
+  }
+
+  .sigma-item .sv { font-size: 1rem; font-weight: 700; color: #fff; }
+  .sigma-item .sl { font-size: 0.62rem; color: var(--muted); margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Kümülatif <span>Olasılık</span> Analizörü</h1>
+  <p>BOUNDED RANDOM WALK · MONTE CARLO SIMULATION · DISTRIBUTION ANALYSIS</p>
+</header>
+
+<div class="grid">
+
+  <!-- LEFT PANEL: INPUTS -->
+  <div class="panel">
+    <div class="panel-title">⬡ Veri Girişi & Parametreler</div>
+
+    <label>Geçmiş Veri Seti (virgül veya boşluk ile ayır)</label>
+    <textarea id="dataInput" placeholder="Örnek: -3, 2, 5, -1, 4, -5, 2, 1, -4, 3 ...&#10;Her değer bir günlük ölçümü temsil eder."></textarea>
+
+    <div class="info-box" id="dataInfo">
+      Veri girildiğinde: eleman sayısı, min/max, veri kümesi otomatik çıkarılır.
+    </div>
+
+    <div class="row2">
+      <div>
+        <label>Veri Kümesi Min</label>
+        <input type="number" id="setMin" value="-5" step="1">
+      </div>
+      <div>
+        <label>Veri Kümesi Max</label>
+        <input type="number" id="setMax" value="5" step="1">
+      </div>
+    </div>
+
+    <hr class="divider" style="margin: 16px 0;">
+
+    <label>Kaç Adım Sonrası? (gelecek gün sayısı)</label>
+    <input type="number" id="futureSteps" value="300" min="1">
+
+    <div class="row2" style="margin-top: 0;">
+      <div>
+        <label>Hedef Aralık Alt</label>
+        <input type="number" id="targetMin" value="-20" step="1">
+      </div>
+      <div>
+        <label>Hedef Aralık Üst</label>
+        <input type="number" id="targetMax" value="-10" step="1">
+      </div>
+    </div>
+
+    <label>Monte Carlo Deneme Sayısı</label>
+    <input type="number" id="simCount" value="100000" min="1000" max="1000000" step="1000">
+
+    <btn-group>
+      <button onclick="analyze()">▶ ANALİZ ET</button>
+      <button class="secondary" onclick="loadExample()">Örnek Veri Yükle (200 gün, -40 kümülatif)</button>
+    </btn-group>
+  </div>
+
+  <!-- RIGHT PANEL: RESULTS -->
+  <div class="results-panel" id="resultsArea">
+    <div class="panel" style="display:flex; align-items:center; justify-content:center; min-height:200px; color:var(--muted); font-size:0.8rem; letter-spacing:0.1em;">
+      VERİ GİRİN VE ANALİZ ETMEYİ BAŞLATIN
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── Helpers ───────────────────────────────────────────────────────────────
+function parseData(str) {
+  return str.trim().split(/[\s,;]+/).map(Number).filter(v => !isNaN(v));
+}
+
+function detectSet(data) {
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  // round to integers
+  return { min: Math.round(min), max: Math.round(max) };
+}
+
+// Build all possible values in set
+function buildSet(min, max) {
+  const vals = [];
+  for (let i = min; i <= max; i++) vals.push(i);
+  return vals;
+}
+
+// Empirical distribution from data
+function buildEmpiricalDist(data, setVals) {
+  const counts = {};
+  setVals.forEach(v => counts[v] = 0);
+  data.forEach(v => {
+    const r = Math.round(v);
+    if (counts[r] !== undefined) counts[r]++;
+    else {
+      // clamp to nearest
+      const clamped = Math.max(setVals[0], Math.min(setVals[setVals.length-1], r));
+      counts[clamped]++;
+    }
+  });
+  const total = data.length;
+  const probs = {};
+  setVals.forEach(v => probs[v] = counts[v] / total);
+  return probs;
+}
+
+// Monte Carlo
+function monteCarlo(currentCumulative, probs, setVals, futureSteps, simCount) {
+  const finalVals = new Array(simCount);
+  
+  for (let s = 0; s < simCount; s++) {
+    let cum = currentCumulative;
+    for (let d = 0; d < futureSteps; d++) {
+      // weighted random pick
+      const r = Math.random();
+      let acc = 0;
+      let pick = setVals[0];
+      for (let vi = 0; vi < setVals.length; vi++) {
+        acc += probs[setVals[vi]];
+        if (r <= acc) { pick = setVals[vi]; break; }
+      }
+      cum += pick;
+    }
+    finalVals[s] = cum;
+  }
+  return finalVals;
+}
+
+// Build histogram
+function buildHistogram(vals, bins) {
+  const minV = Math.min(...vals);
+  const maxV = Math.max(...vals);
+  const binSize = (maxV - minV) / bins || 1;
+  const hist = Array(bins).fill(0);
+  const labels = [];
+  for (let i = 0; i < bins; i++) {
+    labels.push(Math.round(minV + i * binSize));
+  }
+  vals.forEach(v => {
+    let idx = Math.floor((v - minV) / binSize);
+    if (idx >= bins) idx = bins - 1;
+    hist[idx]++;
+  });
+  return { hist, labels, binSize, minV };
+}
+
+// ─── Auto-fill from data ────────────────────────────────────────────────────
+document.getElementById('dataInput').addEventListener('input', function() {
+  const data = parseData(this.value);
+  if (data.length < 2) {
+    document.getElementById('dataInfo').innerHTML = 'Veri girildiğinde: eleman sayısı, min/max, veri kümesi otomatik çıkarılır.';
+    return;
+  }
+  const det = detectSet(data);
+  const cum = data.reduce((a,b) => a+b, 0);
+  const mean = (cum / data.length).toFixed(2);
+  
+  document.getElementById('setMin').value = det.min;
+  document.getElementById('setMax').value = det.max;
+  
+  document.getElementById('dataInfo').innerHTML = 
+    `<strong>${data.length}</strong> gözlem · Kümülatif: <strong>${cum}</strong> · Ortalama: <strong>${mean}/gün</strong><br>
+     Otomatik veri kümesi: [<strong>${det.min}</strong> , <strong>${det.max}</strong>] → ${det.max - det.min + 1} farklı değer`;
+});
+
+// ─── Example data ──────────────────────────────────────────────────────────
+function loadExample() {
+  // Generate 200 days, biased toward negative (winter), cumulative ~ -40
+  const rng = () => {
+    const vals = [-5,-4,-3,-2,-1,0,1,2,3,4,5];
+    const weights = [0.12,0.13,0.14,0.12,0.11,0.09,0.09,0.08,0.06,0.04,0.02];
+    const r = Math.random();
+    let acc = 0;
+    for (let i = 0; i < vals.length; i++) {
+      acc += weights[i];
+      if (r <= acc) return vals[i];
+    }
+    return 0;
+  };
+  
+  const data = [];
+  let cum = 0;
+  for (let i = 0; i < 200; i++) {
+    const v = rng();
+    data.push(v);
+    cum += v;
+  }
+  // Adjust to make cum ≈ -40
+  const diff = -40 - cum;
+  const adj = Math.round(diff / 200);
+  const d2 = data.map(v => Math.max(-5, Math.min(5, v + adj)));
+  
+  document.getElementById('dataInput').value = d2.join(', ');
+  document.getElementById('dataInput').dispatchEvent(new Event('input'));
+  document.getElementById('futureSteps').value = 300;
+  document.getElementById('targetMin').value = -20;
+  document.getElementById('targetMax').value = -10;
+}
+
+// ─── Main Analysis ──────────────────────────────────────────────────────────
+function analyze() {
+  const dataStr = document.getElementById('dataInput').value;
+  const data = parseData(dataStr);
+  
+  if (data.length < 1) {
+    showError('Lütfen geçerli veri girin.');
+    return;
+  }
+  
+  const setMin = parseInt(document.getElementById('setMin').value);
+  const setMax = parseInt(document.getElementById('setMax').value);
+  const futureSteps = parseInt(document.getElementById('futureSteps').value);
+  const targetMin = parseInt(document.getElementById('targetMin').value);
+  const targetMax = parseInt(document.getElementById('targetMax').value);
+  const simCount = parseInt(document.getElementById('simCount').value);
+  
+  if (setMin >= setMax) { showError('Veri kümesi min < max olmalı.'); return; }
+  if (targetMin > targetMax) { showError('Hedef aralık min ≤ max olmalı.'); return; }
+  
+  const currentCum = data.reduce((a,b) => a+b, 0);
+  const setVals = buildSet(setMin, setMax);
+  
+  // Theoretical bounds for future
+  const theorMin = currentCum + futureSteps * setMin;
+  const theorMax = currentCum + futureSteps * setMax;
+  
+  // Check if target is possible
+  const possible = targetMin <= theorMax && targetMax >= theorMin;
+  
+  // Empirical distribution
+  const probs = buildEmpiricalDist(data, setVals);
+  
+  // Monte Carlo
+  const simVals = monteCarlo(currentCum, probs, setVals, futureSteps, simCount);
+  
+  // Count in target
+  const inTarget = simVals.filter(v => v >= targetMin && v <= targetMax).length;
+  const probability = inTarget / simCount;
+  
+  // Stats
+  simVals.sort((a,b) => a-b);
+  const simMean = simVals.reduce((a,b) => a+b, 0) / simCount;
+  const simStd = Math.sqrt(simVals.reduce((a,b) => a + (b-simMean)**2, 0) / simCount);
+  const p5  = simVals[Math.floor(0.05 * simCount)];
+  const p25 = simVals[Math.floor(0.25 * simCount)];
+  const p50 = simVals[Math.floor(0.50 * simCount)];
+  const p75 = simVals[Math.floor(0.75 * simCount)];
+  const p95 = simVals[Math.floor(0.95 * simCount)];
+  
+  // Mean per day
+  const meanPerDay = (currentCum / data.length);
+  const projectedMean = currentCum + futureSteps * meanPerDay;
+  
+  renderResults({
+    data, currentCum, setVals, probs, setMin, setMax,
+    futureSteps, targetMin, targetMax, simCount,
+    theorMin, theorMax, possible,
+    inTarget, probability,
+    simMean, simStd, p5, p25, p50, p75, p95,
+    projectedMean, meanPerDay, simVals
+  });
+}
+
+function showError(msg) {
+  document.getElementById('resultsArea').innerHTML = `<div class="panel"><div class="error">⚠ ${msg}</div></div>`;
+}
+
+function renderResults(r) {
+  const probPct = (r.probability * 100).toFixed(3);
+  const sigmaDistance = r.simStd > 0 
+    ? Math.abs(((r.targetMin + r.targetMax) / 2 - r.simMean) / r.simStd).toFixed(2) 
+    : '∞';
+  
+  const possibilityTag = !r.possible 
+    ? `<span class="tag tag-impossible">TEORİK OLARAK İMKÂNSIZ</span>`
+    : r.probability < 0.001 
+      ? `<span class="tag tag-rare">ÇOK DÜŞÜK OLASILIK</span>`
+      : `<span class="tag tag-possible">MÜMKÜN</span>`;
+
+  const html = `
+    <!-- MAIN PROBABILITY -->
+    <div class="panel prob-highlight">
+      <span class="big-prob">${r.possible ? probPct + '%' : '≈ 0%'}</span>
+      <span class="prob-label">HEDEF ARALIĞA DÜŞME OLASILIĞI</span>
+      <span class="prob-detail">
+        ${r.futureSteps} adım sonra kümülatif değerin 
+        <strong style="color:var(--accent)">[${r.targetMin} , ${r.targetMax}]</strong> aralığında olma ihtimali
+        &nbsp;${possibilityTag}
+      </span>
+    </div>
+
+    <!-- STATS ROW -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <span class="val" style="color:var(--accent)">${r.currentCum}</span>
+        <span class="lbl">Mevcut Kümülatif</span>
+      </div>
+      <div class="stat-card">
+        <span class="val">${r.data.length}</span>
+        <span class="lbl">Geçmiş Gün</span>
+      </div>
+      <div class="stat-card">
+        <span class="val" style="color:var(--accent2)">${r.futureSteps}</span>
+        <span class="lbl">Gelecek Adım</span>
+      </div>
+      <div class="stat-card">
+        <span class="val">${(r.meanPerDay > 0 ? '+' : '') + r.meanPerDay.toFixed(3)}</span>
+        <span class="lbl">Ort. / Gün</span>
+      </div>
+    </div>
+
+    <!-- DISTRIBUTION CHART -->
+    <div class="panel">
+      <div class="panel-title">📊 ${r.futureSteps} Adım Sonrası Dağılım (${r.simCount.toLocaleString()} Monte Carlo)</div>
+      <div class="dist-chart-wrap">
+        <canvas id="distChart"></canvas>
+      </div>
+      <div class="sigma-bars">
+        <div class="sigma-item">
+          <div class="sv">${r.p5}</div><div class="sl">P5</div>
+        </div>
+        <div class="sigma-item">
+          <div class="sv">${r.p25}</div><div class="sl">P25</div>
+        </div>
+        <div class="sigma-item">
+          <div class="sv" style="color:var(--accent3)">${r.p50}</div><div class="sl">Medyan</div>
+        </div>
+        <div class="sigma-item">
+          <div class="sv">${r.p75}</div><div class="sl">P75</div>
+        </div>
+        <div class="sigma-item">
+          <div class="sv">${r.p95}</div><div class="sl">P95</div>
+        </div>
+        <div class="sigma-item">
+          <div class="sv">${Math.round(r.simMean)}</div><div class="sl">Ortalama</div>
+        </div>
+        <div class="sigma-item">
+          <div class="sv">±${Math.round(r.simStd)}</div><div class="sl">Std Sapma</div>
+        </div>
+        <div class="sigma-item">
+          <div class="sv" style="color:var(--accent2)">${sigmaDistance}σ</div><div class="sl">Hedefe Uzaklık</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOUNDS & EMPIRICAL DIST -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+      <div class="panel">
+        <div class="panel-title">⬡ Sınır Analizi</div>
+        <div class="info-box" style="margin-top:0">
+          <strong>Teorik Min:</strong> ${r.theorMin}<br>
+          <strong>Teorik Max:</strong> ${r.theorMax}<br>
+          <strong>Projeksiyon (ort.):</strong> ${Math.round(r.projectedMean)}<br><br>
+          <strong>Hedef [${r.targetMin}, ${r.targetMax}]:</strong><br>
+          ${!r.possible 
+            ? `<span style="color:var(--accent2)">❌ Teorik sınırlar dışında — fiziksel olarak imkânsız.</span>`
+            : `<span style="color:var(--accent3)">✓ Teorik sınırlar içinde — mümkün.</span>`}
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">📈 Veri Kümesi Dağılımı</div>
+        <div class="dist-chart-wrap" style="height:150px">
+          <canvas id="empChart"></canvas>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('resultsArea').innerHTML = html;
+
+  // ─── Draw distribution chart ──────────────────────────────────────────
+  const bins = 80;
+  const { hist, labels, binSize, minV } = buildHistogram(r.simVals, bins);
+
+  // color bars: highlight target range
+  const barColors = hist.map((_, i) => {
+    const binCenter = minV + i * binSize;
+    if (binCenter >= r.targetMin && binCenter <= r.targetMax) return 'rgba(124,252,94,0.85)';
+    return 'rgba(0,212,255,0.35)';
+  });
+
+  new Chart(document.getElementById('distChart'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: hist.map(v => v / r.simCount * 100),
+        backgroundColor: barColors,
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: {
+          label: ctx => `${ctx.raw.toFixed(2)}%`
+        }
+      }},
+      scales: {
+        x: { ticks: { color: '#4a6080', maxTicksLimit: 10, font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: 'rgba(30,45,69,0.5)' } },
+        y: { ticks: { color: '#4a6080', font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: 'rgba(30,45,69,0.5)' } }
+      }
+    }
+  });
+
+  // ─── Empirical distribution chart ────────────────────────────────────
+  const empLabels = r.setVals;
+  const empData = r.setVals.map(v => (r.probs[v] * 100).toFixed(2));
+
+  new Chart(document.getElementById('empChart'), {
+    type: 'bar',
+    data: {
+      labels: empLabels,
+      datasets: [{
+        data: empData,
+        backgroundColor: 'rgba(255,107,53,0.6)',
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#4a6080', font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: 'rgba(30,45,69,0.3)' } },
+        y: { ticks: { color: '#4a6080', font: { family: 'JetBrains Mono', size: 10 }, callback: v => v + '%' }, grid: { color: 'rgba(30,45,69,0.3)' } }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
