@@ -1,0 +1,1801 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS // SERİ TAHMİN</title>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
+
+:root {
+  --bg:        #050810;
+  --bg2:       #080d1a;
+  --bg3:       #0c1220;
+  --panel:     #0a0f1e;
+  --border:    #0f3460;
+  --border2:   #1a4a7a;
+  --cyan:      #00f5ff;
+  --cyan2:     #00c8d4;
+  --cyan-dim:  rgba(0,245,255,0.15);
+  --cyan-glow: rgba(0,245,255,0.06);
+  --green:     #00ff88;
+  --green-dim: rgba(0,255,136,0.12);
+  --red:       #ff2d55;
+  --red-dim:   rgba(255,45,85,0.12);
+  --amber:     #ffb800;
+  --amber-dim: rgba(255,184,0,0.12);
+  --text:      #c8d8e8;
+  --text2:     #6a8aaa;
+  --text3:     #3a5a7a;
+  --grid-line: rgba(0,245,255,0.04);
+  --scan:      rgba(0,245,255,0.03);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Scanline effect */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    var(--scan) 2px,
+    var(--scan) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Grid background */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+}
+
+/* HEADER */
+header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 20px;
+  margin-bottom: 28px;
+  position: relative;
+}
+header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 0;
+  width: 200px; height: 1px;
+  background: var(--cyan);
+  box-shadow: 0 0 12px var(--cyan);
+}
+
+.eyebrow {
+  font-size: 9px;
+  letter-spacing: 4px;
+  color: var(--cyan2);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  opacity: 0.7;
+}
+
+h1 {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(22px, 4vw, 52px);
+  font-weight: 900;
+  letter-spacing: 6px;
+  line-height: 1;
+  color: var(--text);
+}
+h1 .accent { color: var(--cyan); text-shadow: 0 0 20px var(--cyan), 0 0 40px var(--cyan2); }
+h1 .slash { color: var(--text3); }
+
+.header-sub {
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 2px;
+  margin-top: 8px;
+}
+
+/* PANEL */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 20px 22px 18px;
+  position: relative;
+  margin-bottom: 16px;
+  transition: border-color .2s;
+}
+.panel:hover { border-color: var(--border2); }
+.panel::before {
+  content: attr(data-lbl);
+  position: absolute;
+  top: -1px; left: 16px;
+  transform: translateY(-50%);
+  background: var(--bg);
+  padding: 0 10px;
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--cyan2);
+  font-family: 'Orbitron', monospace;
+}
+.panel.red::before { color: var(--red); }
+.panel.green::before { color: var(--green); }
+
+/* TEXTAREA */
+textarea {
+  width: 100%;
+  height: 110px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--cyan);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  padding: 10px 12px;
+  resize: vertical;
+  outline: none;
+  line-height: 1.8;
+  transition: border-color .2s;
+}
+textarea:focus { border-color: var(--cyan); box-shadow: 0 0 8px var(--cyan-dim); }
+textarea::placeholder { color: var(--text3); }
+
+/* SET TAGS */
+.set-lbl {
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text2);
+  margin: 12px 0 8px;
+}
+
+#setPreview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 26px;
+  margin-bottom: 14px;
+}
+
+.tag-wrap {
+  display: inline-flex;
+  align-items: center;
+  background: var(--cyan-glow);
+  border: 1px solid var(--cyan2);
+  transition: all .15s;
+}
+.tag-wrap:hover { background: var(--cyan-dim); box-shadow: 0 0 8px var(--cyan-dim); }
+.tag-val {
+  color: var(--cyan);
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Share Tech Mono', monospace;
+}
+.tag-btn {
+  background: transparent;
+  border: none;
+  border-left: 1px solid rgba(0,245,255,0.2);
+  color: var(--text2);
+  font-size: 14px;
+  padding: 2px 7px;
+  cursor: pointer;
+  transition: all .1s;
+  line-height: 1;
+}
+.tag-btn:hover { color: var(--red); background: var(--red-dim); }
+
+/* ADD ROW */
+.set-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.mono-input {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  padding: 7px 10px;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+.mono-input:focus { border-color: var(--cyan); box-shadow: 0 0 6px var(--cyan-dim); }
+.mono-input.wide { width: 140px; }
+.mono-input.sm { width: 110px; }
+.mono-input.num { width: 130px; }
+
+/* BUTTONS */
+.btn {
+  padding: 8px 18px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 10px var(--cyan-dim); }
+.btn:disabled { opacity: .3; cursor: not-allowed; }
+
+.btn-cyan {
+  background: var(--cyan-dim);
+  border-color: var(--cyan);
+  color: var(--cyan);
+  text-shadow: 0 0 8px var(--cyan);
+}
+.btn-cyan:hover { background: rgba(0,245,255,0.25); box-shadow: 0 0 16px var(--cyan-dim); }
+
+.btn-green {
+  background: var(--green-dim);
+  border-color: var(--green);
+  color: var(--green);
+}
+.btn-green:hover { background: rgba(0,255,136,0.2); box-shadow: 0 0 14px var(--green-dim); }
+
+.btn-red {
+  background: var(--red-dim);
+  border-color: var(--red);
+  color: var(--red);
+}
+.btn-red:hover { background: rgba(255,45,85,0.2); }
+
+.btn-amber {
+  background: var(--amber-dim);
+  border-color: var(--amber);
+  color: var(--amber);
+}
+.btn-amber:hover { background: rgba(255,184,0,0.2); }
+
+.btn-sm {
+  padding: 5px 12px;
+  font-size: 9px;
+}
+
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+/* PROGRESS */
+.prog-wrap {
+  display: none;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+.prog-lbl {
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text2);
+  margin-bottom: 8px;
+}
+.prog-outer {
+  width: 100%;
+  height: 3px;
+  background: var(--bg3);
+  position: relative;
+  overflow: hidden;
+}
+.prog-inner {
+  height: 100%;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+  transition: width .08s linear;
+}
+.prog-txt {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cyan);
+  margin-top: 6px;
+}
+
+/* SECTION LABEL */
+.sec-lbl {
+  font-family: 'Orbitron', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--text2);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  padding-left: 2px;
+}
+
+/* CARDS */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  position: relative;
+}
+.card-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 13px;
+  letter-spacing: 3px;
+  color: var(--cyan);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.card-sub {
+  font-size: 10px;
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--text3);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+@media(max-width:700px){ .results-grid { grid-template-columns: 1fr; } }
+
+.fr {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(0,245,255,0.06);
+  font-size: 11px;
+}
+.fr:last-child { border-bottom: none; }
+.fr-l { color: var(--text2); }
+.fr-r { font-weight: 700; font-family: 'Orbitron', monospace; font-size: 10px; }
+.fr-r.ok { color: var(--green); }
+.fr-r.warn { color: var(--amber); }
+.fr-r.err { color: var(--red); }
+.fr-r.cyan { color: var(--cyan); }
+
+/* CHART */
+.chart-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  position: relative;
+}
+.chart-card.fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9998 !important;
+  margin: 0 !important;
+  border: none !important;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px;
+  background: var(--bg) !important;
+}
+.chart-card.fullscreen .cw { flex: 1; height: auto !important; }
+
+.chart-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.chart-ttl {
+  font-family: 'Orbitron', monospace;
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--cyan);
+  text-transform: uppercase;
+}
+.cbts { display: flex; gap: 4px; }
+.cbt {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 13px;
+  width: 28px; height: 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all .12s;
+  font-family: 'Share Tech Mono', monospace;
+}
+.cbt:hover { border-color: var(--cyan); color: var(--cyan); }
+
+.leg-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  margin-bottom: 12px;
+  align-items: center;
+  color: var(--text2);
+}
+.leg { display: flex; align-items: center; gap: 5px; }
+.ll { width: 20px; height: 3px; border-radius: 1px; }
+
+.cw { position: relative; width: 100%; height: 300px; }
+.cw canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+
+/* 2D TABLE */
+.p2d-outer { overflow-x: auto; margin-top: 4px; }
+.p2d {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 11px;
+  width: 100%;
+  font-family: 'Share Tech Mono', monospace;
+}
+.p2d th {
+  padding: 7px 10px;
+  background: var(--bg3);
+  color: var(--cyan2);
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+  text-align: center;
+  font-family: 'Orbitron', monospace;
+}
+.p2d th.rh { background: var(--bg2); color: var(--text2); }
+.p2d td {
+  padding: 5px 8px;
+  border: 1px solid rgba(0,245,255,0.06);
+  text-align: center;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  transition: filter .1s;
+}
+.p2d tr:hover td { filter: brightness(1.3); }
+.p2d td.sh {
+  background: var(--bg2) !important;
+  color: var(--cyan);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+  padding-left: 10px;
+  border-color: var(--border);
+}
+.p2d td.bt { background: var(--bg2) !important; color: var(--green); font-weight: 700; font-size: 10px; }
+.p2d td.bs { background: var(--bg2) !important; color: var(--amber); font-weight: 700; font-size: 10px; }
+.p2d tr.foot-row td { background: var(--bg2) !important; }
+
+.tbl-legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  font-size: 10px;
+  align-items: center;
+  color: var(--text2);
+}
+.tll { display: flex; align-items: center; gap: 6px; }
+.tlb { width: 14px; height: 14px; border: 1px solid var(--border); }
+
+/* SIM AYAR & HEDEF PANEL */
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.input-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text3);
+  font-family: 'Orbitron', monospace;
+}
+
+/* HEDEF SONUÇ */
+.target-result-box {
+  border: 1px solid var(--border2);
+  padding: 20px 24px;
+  background: var(--bg2);
+  position: relative;
+  overflow: hidden;
+}
+.target-result-box::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: var(--cyan);
+  box-shadow: 0 0 12px var(--cyan);
+}
+.target-big-pct {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(40px, 8vw, 80px);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 2px;
+}
+.target-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.td-item {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+}
+.td-key { font-size: 9px; letter-spacing: 1px; color: var(--text3); text-transform: uppercase; margin-bottom: 4px; }
+.td-val { font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 700; color: var(--text); }
+
+/* Glow pulse animation */
+@keyframes glowPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+.glow-pulse { animation: glowPulse 2s infinite; }
+
+/* Flicker on load */
+@keyframes flicker {
+  0% { opacity: 0; }
+  10% { opacity: 0.9; }
+  12% { opacity: 0.2; }
+  14% { opacity: 1; }
+  100% { opacity: 1; }
+}
+.wrap { animation: flicker 0.4s ease-out; }
+
+/* Corner decorations */
+.corner-dec {
+  position: absolute;
+  width: 10px; height: 10px;
+  border-color: var(--cyan);
+  border-style: solid;
+  opacity: 0.5;
+}
+.corner-dec.tl { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+.corner-dec.tr { top: -1px; right: -1px; border-width: 1px 1px 0 0; }
+.corner-dec.bl { bottom: -1px; left: -1px; border-width: 0 0 1px 1px; }
+.corner-dec.br { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+/* Status indicator */
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  display: inline-block;
+  animation: glowPulse 1.5s infinite;
+}
+
+/* Divider */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 20px 0;
+  position: relative;
+}
+.divider::after {
+  content: '//';
+  position: absolute;
+  top: -8px; left: 20px;
+  background: var(--bg);
+  padding: 0 8px;
+  font-size: 10px;
+  color: var(--text3);
+  font-family: 'Orbitron', monospace;
+}
+
+/* Quick preset buttons */
+.preset-row { display: flex; gap: 6px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">// NEXUS PREDICTION ENGINE · ENSEMBLE[NB+NHiTS+DTW+CRF] · MONTE CARLO · %90 GÜVEN</div>
+  <h1>NEXUS <span class="slash">//</span> <span class="accent">SERİ TAHMİN</span></h1>
+  <div class="header-sub">
+    <span class="status-dot"></span>&nbsp; SİSTEM AKTİF &nbsp;·&nbsp; VERİ GİRİŞİ BEKLENİYOR
+  </div>
+</header>
+
+<!-- VERİ PANELİ -->
+<div class="panel red" data-lbl="// veri serisi">
+  <div class="corner-dec tl"></div><div class="corner-dec tr"></div>
+  <div class="corner-dec bl"></div><div class="corner-dec br"></div>
+  <textarea id="seriesInput"
+    placeholder="-1,-1,0,1,1,0,-1,-2,-1,0,1,2,1,0&#10;Virgül, noktalı virgül veya yeni satırla ayrılmış sayılar"
+    oninput="onSeriesInput()"></textarea>
+
+  <div class="set-lbl">// OTOMATİK ADIM KÜMESİ</div>
+  <div id="setPreview"></div>
+
+  <div class="set-add-row">
+    <input id="newValInput" type="number" step="any" placeholder="Yeni değer ekle" class="mono-input sm">
+    <button class="btn btn-cyan btn-sm" onclick="addSetVal()">+ EKLE</button>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-cyan" onclick="runAnalysis()">&#9654;&nbsp; ANALİZ ET</button>
+    <button class="btn btn-amber btn-sm" onclick="loadExample()">ÖRNEK YÜKle</button>
+  </div>
+</div>
+
+<!-- SİMÜLASYON AYARI -->
+<div class="panel" data-lbl="// simülasyon ayarı">
+  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+    <div class="input-group">
+      <div class="input-label">Simülasyon Sayısı</div>
+      <input id="simCountInput" type="number" min="100" max="1000000" step="1000" value="8000"
+        class="mono-input num" oninput="N_SIM=Math.max(100,parseInt(this.value)||8000)">
+    </div>
+    <div style="font-size:10px;color:var(--text3);line-height:1.6;">
+      Daha fazla = daha hassas<br>Daha az = daha hızlı
+    </div>
+    <div class="preset-row" style="margin-left:auto;">
+      <button class="btn btn-sm" onclick="setSimCount(1000)">1K</button>
+      <button class="btn btn-sm" onclick="setSimCount(5000)">5K</button>
+      <button class="btn btn-sm" onclick="setSimCount(8000)">8K</button>
+      <button class="btn btn-sm" onclick="setSimCount(20000)">20K</button>
+      <button class="btn btn-sm" onclick="setSimCount(50000)">50K</button>
+      <button class="btn btn-sm" onclick="setSimCount(100000)">100K</button>
+    </div>
+  </div>
+</div>
+
+<!-- HEDEF OLASILIK PANELİ -->
+<div class="panel green" data-lbl="// hedef olasilik hesabi">
+  <div class="corner-dec tl"></div><div class="corner-dec tr"></div>
+  <div style="font-size:10px;color:var(--text3);margin-bottom:16px;letter-spacing:1px;">
+    K. ADIMDA KUMULATIF TOPLAMIN [A1, A2] BANDINDAN GECMESI OLASILIGI
+  </div>
+
+  <!-- Ana girdiler -->
+  <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:18px;">
+    <div class="input-group">
+      <div class="input-label">K &mdash; Hedef Adim</div>
+      <input id="targetStep" type="number" min="1" value="300" class="mono-input num">
+    </div>
+    <div class="input-group">
+      <div class="input-label">A1 &mdash; Alt Sinir</div>
+      <input id="targetLow" type="number" value="-20" class="mono-input num">
+    </div>
+    <div class="input-group">
+      <div class="input-label">A2 &mdash; Ust Sinir</div>
+      <input id="targetHigh" type="number" value="0" class="mono-input num">
+    </div>
+    <button class="btn btn-green" style="margin-bottom:1px;" onclick="runTargetAnalysis()">&#9654;&nbsp; HESAPLA</button>
+  </div>
+
+  <!-- MUDAHALE & BELiRSiZLiK ALANI -->
+  <div style="border:1px solid rgba(0,245,255,0.12);padding:16px 18px;margin-bottom:18px;position:relative;">
+    <div style="position:absolute;top:-9px;left:14px;background:var(--panel);padding:0 10px;
+      font-size:9px;letter-spacing:2px;color:var(--cyan2);font-family:'Orbitron',monospace;">
+      // MUDAHALE &amp; BELiRSiZLiK
+    </div>
+
+    <!-- Trend kirilimi toggle -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" id="chkIntervention"
+          style="width:15px;height:15px;accent-color:var(--cyan);cursor:pointer;">
+        <span style="font-size:10px;color:var(--text2);letter-spacing:1px;">TREND KIRILIMI / MUDAHALE</span>
+      </label>
+      <span style="font-size:9px;color:var(--text3);">son noktadan hedefe beklenti dogrusu + baskı</span>
+    </div>
+
+    <!-- Mudahale kontrolleri -->
+    <div id="intControls" style="display:none;margin-bottom:14px;">
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;">
+        <div class="input-group">
+          <div class="input-label">Yon</div>
+          <select id="intDir" class="mono-input" style="width:130px;cursor:pointer;background:var(--bg2);">
+            <option value="auto">OTOMATIK</option>
+            <option value="up">&#9650; YUKARI</option>
+            <option value="down">&#9660; ASAGI</option>
+            <option value="flat">&#9654; DUZLUK</option>
+          </select>
+        </div>
+        <div class="input-group" style="flex:1;min-width:180px;">
+          <div class="input-label">Baski Gucu &nbsp;<span id="lblStrength" style="color:var(--cyan);">50%</span></div>
+          <input type="range" id="intStrength" min="0" max="100" value="50"
+            style="width:100%;accent-color:var(--cyan);cursor:pointer;">
+        </div>
+      </div>
+      <div id="slopeInfo" style="font-size:10px;color:var(--text3);padding:7px 10px;
+        background:var(--bg2);border:1px solid var(--border);font-family:'Share Tech Mono',monospace;">
+        K, A1, A2 degerlerini girin...
+      </div>
+    </div>
+
+    <!-- Belirsizlik -->
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" id="chkUncert" checked
+          style="width:15px;height:15px;accent-color:var(--amber);cursor:pointer;">
+        <span style="font-size:10px;color:var(--text2);letter-spacing:1px;">BELiRSiZLiK GENiSLEMESi</span>
+      </label>
+      <div class="input-group" style="flex:1;min-width:180px;">
+        <div class="input-label">Genisleme Hizi &nbsp;<span id="lblUncert" style="color:var(--amber);">30%</span></div>
+        <input type="range" id="uncertRate" min="5" max="100" value="30"
+          style="width:100%;accent-color:var(--amber);cursor:pointer;">
+      </div>
+      <span style="font-size:9px;color:var(--text3);">Uzak adimlarda band genisler, %0 engellenir</span>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div id="targetProgress" style="display:none;margin-bottom:14px;">
+    <div class="prog-lbl" id="targetProgLbl">Simulasyon calisiyor...</div>
+    <div class="prog-outer"><div id="targetProgBar" class="prog-inner" style="width:0%"></div></div>
+    <div class="prog-txt" id="targetProgTxt">0%</div>
+  </div>
+
+  <!-- Sonuc -->
+  <div id="targetResult" style="display:none;"></div>
+
+  <!-- Grafik -->
+  <div id="targetChartWrap" style="display:none;margin-top:18px;">
+    <div class="chart-top" style="margin-bottom:8px;">
+      <div class="chart-ttl">KUMULATIF SIMULASYON // HEDEF KESiSiMi</div>
+    </div>
+    <div id="targetLegend" class="leg-row"></div>
+    <div class="cw" style="height:380px;"><canvas id="targetChart"></canvas></div>
+  </div>
+</div>
+
+<!-- PROGRESS BAR (ana analiz) -->
+<div class="prog-wrap" id="progWrap">
+  <div class="prog-lbl" id="progLbl">Başlatılıyor...</div>
+  <div class="prog-outer"><div class="prog-inner" id="progBar" style="width:0%"></div></div>
+  <div class="prog-txt" id="progTxt">0%</div>
+</div>
+
+<!-- 2B OLASILIK TABLOSU -->
+<div class="card" id="sec_table" style="display:none;">
+  <div class="card-title">2B OLASILIK TABLOSU <span class="card-sub">· Satır=değer · Sütun=adım · Hücre=% olasılık</span></div>
+  <div class="p2d-outer" id="p2dWrap"></div>
+  <div class="tbl-legend" id="tblLeg"></div>
+</div>
+
+<!-- HAM VERİ + TAHMİN GRAFİĞİ -->
+<div class="chart-card" id="sec_chart1" style="display:none;">
+  <div class="chart-top">
+    <div class="chart-ttl">VERİ + TAHMİN</div>
+    <div class="cbts">
+      <button class="cbt" onclick="c1zi()">+</button>
+      <button class="cbt" onclick="c1zo()">-</button>
+      <button class="cbt" onclick="c1zr()">O</button>
+      <button class="cbt" id="fs1btn" onclick="toggleFS('sec_chart1','fs1btn')">[]</button>
+    </div>
+  </div>
+  <div class="leg-row">
+    <div class="leg"><div class="ll" style="background:var(--cyan)"></div>Gözlem</div>
+    <div class="leg"><div class="ll" style="border-top:2px dashed var(--green);height:0;width:20px;"></div>Medyan</div>
+    <div class="leg"><div class="ll" style="height:10px;width:20px;background:rgba(0,255,136,0.12);border:1px solid rgba(0,255,136,0.3)"></div>%90 Bant</div>
+    <span style="font-size:9px;color:var(--text3);margin-left:auto;">scroll zoom · sürükle pan · ESC tam ekran</span>
+  </div>
+  <div class="cw"><canvas id="chart1"></canvas></div>
+</div>
+
+<!-- KÜMÜLATİF GRAFİK -->
+<div class="chart-card" id="sec_chart2" style="display:none;">
+  <div class="chart-top">
+    <div class="chart-ttl">KÜMÜLATİF SERİ <span style="font-size:10px;color:var(--text3);font-family:'Share Tech Mono',monospace;letter-spacing:0;">// gözlem + tahmin</span></div>
+    <div class="cbts">
+      <button class="cbt" onclick="c2zi()">+</button>
+      <button class="cbt" onclick="c2zo()">-</button>
+      <button class="cbt" onclick="c2zr()">O</button>
+      <button class="cbt" id="fs2btn" onclick="toggleFS('sec_chart2','fs2btn')">[]</button>
+    </div>
+  </div>
+  <div class="leg-row">
+    <div class="leg"><div class="ll" style="background:var(--cyan)"></div>Gözlem (kümülatif)</div>
+    <div class="leg"><div class="ll" style="background:var(--amber)"></div>Tahmin medyanı</div>
+    <div class="leg"><div class="ll" style="height:10px;width:20px;background:rgba(255,184,0,0.15);border:1px solid rgba(255,184,0,0.4)"></div>%90 Bant</div>
+  </div>
+  <div class="cw"><canvas id="chart2"></canvas></div>
+</div>
+
+<!-- ANALİZ BULGULARI -->
+<div class="results-grid" id="sec_results" style="display:none;">
+  <div class="card"><div class="card-title">ANALİZ BULGULARI</div><div id="findings"></div></div>
+  <div class="card"><div class="card-title">TAHMİN ÖZETİ</div><div id="predSummary"></div></div>
+</div>
+
+</div><!-- /wrap -->
+<script>
+'use strict';
+
+/* ══ SABİT PARAMETRELER ══ */
+var N_SIM   = 8000;
+var N_STEPS = 15;
+var CONF    = 0.90;
+var ALPHA   = (1 - CONF) / 2;
+var ENS_METHODS = ['nbwin','nhits','dtw1nn','crf'];
+
+var _set=[], _data=[], _chart1=null, _chart2=null, _targetChart=null;
+
+function $(id){ return document.getElementById(id); }
+function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+
+function setP(p,lbl,txt){
+  $('progBar').style.width = Math.min(100,p)+'%';
+  $('progTxt').textContent = txt||Math.round(p)+'%';
+  if(lbl) $('progLbl').textContent = lbl;
+}
+function show(id){ $(id).style.display='block'; }
+function hide(id){ $(id).style.display='none'; }
+
+/* ── MATH ── */
+function mean(a){ if(!a||!a.length)return 0; var s=0; for(var i=0;i<a.length;i++)s+=a[i]; return s/a.length; }
+function vari(a){ if(!a||a.length<2)return 0; var m=mean(a),s=0; for(var i=0;i<a.length;i++)s+=(a[i]-m)*(a[i]-m); return s/a.length; }
+function std(a){ return Math.sqrt(vari(a)); }
+function acf1(a){
+  var n=a.length, m=mean(a), num=0, den=0;
+  for(var i=1;i<n;i++) num+=(a[i]-m)*(a[i-1]-m);
+  for(var i=0;i<n;i++) den+=(a[i]-m)*(a[i]-m);
+  return den<1e-12?0:num/den;
+}
+function pct(a,p){ var s=a.slice().sort(function(x,y){return x-y;}); return s[Math.max(0,Math.min(s.length-1,Math.floor(p*(s.length-1))))]; }
+function linTrend(a){ var n=a.length,sx=0,sy=0,sxy=0,sxx=0; for(var i=0;i<n;i++){sx+=i;sy+=a[i];sxy+=i*a[i];sxx+=i*i;} var d=n*sxx-sx*sx; return d<1e-12?0:(n*sxy-sx*sy)/d; }
+function entropy(data,set){
+  if(!set.length)return 0;
+  var cnt={},n=data.length;
+  for(var i=0;i<set.length;i++)cnt[set[i]]=0;
+  for(var i=0;i<n;i++){var k=snap(data[i],set);cnt[k]=(cnt[k]||0)+1;}
+  var h=0; for(var k in cnt){var p=cnt[k]/n;if(p>0)h-=p*Math.log2(p);} return h;
+}
+function grnd(){ var u=0,v=0; while(!u)u=Math.random(); while(!v)v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+function snap(v,set){ if(!set||!set.length)return v; var best=set[0]; for(var i=1;i<set.length;i++)if(Math.abs(set[i]-v)<Math.abs(best-v))best=set[i]; return best; }
+
+/* ── ADIM KÜMESİ ── */
+function parseSeries(){
+  var parts=$('seriesInput').value.split(/[\n,;]+/), out=[];
+  for(var i=0;i<parts.length;i++){ var n=parseFloat(parts[i].trim()); if(!isNaN(n))out.push(n); }
+  return out;
+}
+function buildAutoSet(data){
+  var seen={},vals=[];
+  for(var i=0;i<data.length;i++){ var k=data[i].toString(); if(!seen[k]){seen[k]=true;vals.push(data[i]);} }
+  vals.sort(function(a,b){return a-b;});
+  return vals;
+}
+function renderSetPreview(){
+  $('setPreview').innerHTML = _set.map(function(v,i){
+    return '<span class="tag-wrap">'
+      +'<span class="tag-val">'+v+'</span>'
+      +'<button class="tag-btn" onclick="removeSetVal('+i+')" title="Kaldır">&#x2212;</button>'
+      +'</span>';
+  }).join('');
+}
+function removeSetVal(idx){ _set.splice(idx,1); renderSetPreview(); }
+function addSetVal(){
+  var v=parseFloat($('newValInput').value);
+  if(isNaN(v))return;
+  for(var i=0;i<_set.length;i++) if(Math.abs(_set[i]-v)<1e-9)return;
+  _set.push(v); _set.sort(function(a,b){return a-b;}); renderSetPreview(); $('newValInput').value='';
+}
+function onSeriesInput(){
+  var data=parseSeries();
+  if(data.length>0){ _set=buildAutoSet(data); renderSetPreview(); }
+  else { _set=[]; $('setPreview').innerHTML=''; }
+}
+
+document.addEventListener('DOMContentLoaded',function(){
+  $('newValInput').addEventListener('keydown',function(e){ if(e.key==='Enter')addSetVal(); });
+});
+
+/* ── TRANSITION ── */
+function buildTrans(data,set){
+  var n=set.length; if(!n)return null;
+  function idx(v){ for(var i=0;i<set.length;i++)if(Math.abs(set[i]-v)<1e-9)return i; return -1; }
+  var T=[];
+  for(var i=0;i<n;i++){ T.push([]); for(var j=0;j<n;j++)T[i].push(0.1); }
+  for(var i=1;i<data.length;i++){ var fi=idx(data[i-1]),ti=idx(data[i]); if(fi>=0&&ti>=0)T[fi][ti]++; }
+  for(var i=0;i<n;i++){ var s=0; for(var j=0;j<n;j++)s+=T[i][j]; for(var j=0;j<n;j++)T[i][j]/=s; }
+  return T;
+}
+function mcFallback(data,steps,set,T){
+  if(!set.length||!T){
+    var s=std(data),m=mean(data),a=acf1(data),last=data[data.length-1],path=[];
+    for(var i=0;i<steps;i++){last=last*a+m*(1-Math.abs(a))+s*grnd()*(1-Math.abs(a));path.push(last);}
+    return path;
+  }
+  function idx(v){ for(var i=0;i<set.length;i++)if(Math.abs(set[i]-v)<1e-9)return i; return -1; }
+  var cur=idx(data[data.length-1]); if(cur<0)cur=Math.floor(set.length/2);
+  var path=[];
+  for(var i=0;i<steps;i++){
+    var row=T[cur],r=Math.random(),cum=0;
+    for(var j=0;j<set.length;j++){cum+=row[j];if(r<=cum){cur=j;break;}}
+    path.push(set[cur]);
+  }
+  return path;
+}
+
+/* ════ 1. NAIVE BAYES — hiyerarşik pencere-3 ════ */
+function nbPredict(data,steps,set){
+  var es=set.length?set:buildAutoSet(data);
+  var win=3;
+  if(!es.length||data.length<win+1){var T2=buildTrans(data,es);return mcFallback(data,steps,es,T2);}
+  function idx(v){ for(var i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i; return 0; }
+  function key(w){ return w.map(function(v){return Math.max(0,idx(v));}).join('-'); }
+  var cnts={};
+  for(var ww=1;ww<=win;ww++){
+    cnts[ww]={};
+    for(var i=ww;i<data.length;i++){
+      var k=key(data.slice(i-ww,i)),ni=idx(data[i]);
+      if(!cnts[ww][k]){cnts[ww][k]=[];for(var j=0;j<es.length;j++)cnts[ww][k].push(0.05);}
+      cnts[ww][k][ni]++;
+    }
+  }
+  var w=data.slice(-win),path=[];
+  for(var i=0;i<steps;i++){
+    var row=null;
+    for(var ww=win;ww>=1;ww--){ var k=key(w.slice(win-ww)); if(cnts[ww][k]){row=cnts[ww][k];break;} }
+    if(!row){row=[];for(var j=0;j<es.length;j++)row.push(1);}
+    var tot=0;for(var j=0;j<row.length;j++)tot+=row[j];
+    var r=Math.random()*tot,cum=0,ch=0;
+    for(var j=0;j<es.length;j++){cum+=row[j];if(r<=cum){ch=j;break;}}
+    w=w.slice(1);w.push(es[ch]);path.push(es[ch]);
+  }
+  return path;
+}
+
+/* ════ 2. N-HiTS ════ */
+function fitAR(data,p){
+  var n=data.length; if(n<=p||p<1)return[0];
+  var m=mean(data),c=[];
+  for(var k=0;k<=p;k++){var s=0;for(var i=k;i<n;i++)s+=(data[i]-m)*(data[i-k]-m);c.push(s/(n-k));}
+  var phi=[c[1]/(c[0]||1e-10)],V=c[0]*(1-phi[0]*phi[0]);
+  for(var lag=2;lag<=p;lag++){
+    var num=c[lag];for(var j=0;j<phi.length;j++)num-=phi[j]*(c[lag-1-j]||0);
+    var kk=num/(V||1e-10),phi2=[];
+    for(var j=0;j<phi.length;j++)phi2.push(phi[j]-kk*(phi[phi.length-2-j]||0));
+    phi2.push(kk);phi=phi2;V*=(1-kk*kk);if(isNaN(V)||V<=0)break;
+  }
+  return phi;
+}
+function arPredict(data,phi,steps,nStd,set){
+  var m=mean(data),hist=data.map(function(v){return v-m;}),path=[];
+  for(var i=0;i<steps;i++){
+    var pred=0;for(var j=0;j<phi.length;j++)pred+=phi[j]*(hist[hist.length-1-j]||0);
+    pred+=m+nStd*grnd();if(set.length)pred=snap(pred,set);hist.push(pred-m);path.push(pred);
+  }
+  return path;
+}
+function nhitsPredict(data,steps,set){
+  var n=data.length,dm=mean(data),ds=std(data)||1;
+  var norm=data.map(function(v){return(v-dm)/ds;});
+  function basis(t,H,nP,nF){
+    var b=[1];for(var p=1;p<=nP;p++)b.push(Math.pow(t/H,p));
+    for(var k=1;k<=nF;k++){b.push(Math.sin(2*Math.PI*k*t/H));b.push(Math.cos(2*Math.PI*k*t/H));}
+    return b;
+  }
+  function ols(X,y){
+    var nb=X[0].length,ns=X.length,XtX=[],Xty=[];
+    for(var i=0;i<nb;i++){XtX.push([]);for(var j=0;j<nb;j++)XtX[i].push(0);Xty.push(0);}
+    for(var r2=0;r2<ns;r2++)for(var i=0;i<nb;i++){Xty[i]+=X[r2][i]*y[r2];for(var j=0;j<nb;j++)XtX[i][j]+=X[r2][i]*X[r2][j];}
+    for(var i=0;i<nb;i++)XtX[i][i]+=1e-4;
+    var aug=XtX.map(function(row,i){return row.concat([Xty[i]]);});
+    for(var col=0;col<nb;col++){
+      var piv=col;for(var row=col+1;row<nb;row++)if(Math.abs(aug[row][col])>Math.abs(aug[piv][col]))piv=row;
+      var tmp=aug[col];aug[col]=aug[piv];aug[piv]=tmp;
+      var d=aug[col][col]||1e-12;
+      for(var row=0;row<nb;row++)if(row!==col){var f=aug[row][col]/d;for(var k=0;k<=nb;k++)aug[row][k]-=f*aug[col][k];}
+      for(var k=0;k<=nb;k++)aug[col][k]/=d;
+    }
+    return aug.map(function(row){return row[nb];});
+  }
+  var cfgs=[[1,2,3],[2,1,2],[4,1,1]],res=norm.slice(),outs=[];
+  for(var sc=0;sc<cfgs.length;sc++){
+    var pool=cfgs[sc][0],nPoly=cfgs[sc][1],nFreq=cfgs[sc][2];
+    var pooled=[],rDown=[];
+    for(var i=0;i<n;i+=pool){
+      var chunk=norm.slice(i,Math.min(i+pool,n));
+      var rchunk=res.slice(i,Math.min(i+pool,n));
+      pooled.push(mean(chunk));rDown.push(mean(rchunk));
+    }
+    var np2=pooled.length;if(np2<3)continue;
+    var lb=Math.min(np2,Math.max(4,Math.floor(np2*0.5)));
+    var rw=rDown.slice(-lb),H=steps;
+    var Xlb=[];for(var t=0;t<lb;t++)Xlb.push(basis(t,lb,nPoly,nFreq));
+    var beta=ols(Xlb,rw);
+    var Xfw=[];for(var t=0;t<H;t++)Xfw.push(basis(t,H,nPoly,nFreq));
+    var fc=Xfw.map(function(b){var s=0;for(var i=0;i<b.length;i++)s+=b[i]*beta[i];return s;});
+    outs.push(fc);
+    var bc=Xlb.map(function(b){var s=0;for(var i=0;i<b.length;i++)s+=b[i]*beta[i];return s;});
+    var start=n-lb*pool;
+    for(var i=0;i<lb*pool&&start+i<n;i++){var bi=Math.floor(i/pool);if(bi<bc.length)res[start+i]-=bc[bi];}
+  }
+  if(!outs.length){var phi2=fitAR(data,3);return arPredict(data,phi2,steps,ds*0.3,set);}
+  var rStd=std(res)||0.01;
+  return Array.from({length:steps},function(_,s){
+    var sum=0;for(var i=0;i<outs.length;i++)sum+=(outs[i][s]||0);
+    var v=sum*ds+dm+grnd()*rStd*ds;if(set.length)v=snap(v,set);return v;
+  });
+}
+
+/* ════ 3. DTW ════ */
+function dtwDist(a,b){
+  var n=a.length,m=b.length;
+  var dtw=[];for(var i=0;i<=n;i++){dtw.push([]);for(var j=0;j<=m;j++)dtw[i].push(Infinity);}
+  dtw[0][0]=0;
+  for(var i=1;i<=n;i++)for(var j=1;j<=m;j++){
+    var cost=Math.abs(a[i-1]-b[j-1]);
+    dtw[i][j]=cost+Math.min(dtw[i-1][j],dtw[i][j-1],dtw[i-1][j-1]);
+  }
+  return dtw[n][m];
+}
+function dtw1nnPredict(data,steps,set){
+  var wlen=Math.min(8,Math.max(3,Math.floor(data.length*0.3)));
+  var query=data.slice(-wlen);
+  var best=null,bestD=Infinity;
+  for(var i=0;i<=data.length-wlen-steps;i++){
+    var cand=data.slice(i,i+wlen);
+    var d=dtwDist(query,cand);
+    if(d<bestD){bestD=d;best=i;}
+  }
+  if(best===null){var T3=buildTrans(data,set);return mcFallback(data,steps,set,T3);}
+  var path=[];
+  for(var s=0;s<steps;s++){
+    var v=data[best+wlen+s]!==undefined?data[best+wlen+s]:data[data.length-1];
+    if(set.length)v=snap(v,set);
+    path.push(v);
+  }
+  return path;
+}
+
+/* ════ 4. CRF ════ */
+function crfPredict(data,steps,set){
+  var es=set.length?set:buildAutoSet(data);
+  var N=es.length; if(!N)return Array(steps).fill(data[data.length-1]);
+  function idx(v){ for(var i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i; return 0; }
+  var wT=[],wE=[];
+  for(var i=0;i<N;i++){wT.push([]);wE.push([]);for(var j=0;j<N;j++){wT[i].push(0);wE[i].push(0);}}
+  var lr=0.1,obs2=data.map(idx);
+  for(var pass=0;pass<5;pass++){
+    for(var t=1;t<obs2.length;t++){
+      var xt=obs2[t-1],yt=obs2[t];
+      var scores=[];for(var j=0;j<N;j++)scores.push(wT[xt][j]+wE[xt][j]);
+      var mx=Math.max.apply(null,scores);
+      var exps=scores.map(function(s){return Math.exp(s-mx);});
+      var Z=exps.reduce(function(a,b){return a+b;},0)||1;
+      var probs=exps.map(function(e){return e/Z;});
+      for(var j=0;j<N;j++){
+        var delta=(j===yt?1:0)-probs[j];
+        wT[xt][j]+=lr*delta;wE[xt][j]+=lr*delta;
+      }
+    }
+  }
+  var path=[],prev=obs2[obs2.length-1];
+  for(var s=0;s<steps;s++){
+    var sc2=[];for(var j=0;j<N;j++)sc2.push(wT[prev][j]+wE[prev][j]);
+    var mx2=Math.max.apply(null,sc2);
+    var ex=sc2.map(function(s){return Math.exp(s-mx2);});
+    var Z2=ex.reduce(function(a,b){return a+b;},0)||1;
+    var pr=ex.map(function(e){return e/Z2;});
+    var r=Math.random(),cum4=0,chosen=0;
+    for(var j=0;j<N;j++){cum4+=pr[j];if(r<=cum4){chosen=j;break;}}
+    path.push(es[chosen]);prev=chosen;
+  }
+  return path;
+}
+
+/* ════ ENSEMBLE ════ */
+function callMethod(name,data,steps,set,T){
+  if(name==='nbwin')  return nbPredict(data,steps,set);
+  if(name==='nhits')  return nhitsPredict(data,steps,set);
+  if(name==='dtw1nn') return dtw1nnPredict(data,steps,set);
+  if(name==='crf')    return crfPredict(data,steps,set);
+  return mcFallback(data,steps,set,T);
+}
+function ensemblePath(data,steps,set,T){
+  var paths=ENS_METHODS.map(function(m){return callMethod(m,data,steps,set,T);});
+  return Array.from({length:steps},function(_,s){
+    var vals=paths.map(function(p){return p[s];});
+    if(set.length){
+      var freq={};
+      vals.forEach(function(v){var k=snap(v,set).toString();freq[k]=(freq[k]||0)+1;});
+      return parseFloat(Object.entries(freq).sort(function(a,b){return b[1]-a[1];})[0][0]);
+    }
+    return mean(vals);
+  });
+}
+
+/* ════ ANA ANALİZ ════ */
+async function runAnalysis(){
+  _data = parseSeries();
+  if(_data.length<6){alert('En az 6 veri noktası gerekli.');return;}
+  if(!_set.length){_set=buildAutoSet(_data);renderSetPreview();}
+  var effSet=_set.slice().sort(function(a,b){return a-b;});
+  var bad=_data.filter(function(v){return!effSet.some(function(s){return Math.abs(s-v)<1e-9;});}).length;
+  var m=mean(_data),s=std(_data),a1=acf1(_data),tr=linTrend(_data),ent=entropy(_data,effSet);
+
+  ['sec_table','sec_chart1','sec_results','sec_chart2'].forEach(hide);
+  show('progWrap');setP(4,'Modeller hazırlanıyor...');await sleep(20);
+
+  var T=buildTrans(_data,effSet);
+  var simPaths=[];
+
+  try{
+    setP(10,'Simülasyonlar başlıyor...');await sleep(10);
+    var bSz=80;
+    for(var i=0;i<N_SIM;i+=bSz){
+      var nb2=Math.min(bSz,N_SIM-i);
+      for(var b=0;b<nb2;b++) simPaths.push(ensemblePath(_data,N_STEPS,effSet,T));
+      setP(10+((i+bSz)/N_SIM)*82,'Simülasyon: '+Math.min(i+bSz,N_SIM)+'/'+N_SIM);
+      await sleep(0);
+    }
+  }catch(e){console.error(e);alert('Hata: '+e.message);hide('progWrap');return;}
+
+  if(!simPaths.length){alert('Simülasyon üretilemedi.');hide('progWrap');return;}
+  setP(93,'Sonuçlar hesaplanıyor...');await sleep(10);
+
+  var predMed=[],predLo=[],predHi=[];
+  for(var st=0;st<N_STEPS;st++){
+    var vals=simPaths.map(function(p){return p[st];});
+    predMed.push(pct(vals,.5));
+    predLo.push(pct(vals,ALPHA));
+    predHi.push(pct(vals,1-ALPHA));
+  }
+
+  var prob2d=Array.from({length:N_STEPS},function(_,step){
+    var vals=simPaths.map(function(p){return p[step];});
+    var cnt={};effSet.forEach(function(v){cnt[v]=0;});
+    vals.forEach(function(v){var k=snap(v,effSet);cnt[k]=(cnt[k]||0)+1;});
+    return effSet.map(function(v){return(cnt[v]||0)/vals.length;});
+  });
+
+  setP(97,'Grafikler çiziliyor...');await sleep(10);
+  drawChart1(predMed,predLo,predHi);
+  drawChart2(predMed,predLo,predHi);
+  renderTable(prob2d,effSet,N_STEPS);
+  renderResults(predMed,predLo,predHi,m,s,a1,tr,simPaths.length,ent,effSet,bad);
+
+  setP(100,'Tamamlandı','100%');
+  show('sec_table');show('sec_chart1');show('sec_chart2');
+  $('sec_results').style.display='grid';
+  hide('progWrap');
+}
+
+/* ── CHART 1 ── */
+function drawChart1(predMed,predLo,predHi){
+  if(_chart1){_chart1.destroy();_chart1=null;}
+  var oLen=_data.length;
+  var labels=Array.from({length:oLen+predMed.length},function(_,i){return i;});
+  var obs=[].concat(_data,Array(predMed.length).fill(null));
+  var med=[].concat(Array(oLen-1).fill(null),[_data[oLen-1]],predMed);
+  var lo=[].concat(Array(oLen-1).fill(null),[_data[oLen-1]],predLo);
+  var hi=[].concat(Array(oLen-1).fill(null),[_data[oLen-1]],predHi);
+  _chart1=new Chart($('chart1').getContext('2d'),{type:'line',data:{labels:labels,datasets:[
+    {label:'Hi',data:hi,borderColor:'transparent',backgroundColor:'rgba(0,255,136,0.08)',pointRadius:0,fill:'+1',tension:.35},
+    {label:'Lo',data:lo,borderColor:'rgba(0,255,136,0.3)',borderWidth:1,borderDash:[3,2],backgroundColor:'rgba(0,255,136,0.08)',pointRadius:0,fill:false,tension:.35},
+    {label:'Medyan',data:med,borderColor:'#00ff88',borderWidth:2,borderDash:[6,3],pointRadius:0,fill:false,tension:.35},
+    {label:'Gözlem',data:obs,borderColor:'#00f5ff',borderWidth:2,pointRadius:2,pointBackgroundColor:'#00f5ff',fill:false,tension:.2},
+  ]},options:{
+    animation:false,responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{mode:'index',intersect:false,
+        backgroundColor:'rgba(8,13,26,0.9)',borderColor:'rgba(0,245,255,0.3)',borderWidth:1,
+        titleColor:'#00f5ff',bodyColor:'#c8d8e8',titleFont:{family:'Orbitron',size:10},
+      },
+      zoom:{pan:{enabled:true,mode:'x'},zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}}
+    },
+    scales:{
+      x:{grid:{color:'rgba(0,245,255,0.04)'},ticks:{color:'#3a5a7a',font:{family:'Share Tech Mono',size:9},maxTicksLimit:14}},
+      y:{grid:{color:'rgba(0,245,255,0.04)'},ticks:{color:'#3a5a7a',font:{family:'Share Tech Mono',size:9},maxTicksLimit:8}}
+    },
+    elements:{point:{radius:0}}
+  }});
+}
+function c1zi(){if(_chart1)_chart1.zoom(1.35);}
+function c1zo(){if(_chart1)_chart1.zoom(0.75);}
+function c1zr(){if(_chart1)_chart1.resetZoom();}
+
+/* ── CHART 2 ── */
+function drawChart2(predMed,predLo,predHi){
+  if(_chart2){_chart2.destroy();_chart2=null;}
+  var oLen=_data.length,cumObs=[],acc=0;
+  for(var i=0;i<oLen;i++){acc+=_data[i];cumObs.push(acc);}
+  var cumMed=[],cumLo=[],cumHi=[],accM=acc,accL=acc,accH=acc;
+  for(var i=0;i<predMed.length;i++){accM+=predMed[i];cumMed.push(accM);accL+=predLo[i];cumLo.push(accL);accH+=predHi[i];cumHi.push(accH);}
+  var labels=Array.from({length:oLen+predMed.length},function(_,i){return i;});
+  var obsDs=[].concat(cumObs,Array(predMed.length).fill(null));
+  var medDs=[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumMed);
+  var loDs=[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumLo);
+  var hiDs=[].concat(Array(oLen-1).fill(null),[cumObs[oLen-1]],cumHi);
+  _chart2=new Chart($('chart2').getContext('2d'),{type:'line',data:{labels:labels,datasets:[
+    {label:'TahHi',data:hiDs,borderColor:'transparent',backgroundColor:'rgba(255,184,0,0.08)',pointRadius:0,fill:'+1',tension:.35},
+    {label:'TahLo',data:loDs,borderColor:'rgba(255,184,0,0.3)',borderWidth:1,borderDash:[3,2],backgroundColor:'rgba(255,184,0,0.08)',pointRadius:0,fill:false,tension:.35},
+    {label:'Medyan',data:medDs,borderColor:'#ffb800',borderWidth:2,borderDash:[6,3],pointRadius:0,fill:false,tension:.35},
+    {label:'Gözlem',data:obsDs,borderColor:'#00f5ff',borderWidth:2,pointRadius:2,pointBackgroundColor:'#00f5ff',fill:false,tension:.2},
+  ]},options:{
+    animation:false,responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{mode:'index',intersect:false,
+        backgroundColor:'rgba(8,13,26,0.9)',borderColor:'rgba(0,245,255,0.3)',borderWidth:1,
+        titleColor:'#00f5ff',bodyColor:'#c8d8e8',
+      },
+      zoom:{pan:{enabled:true,mode:'x'},zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}}
+    },
+    scales:{
+      x:{grid:{color:'rgba(0,245,255,0.04)'},ticks:{color:'#3a5a7a',font:{family:'Share Tech Mono',size:9},maxTicksLimit:14}},
+      y:{grid:{color:'rgba(0,245,255,0.04)'},ticks:{color:'#3a5a7a',font:{family:'Share Tech Mono',size:9},maxTicksLimit:8},
+         title:{display:true,text:'Kümülatif Toplam',color:'#3a5a7a',font:{family:'Share Tech Mono',size:9}}}
+    },
+    elements:{point:{radius:0}}
+  }});
+}
+function c2zi(){if(_chart2)_chart2.zoom(1.35);}
+function c2zo(){if(_chart2)_chart2.zoom(0.75);}
+function c2zr(){if(_chart2)_chart2.resetZoom();}
+
+/* ── FULLSCREEN ── */
+function toggleFS(cardId,btnId){
+  var c=$(cardId),isFs=c.classList.toggle('fullscreen');
+  $(btnId).textContent=isFs?'X':'[]';
+  var ch=cardId==='sec_chart1'?_chart1:_chart2;
+  setTimeout(function(){if(ch)ch.resize();},50);
+}
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    ['sec_chart1','sec_chart2'].forEach(function(id,ix){
+      var c=$(id);if(c&&c.classList.contains('fullscreen')){
+        c.classList.remove('fullscreen');
+        $(ix===0?'fs1btn':'fs2btn').textContent='[]';
+        var ch=ix===0?_chart1:_chart2;setTimeout(function(){if(ch)ch.resize();},50);
+      }
+    });
+  }
+});
+
+/* ════ 2D TABLE ════ */
+function renderTable(prob2d,effSet,nPred){
+  var nSteps=nPred,nVals=effSet.length;
+  var sortedIdx=Array.from({length:nVals},function(_,i){return i;}).sort(function(a,b){return effSet[b]-effSet[a];});
+
+  var colMax=Array.from({length:nSteps},function(_,ci){
+    var mx=0;for(var ri=0;ri<nVals;ri++)if(prob2d[ci][ri]>mx)mx=prob2d[ci][ri];return mx||1e-9;
+  });
+  var rowMax=Array.from({length:nVals},function(_,ri){
+    var mx=0;for(var ci=0;ci<nSteps;ci++)if(prob2d[ci][ri]>mx)mx=prob2d[ci][ri];return mx||1e-9;
+  });
+  var colRanked=Array.from({length:nSteps},function(_,ci){
+    return effSet.map(function(v,ri){return{v:v,p:prob2d[ci][ri]};}).sort(function(a,b){return b.p-a.p;});
+  });
+
+  // Cyber color: dark bg with cyan/amber channels
+  function cellBg(gN,bN){
+    // base: #0a0f1e (10,15,30), cyan peak: #00f5ff (0,245,255), amber peak: #ffb800
+    var br=10,bg=15,bb=30;
+    var cr=0,cg=245,cb=255;
+    var ar=255,ag=184,ab=0;
+    var r=Math.round(br+gN*(cr-br)*0.7+bN*(ar-br)*0.5);
+    var g=Math.round(bg+gN*(cg-bg)*0.7+bN*(ag-bg)*0.5);
+    var b=Math.round(bb+gN*(cb-bb)*0.7+bN*(ab-bb)*0.5);
+    r=Math.max(0,Math.min(255,r));g=Math.max(0,Math.min(255,g));b=Math.max(0,Math.min(255,b));
+    var lum=r*0.299+g*0.587+b*0.114;
+    var tc=lum<100?'rgba(200,216,232,0.9)':'#050810';
+    return{bg:'rgb('+r+','+g+','+b+')',tc:tc};
+  }
+
+  var hdr='<tr>'
+    +'<th class="rh" style="min-width:70px;text-align:left;padding-left:10px;">Değer</th>'
+    +Array.from({length:nSteps},function(_,ci){return'<th>t+'+(ci+1)+'</th>';}).join('')
+    +'</tr>';
+
+  var rows=sortedIdx.map(function(ri){
+    var val=effSet[ri];
+    var cells=Array.from({length:nSteps},function(_,ci){
+      var p=prob2d[ci][ri];
+      var gN=colMax[ci]>0?p/colMax[ci]:0;
+      var bN=rowMax[ri]>0?p/rowMax[ri]:0;
+      var col=cellBg(gN,bN);
+      return'<td style="background:'+col.bg+';color:'+col.tc+';">'+(p*100).toFixed(1)+'%</td>';
+    }).join('');
+    return'<tr><td class="sh">'+val+'</td>'+cells+'</tr>';
+  }).join('');
+
+  var footBest='<tr class="foot-row">'
+    +'<td class="sh" style="font-size:9px;color:var(--green);letter-spacing:1px;">EN OLASI</td>'
+    +Array.from({length:nSteps},function(_,ci){
+      var best=colRanked[ci][0];
+      return'<td class="bt">'+best.v+'<br><span style="font-size:9px;color:var(--text3)">'+(best.p*100).toFixed(1)+'%</span></td>';
+    }).join('')+'</tr>';
+
+  var footSec='<tr class="foot-row">'
+    +'<td class="sh" style="font-size:9px;color:var(--amber);letter-spacing:1px;">2. OLASI</td>'
+    +Array.from({length:nSteps},function(_,ci){
+      var sec=colRanked[ci][1]||colRanked[ci][0];
+      return'<td class="bs">'+sec.v+'<br><span style="font-size:9px;color:var(--text3)">'+(sec.p*100).toFixed(1)+'%</span></td>';
+    }).join('')+'</tr>';
+
+  $('p2dWrap').innerHTML='<table class="p2d"><thead>'+hdr+'</thead><tbody>'+rows+footBest+footSec+'</tbody></table>';
+  $('tblLeg').innerHTML=
+    '<div class="tll"><div class="tlb" style="background:linear-gradient(135deg,#00f5ff,#0a0f1e)"></div>Cyan = sütunda baskın (adım normalize)</div>'+
+    '<div class="tll"><div class="tlb" style="background:linear-gradient(135deg,#ffb800,#0a0f1e)"></div>Amber = satırda baskın (değer normalize)</div>'+
+    '<div class="tll"><div class="tlb" style="background:#0a0f1e;border-color:var(--border)"></div>Karanlık = düşük olasılık</div>';
+}
+
+/* ── RESULTS ── */
+function renderResults(predMed,predLo,predHi,m,s,a1,tr,nSim,ent,effSet,bad){
+  var last=_data[_data.length-1],fMed=predMed[N_STEPS-1],fLo=predLo[N_STEPS-1],fHi=predHi[N_STEPS-1];
+  var acfI=Math.abs(a1)>0.5?'GÜÇlÜ':Math.abs(a1)>0.2?'ORTA':'ZAYIF';
+  var trendStr=Math.abs(tr)<0.0005?'SABİT':(tr>0?'YÜKSELİYOR':'DÜŞÜYOR');
+  var freq={};_data.forEach(function(v){var k=v.toString();freq[k]=(freq[k]||0)+1;});
+  var top=Object.entries(freq).sort(function(a,b){return b[1]-a[1];})[0];
+
+  $('findings').innerHTML=
+    '<div class="fr"><span class="fr-l">Veri uzunluğu</span><span class="fr-r cyan">'+_data.length+' nokta</span></div>'+
+    '<div class="fr"><span class="fr-l">Küme boyutu</span><span class="fr-r cyan">'+effSet.length+' değer</span></div>'+
+    (bad>0?'<div class="fr"><span class="fr-l">Geçersiz nokta</span><span class="fr-r err">'+bad+' !</span></div>':'')+
+    '<div class="fr"><span class="fr-l">Ortalama / Std</span><span class="fr-r">'+m.toFixed(3)+' / '+s.toFixed(3)+'</span></div>'+
+    '<div class="fr"><span class="fr-l">En sık değer</span><span class="fr-r ok">'+top[0]+' (%'+((top[1]/_data.length)*100).toFixed(1)+')</span></div>'+
+    '<div class="fr"><span class="fr-l">ACF(1)</span><span class="fr-r '+(Math.abs(a1)>0.3?'ok':'warn')+'">'+a1.toFixed(4)+' — '+acfI+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Entropi</span><span class="fr-r '+(ent>2?'warn':'cyan')+'">'+ent.toFixed(3)+' / '+Math.log2(effSet.length||1).toFixed(2)+' bit</span></div>'+
+    '<div class="fr"><span class="fr-l">Trend</span><span class="fr-r '+(Math.abs(tr)<0.0005?'cyan':tr>0?'ok':'err')+'">'+trendStr+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Simülasyon</span><span class="fr-r cyan">'+nSim.toLocaleString()+' yol</span></div>';
+
+  $('predSummary').innerHTML=
+    '<div class="fr"><span class="fr-l">Son gözlem</span><span class="fr-r cyan">'+last+'</span></div>'+
+    '<div class="fr"><span class="fr-l">t+'+N_STEPS+' medyan</span><span class="fr-r ok">'+(typeof fMed==='number'?fMed.toFixed(4):fMed)+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Alt %90</span><span class="fr-r warn">'+(typeof fLo==='number'?fLo.toFixed(4):fLo)+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Üst %90</span><span class="fr-r warn">'+(typeof fHi==='number'?fHi.toFixed(4):fHi)+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Yön</span><span class="fr-r '+(fMed>last?'ok':fMed<last?'err':'cyan')+'">'+(fMed>last?'YÜKSELİYOR':fMed<last?'DÜŞÜYOR':'SABİT')+'</span></div>'+
+    '<div class="fr"><span class="fr-l">Belirsizlik +/-</span><span class="fr-r">'+((fHi-fLo)/2).toFixed(4)+'</span></div>';
+}
+
+/* ════ SİMÜLASYON SAYISI ════ */
+function setSimCount(n){
+  N_SIM=n;
+  var inp=$('simCountInput');
+  if(inp)inp.value=n;
+}
+
+/* ════ HEDEF OLASILIK - EVENT LiSTENERS ════ */
+document.addEventListener('DOMContentLoaded', function(){
+
+  // Mudahale checkbox
+  document.getElementById('chkIntervention').addEventListener('change', function(){
+    document.getElementById('intControls').style.display = this.checked ? 'block' : 'none';
+    if(this.checked) refreshSlopeInfo();
+  });
+
+  // Strength slider label
+  document.getElementById('intStrength').addEventListener('input', function(){
+    document.getElementById('lblStrength').textContent = this.value + '%';
+    refreshSlopeInfo();
+  });
+
+  // Direction change
+  document.getElementById('intDir').addEventListener('change', refreshSlopeInfo);
+
+  // Uncertainty slider label
+  document.getElementById('uncertRate').addEventListener('input', function(){
+    document.getElementById('lblUncert').textContent = this.value + '%';
+  });
+
+  // Live slope info when K/A1/A2 change
+  ['targetStep','targetLow','targetHigh'].forEach(function(id){
+    document.getElementById(id).addEventListener('input', refreshSlopeInfo);
+  });
+});
+
+function refreshSlopeInfo(){
+  if(!document.getElementById('chkIntervention').checked) return;
+  var k   = parseInt(document.getElementById('targetStep').value);
+  var a1  = parseFloat(document.getElementById('targetLow').value);
+  var a2  = parseFloat(document.getElementById('targetHigh').value);
+  var data = parseSeries();
+  var el = document.getElementById('slopeInfo');
+  if(!data.length || isNaN(k) || isNaN(a1) || isNaN(a2) || k < 1){
+    el.textContent = 'K, A1, A2 degerlerini girin...'; return;
+  }
+  var baseCum = 0;
+  for(var i = 0; i < data.length; i++) baseCum += data[i];
+  var mid      = (a1 + a2) / 2;
+  var rawSlope = (mid - baseCum) / k;
+  var dir      = document.getElementById('intDir').value;
+  var strength = parseInt(document.getElementById('intStrength').value) / 100;
+  var eff      = computeSlope(rawSlope, dir, strength);
+  var s = function(v){ return (v >= 0 ? '+' : '') + v.toFixed(4); };
+  el.innerHTML =
+    'Ham egim: <span style="color:var(--cyan)">' + s(rawSlope) + '</span>/adim &nbsp;|&nbsp; ' +
+    'Uygulanan: <span style="color:var(--green)">' + s(eff) + '</span>/adim &nbsp;|&nbsp; ' +
+    'Guc: <span style="color:var(--amber)">' + Math.round(strength * 100) + '%</span> &nbsp;|&nbsp; ' +
+    'Son kum &rarr; hedef orta: <span style="color:var(--text)">' + baseCum.toFixed(1) + ' &rarr; ' + mid.toFixed(1) + '</span>';
+}
+
+function computeSlope(raw, dir, strength){
+  if(dir === 'up')   raw =  Math.abs(raw) || 0.1;
+  if(dir === 'down') raw = -(Math.abs(raw) || 0.1);
+  if(dir === 'flat') raw = 0;
+  return raw * strength;
+}
+
+/* ════ HEDEF OLASILIK ANALiZi ════ */
+async function runTargetAnalysis(){
+  var data = parseSeries();
+  if(data.length < 6){ alert('Once en az 6 veri noktasi girin.'); return; }
+
+  var k  = parseInt(document.getElementById('targetStep').value);
+  var a1 = parseFloat(document.getElementById('targetLow').value);
+  var a2 = parseFloat(document.getElementById('targetHigh').value);
+
+  if(isNaN(k) || k < 1){ alert('Gecerli K adim sayisi girin.'); return; }
+  if(isNaN(a1) || isNaN(a2)){ alert('Gecerli A1 ve A2 degerleri girin.'); return; }
+  if(a1 > a2){ var tmp = a1; a1 = a2; a2 = tmp; }
+
+  var effSet = _set.length ? _set.slice() : buildAutoSet(data);
+  effSet.sort(function(a,b){ return a - b; });
+  var T = buildTrans(data, effSet);
+
+  var baseCum = 0;
+  for(var i = 0; i < data.length; i++) baseCum += data[i];
+
+  // Mudahale parametreleri
+  var useInterv  = document.getElementById('chkIntervention').checked;
+  var effSlope   = 0;
+  var strength   = 0;
+  var dir        = 'auto';
+  var intLabel   = '';
+  if(useInterv){
+    var rawSlope = ((a1 + a2) / 2 - baseCum) / k;
+    dir          = document.getElementById('intDir').value;
+    strength     = parseInt(document.getElementById('intStrength').value) / 100;
+    effSlope     = computeSlope(rawSlope, dir, strength);
+    intLabel     = 'Karisim gucu ' + Math.round(strength*100) + '% — hedef orta: ' + ((a1+a2)/2).toFixed(1);
+  }
+
+  // Belirsizlik parametreleri
+  var useUncert   = document.getElementById('chkUncert').checked;
+  var uncertStrength = parseInt(document.getElementById('uncertRate').value) / 100;
+  var dataStd     = std(data) || 1;
+  var setRange    = effSet.length > 1 ? (effSet[effSet.length-1] - effSet[0]) : dataStd * 2;
+  var noiseScale  = Math.max(dataStd, setRange * 0.15);
+
+  // UI
+  document.getElementById('targetProgress').style.display = 'block';
+  document.getElementById('targetResult').style.display   = 'none';
+  document.getElementById('targetChartWrap').style.display = 'none';
+
+  var simN = N_SIM;
+  var bSz  = 200;
+  var hits = 0;
+  var sampleEvery  = Math.max(1, Math.floor(simN / Math.min(simN, 400)));
+  var storedPaths  = [];
+
+  for(var i = 0; i < simN; i += bSz){
+    var nb = Math.min(bSz, simN - i);
+    for(var b = 0; b < nb; b++){
+      var rawPath = ensemblePath(data, k, effSet, T);
+      var cum     = baseCum;
+      var cumPath = [];
+
+      for(var s = 0; s < k; s++){
+        var step      = rawPath[s];
+        var stepsLeft = k - s;
+
+        // 1. Mudahale: agirlikli karisim
+        //    strength=0 → tamamen ensemble
+        //    strength=1 → tamamen hedef yonlu
+        if(useInterv){
+          var targetMid  = (a1 + a2) / 2;
+          var targetStep = stepsLeft > 0 ? (targetMid - cum) / stepsLeft : 0;
+          var blended    = (1 - strength) * step + strength * targetStep;
+          step = effSet.length ? snap(blended, effSet) : blended;
+        }
+
+        // 2. Belirsizlik genislemesi: gurultu artarak buyur
+        if(useUncert){
+          var amp = noiseScale * uncertStrength * Math.sqrt((s + 1) / k);
+          step = effSet.length ? snap(step + grnd() * amp, effSet) : step + grnd() * amp;
+        }
+
+        cum += step;
+        cumPath.push(cum);
+      }
+
+      var finalCum = cumPath[k - 1];
+      if(finalCum >= a1 && finalCum <= a2) hits++;
+      if((i + b) % sampleEvery === 0)
+        storedPaths.push({ path: cumPath, hit: (finalCum >= a1 && finalCum <= a2) });
+    }
+
+    var pp = Math.min(100, Math.round(((i + bSz) / simN) * 100));
+    document.getElementById('targetProgBar').style.width = pp + '%';
+    document.getElementById('targetProgLbl').textContent =
+      'SIMULASYON: ' + Math.min(i + bSz, simN).toLocaleString() + ' / ' + simN.toLocaleString();
+    document.getElementById('targetProgTxt').textContent = pp + '%';
+    await sleep(0);
+  }
+
+  document.getElementById('targetProgress').style.display = 'none';
+
+  var prob        = hits / simN;
+  var pctStr      = (prob * 100).toFixed(2);
+  var hex         = prob >= 0.5 ? '#00ff88' : prob >= 0.2 ? '#ffb800' : '#ff2d55';
+
+  // Mod etiketleri
+  var flags = '';
+  if(useInterv) flags += '<span style="color:var(--cyan);margin-right:14px;">&#9654; MUDAHALE: ' + intLabel + '</span>';
+  if(useUncert) flags += '<span style="color:var(--amber);">&#9670; BELiRSiZLiK: ' + Math.round(uncertStrength*100) + '%</span>';
+  if(!flags)    flags  = '<span style="color:var(--text3);">Ham ensemble — mudahale yok</span>';
+
+  document.getElementById('targetResult').style.display = 'block';
+  document.getElementById('targetResult').innerHTML =
+    '<div class="target-result-box" style="border-color:' + hex + ';">' +
+    '<div style="position:absolute;top:0;left:0;width:3px;height:100%;background:' + hex + ';box-shadow:0 0 14px ' + hex + ';"></div>' +
+    '<div style="font-size:9px;letter-spacing:3px;color:var(--text3);margin-bottom:8px;font-family:\'Orbitron\',monospace;">HESAP SONUCU</div>' +
+    '<div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;">' +
+    '<div class="target-big-pct" style="color:' + hex + ';text-shadow:0 0 20px ' + hex + ',0 0 40px ' + hex + ';">' + pctStr + '%</div>' +
+    '<div style="font-size:11px;color:var(--text2);line-height:1.9;font-family:\'Share Tech Mono\',monospace;">' +
+    'veri uzunlugu <span style="color:var(--cyan)">' + data.length + '</span>\'den itibaren<br>' +
+    '<span style="color:' + hex + '">' + k + '</span>. adimda kumulatif<br>' +
+    '[<span style="color:var(--text)">' + a1 + '</span>, <span style="color:var(--text)">' + a2 + '</span>] bandina girme olasiligi' +
+    '</div></div>' +
+    '<div style="margin-top:10px;padding:8px 10px;background:var(--bg3);font-size:10px;font-family:\'Share Tech Mono\',monospace;">' + flags + '</div>' +
+    '<div class="target-detail-grid">' +
+    '<div class="td-item"><div class="td-key">Basarili Yol</div><div class="td-val" style="color:var(--green)">' + hits.toLocaleString() + ' / ' + simN.toLocaleString() + '</div></div>' +
+    '<div class="td-item"><div class="td-key">Mevcut Kumulatif</div><div class="td-val" style="color:var(--cyan)">' + baseCum.toFixed(2) + '</div></div>' +
+    '<div class="td-item"><div class="td-key">Hedef Adim</div><div class="td-val">' + k + '</div></div>' +
+    '<div class="td-item"><div class="td-key">Bant [A1, A2]</div><div class="td-val">[' + a1 + ', ' + a2 + ']</div></div>' +
+    '<div class="td-item"><div class="td-key">Simulasyon</div><div class="td-val">' + simN.toLocaleString() + '</div></div>' +
+    '<div class="td-item"><div class="td-key">Kume Boyutu</div><div class="td-val">' + effSet.length + ' deger</div></div>' +
+    '</div></div>';
+
+  drawTargetChart(data, baseCum, storedPaths, k, a1, a2, hits, simN, hex, useInterv ? effSlope : null);
+}
+
+function drawTargetChart(data, baseCum, storedPaths, k, a1, a2, hits, simN, hex, effSlope){
+  if(_targetChart){ _targetChart.destroy(); _targetChart = null; }
+
+  var oLen   = data.length;
+  var cumObs = [], acc = 0;
+  for(var i = 0; i < oLen; i++){ acc += data[i]; cumObs.push(acc); }
+
+  var totalLen = oLen + k;
+  var labels   = Array.from({length: totalLen}, function(_, i){ return i; });
+  var datasets = [];
+
+  var failP = storedPaths.filter(function(p){ return !p.hit; });
+  var hitP  = storedPaths.filter(function(p){ return  p.hit; });
+
+  // Kacan yollar
+  for(var pi = 0; pi < Math.min(failP.length, 150); pi++){
+    datasets.push({
+      data: Array(oLen-1).fill(null).concat([baseCum]).concat(failP[pi].path),
+      borderColor: 'rgba(255,45,85,0.09)', borderWidth: 1,
+      pointRadius: 0, fill: false, tension: 0.3
+    });
+  }
+  // Bandi gecen yollar
+  for(var pi = 0; pi < Math.min(hitP.length, 150); pi++){
+    datasets.push({
+      data: Array(oLen-1).fill(null).concat([baseCum]).concat(hitP[pi].path),
+      borderColor: 'rgba(0,255,136,0.18)', borderWidth: 1.5,
+      pointRadius: 0, fill: false, tension: 0.3
+    });
+  }
+
+  // Beklenti dogrusu (mudahale aktifse)
+  if(effSlope !== null && effSlope !== undefined){
+    var expLine = Array(oLen - 1).fill(null);
+    expLine.push(baseCum);
+    var ec = baseCum;
+    for(var s = 0; s < k; s++){ ec += effSlope; expLine.push(ec); }
+    datasets.push({
+      data: expLine, borderColor: 'rgba(0,245,255,0.55)',
+      borderWidth: 1.5, borderDash: [5, 4],
+      pointRadius: 0, fill: false, tension: 0
+    });
+  }
+
+  // Band sinirlari
+  var bandNull = Array(oLen - 1).fill(null);
+  datasets.push({
+    data: bandNull.concat(Array(k + 1).fill(a2)),
+    borderColor: 'rgba(255,45,85,0.65)', borderWidth: 1.5, borderDash: [8,4],
+    pointRadius: 0, fill: false, tension: 0
+  });
+  datasets.push({
+    data: bandNull.concat(Array(k + 1).fill(a1)),
+    borderColor: 'rgba(255,45,85,0.65)', borderWidth: 1.5, borderDash: [8,4],
+    pointRadius: 0, fill: '-1', backgroundColor: 'rgba(255,45,85,0.04)', tension: 0
+  });
+
+  // Gozlem kumulatifi
+  datasets.push({
+    data: cumObs.concat(Array(k).fill(null)),
+    borderColor: '#00f5ff', borderWidth: 2.5,
+    pointRadius: 2, pointBackgroundColor: '#00f5ff',
+    fill: false, tension: 0.2
+  });
+
+  // Legend
+  var prob   = hits / simN;
+  var pColor = prob >= 0.5 ? '#00ff88' : prob >= 0.2 ? '#ffb800' : '#ff2d55';
+  var legHtml =
+    '<div class="leg"><div class="ll" style="background:#00f5ff"></div>Gozlem kumulatifi</div>' +
+    '<div class="leg"><div class="ll" style="background:rgba(0,255,136,0.5)"></div>Bandi gecen yollar</div>' +
+    '<div class="leg"><div class="ll" style="background:rgba(255,45,85,0.4)"></div>Kacan yollar</div>' +
+    '<div class="leg"><div class="ll" style="border-top:1.5px dashed rgba(255,45,85,0.65);height:0;width:20px;"></div>A1/A2 sinirlari</div>';
+  if(effSlope !== null && effSlope !== undefined)
+    legHtml += '<div class="leg"><div class="ll" style="border-top:1.5px dashed rgba(0,245,255,0.6);height:0;width:20px;"></div>Beklenti dogrusu</div>';
+  legHtml += '<span style="margin-left:auto;font-family:\'Orbitron\',monospace;font-size:11px;font-weight:700;color:' +
+    pColor + ';text-shadow:0 0 10px ' + pColor + ';">' + (prob * 100).toFixed(2) + '%</span>';
+  document.getElementById('targetLegend').innerHTML = legHtml;
+
+  document.getElementById('targetChartWrap').style.display = 'block';
+
+  _targetChart = new Chart(document.getElementById('targetChart').getContext('2d'), {
+    type: 'line',
+    data: { labels: labels, datasets: datasets },
+    options: {
+      animation: false, responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index', intersect: false,
+          filter: function(item){ return item.datasetIndex >= datasets.length - 3; },
+          backgroundColor: 'rgba(5,8,16,0.95)',
+          borderColor: 'rgba(0,245,255,0.3)', borderWidth: 1,
+          titleColor: '#00f5ff', bodyColor: '#c8d8e8'
+        }
+      },
+      scales: {
+        x: { grid:{ color:'rgba(0,245,255,0.04)' }, ticks:{ color:'#3a5a7a', font:{family:'Share Tech Mono',size:9}, maxTicksLimit:16 } },
+        y: { grid:{ color:'rgba(0,245,255,0.04)' }, ticks:{ color:'#3a5a7a', font:{family:'Share Tech Mono',size:9}, maxTicksLimit:8 },
+             title:{ display:true, text:'Kumulatif Toplam', color:'#3a5a7a', font:{family:'Share Tech Mono',size:9} } }
+      },
+      elements: { point:{ radius:0 } }
+    },
+    plugins: [{
+      id: 'targetLine',
+      afterDraw: function(chart){
+        var ctx2    = chart.ctx;
+        var xScale  = chart.scales.x;
+        var yScale  = chart.scales.y;
+        var tIdx    = oLen + k - 1;
+        if(tIdx >= labels.length) return;
+        var xPos    = xScale.getPixelForValue(tIdx);
+        var yTop    = chart.chartArea.top;
+        var yBot    = chart.chartArea.bottom;
+
+        ctx2.save();
+        ctx2.setLineDash([5, 4]);
+        ctx2.strokeStyle = 'rgba(0,245,255,0.45)';
+        ctx2.lineWidth   = 1.5;
+        ctx2.beginPath();
+        ctx2.moveTo(xPos, yTop);
+        ctx2.lineTo(xPos, yBot);
+        ctx2.stroke();
+        ctx2.setLineDash([]);
+
+        ctx2.fillStyle  = '#00f5ff';
+        ctx2.font       = 'bold 9px Orbitron, monospace';
+        ctx2.textAlign  = 'center';
+        ctx2.shadowColor = '#00f5ff';
+        ctx2.shadowBlur  = 6;
+        ctx2.fillText('t+' + k, xPos, yTop + 12);
+        ctx2.shadowBlur  = 0;
+
+        var yA1 = yScale.getPixelForValue(a1);
+        var yA2 = yScale.getPixelForValue(a2);
+        ctx2.font      = '9px Share Tech Mono, monospace';
+        ctx2.textAlign = 'right';
+        ctx2.fillStyle = 'rgba(255,45,85,0.8)';
+        if(yA1 > yTop && yA1 < yBot) ctx2.fillText('A1=' + a1, xPos - 6, yA1 - 4);
+        if(yA2 > yTop && yA2 < yBot) ctx2.fillText('A2=' + a2, xPos - 6, yA2 - 4);
+        ctx2.restore();
+      }
+    }]
+  });
+}
+
+/* ── FiREBASE VERi CEKME ── */
+var _fbInitialized = false;
+
+function loadFromFirebase(){
+  var btn    = document.getElementById('fbLoadBtn');
+  var status = document.getElementById('fbStatus');
+  btn.disabled = true;
+  status.textContent = 'BAGLANIYOR...';
+  status.style.color = 'var(--amber)';
+
+  try {
+    if(!_fbInitialized){
+      const firebaseConfig = {
+        apiKey: "AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",
+        authDomain: "paralayici.firebaseapp.com",
+        projectId: "paralayici",
+        storageBucket: "paralayici.firebasestorage.app",
+        messagingSenderId: "980843550614",
+        appId: "1:980843550614:web:93dd5bda4ddc377b20efb7"
+      };
+      firebase.initializeApp(firebaseConfig);
+      _fbInitialized = true;
+    }
+  } catch(e) { /* zaten init edilmis */ }
+
+  const db = firebase.firestore();
+  db.collection("cumulative_daily_data")
+    .orderBy("date", "asc")
+    .get()
+    .then(snapshot => {
+      const rawValues = [];
+      snapshot.forEach(doc => {
+        rawValues.push(doc.data().value);
+      });
+      if(rawValues.length === 0){
+        status.textContent = 'VERi YOK';
+        status.style.color = 'var(--red)';
+        btn.disabled = false;
+        return;
+      }
+      // Orijinal kodda document.getElementById('raw-values').textContent = rawValues.join(", ");
+      // Biz bunu direkt girdi kutusuna yazıyoruz
+      document.getElementById('seriesInput').value = rawValues.join(", ");
+      onSeriesInput();
+      status.textContent = rawValues.length + ' VERi YUKLENDI';
+      status.style.color = 'var(--green)';
+      btn.disabled = false;
+    })
+    .catch(err => {
+      status.textContent = 'HATA: ' + err.message;
+      status.style.color = 'var(--red)';
+      btn.disabled = false;
+    });
+}
+
+/* ── ÖRNEK ── */
+function loadExample(){
+  $('seriesInput').value='-1,-1,0,1,1,0,-1,-2,-1,0,1,2,1,0,-1,-1,0,0,1,1,-1,-2,-1,0,1,1,0,-1,0,1';
+  onSeriesInput();
+}
+</script>
+</body>
+</html>
