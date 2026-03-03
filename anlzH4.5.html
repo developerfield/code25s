@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kümülatif Olasılık Analizörü v3</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Unbounded:wght@300;400;700;900&display=swap');
+
+:root{
+  --bg:#050810;--s1:#090e1a;--s2:#0c1425;
+  --border:#162035;--border2:#1e2d45;
+  --c1:#e8f4ff;--c2:#7ab3d4;--c3:#3a6a8a;--c4:#1a3550;
+  --cold:#38bdf8;--warm:#fb923c;--green:#4ade80;
+  --red:#f87171;--purple:#a78bfa;--yellow:#facc15;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--c1);font-family:'Space Mono',monospace;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:0.4;}
+body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(56,189,248,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+.wrap{position:relative;z-index:1;max-width:1600px;margin:0 auto;padding:28px 20px 60px;}
+header{margin-bottom:32px;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.logo{font-family:'Unbounded',sans-serif;font-weight:900;font-size:clamp(1rem,3vw,1.5rem);letter-spacing:-0.02em;line-height:1.1;}
+.logo span{color:var(--cold);}.logo em{color:var(--warm);font-style:normal;}
+.vtag{font-size:0.6rem;letter-spacing:0.18em;color:var(--c3);border:1px solid var(--border2);padding:4px 10px;border-radius:100px;}
+.layout{display:grid;grid-template-columns:370px 1fr;gap:16px;align-items:start;}
+@media(max-width:960px){.layout{grid-template-columns:1fr;}}
+
+/* Panel */
+.panel{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:22px;position:relative;}
+.panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(56,189,248,0.3),transparent);border-radius:14px 14px 0 0;}
+.ptitle{font-family:'Unbounded',sans-serif;font-size:0.58rem;font-weight:700;letter-spacing:0.18em;color:var(--cold);text-transform:uppercase;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.ptitle::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--cold);box-shadow:0 0 8px var(--cold);}
+
+/* Form */
+label{display:block;font-size:0.65rem;color:var(--c3);letter-spacing:0.08em;margin-bottom:5px;margin-top:14px;text-transform:uppercase;}
+label:first-of-type{margin-top:0;}
+input,textarea,select{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:7px;color:var(--c1);font-family:'Space Mono',monospace;font-size:0.8rem;padding:9px 12px;outline:none;transition:border-color 0.2s,box-shadow 0.2s;}
+input:focus,textarea:focus,select:focus{border-color:var(--cold);box-shadow:0 0 0 2px rgba(56,189,248,0.1);}
+textarea{resize:vertical;min-height:80px;line-height:1.5;}
+select option{background:var(--s2);}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* Chip */
+.chip{background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.15);border-radius:8px;padding:10px 12px;font-size:0.68rem;color:var(--c2);line-height:1.7;margin-top:10px;}
+.chip strong{color:var(--cold);}
+.chip .setvals{color:var(--yellow);word-break:break-all;font-size:0.62rem;margin-top:4px;}
+
+/* Sub-box (drift/uncertainty/offset) */
+.subbox{border-radius:8px;padding:14px;margin-top:12px;}
+.subbox-title{font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px;font-weight:700;}
+.subbox-desc{font-size:0.65rem;color:var(--c3);line-height:1.6;margin-bottom:10px;}
+
+/* Slider row */
+.srow{display:flex;align-items:center;gap:10px;margin-top:6px;}
+.srow input[type=range]{flex:1;height:4px;padding:0;border:none;background:transparent;cursor:pointer;}
+
+/* Firebase status */
+.fbstatus{font-size:0.65rem;padding:7px 10px;border-radius:6px;margin-top:8px;display:flex;align-items:center;gap:7px;}
+.fbstatus.ok{background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);color:var(--green);}
+.fbstatus.err{background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);color:var(--red);}
+.fbstatus.loading{background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.15);color:var(--cold);}
+.pulse{width:7px;height:7px;border-radius:50%;background:currentColor;animation:pulse 1.4s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+/* Offset preview */
+.offset-preview{background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:8px 12px;font-size:0.68rem;color:var(--c2);margin-top:8px;line-height:1.8;}
+.offset-preview strong{color:var(--yellow);}
+
+/* Buttons */
+.btn-primary{width:100%;padding:13px;background:var(--cold);color:#000;border:none;border-radius:8px;font-family:'Unbounded',sans-serif;font-size:0.75rem;font-weight:700;letter-spacing:0.08em;cursor:pointer;transition:all 0.2s;text-transform:uppercase;margin-top:18px;box-shadow:0 0 20px rgba(56,189,248,0.2);}
+.btn-primary:hover{background:#60d0fc;box-shadow:0 0 30px rgba(56,189,248,0.35);transform:translateY(-1px);}
+.btn-secondary{width:100%;padding:9px;background:transparent;border:1px solid var(--border2);color:var(--c3);border-radius:8px;font-family:'Space Mono',monospace;font-size:0.65rem;cursor:pointer;transition:all 0.2s;margin-top:8px;letter-spacing:0.05em;}
+.btn-secondary:hover{border-color:var(--warm);color:var(--warm);}
+
+/* Results */
+.results-col{display:flex;flex-direction:column;gap:14px;}
+.prob-hero{background:linear-gradient(135deg,rgba(74,222,128,0.07),rgba(56,189,248,0.04));border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:22px;display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center;}
+.prob-number{font-family:'Unbounded',sans-serif;font-size:clamp(1.6rem,4vw,3rem);font-weight:900;line-height:1;letter-spacing:-0.03em;color:var(--green);text-shadow:0 0 40px rgba(74,222,128,0.4);word-break:break-all;}
+.prob-number.impossible{color:var(--red);text-shadow:0 0 40px rgba(248,113,113,0.4);}
+.prob-number.rare{color:var(--yellow);text-shadow:0 0 40px rgba(250,204,21,0.4);}
+.prob-desc{font-size:0.78rem;color:var(--c2);line-height:1.7;}
+.prob-desc strong{color:var(--c1);}
+.prob-range{display:inline-block;background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);border-radius:6px;padding:2px 10px;color:var(--green);font-weight:700;font-size:0.9em;}
+.tag{display:inline-block;padding:3px 9px;border-radius:100px;font-size:0.62rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;}
+.tag-ok{background:rgba(74,222,128,0.12);color:var(--green);}
+.tag-warn{background:rgba(250,204,21,0.12);color:var(--yellow);}
+.tag-err{background:rgba(248,113,113,0.12);color:var(--red);}
+.statgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+@media(max-width:700px){.statgrid{grid-template-columns:repeat(3,1fr);}}
+.statcard{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:12px 10px;text-align:center;}
+.statcard .sv{font-family:'Unbounded',sans-serif;font-size:1.1rem;font-weight:700;color:var(--c1);display:block;}
+.statcard .sl{font-size:0.58rem;color:var(--c3);letter-spacing:0.08em;text-transform:uppercase;margin-top:4px;display:block;}
+.chart-panel{}
+.chart-title{font-family:'Unbounded',sans-serif;font-size:0.6rem;font-weight:700;letter-spacing:0.15em;color:var(--c3);text-transform:uppercase;margin-bottom:14px;}
+.chart-wrap{position:relative;}
+.pct-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+.pct-item{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;text-align:center;flex:1;min-width:60px;}
+.pct-item .pv{font-size:0.9rem;font-weight:700;color:var(--c1);}
+.pct-item .pl{font-size:0.58rem;color:var(--c3);text-transform:uppercase;letter-spacing:0.06em;}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:0.62rem;color:var(--c3);}
+.legend span{display:flex;align-items:center;gap:5px;}
+.dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+.placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;color:var(--c4);gap:12px;font-size:0.72rem;letter-spacing:0.1em;text-align:center;}
+.err-box{background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.25);border-radius:8px;padding:12px;color:var(--red);font-size:0.75rem;}
+::-webkit-scrollbar{width:6px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="logo">Kümülatif<br><span>Olasılık</span> <em>Analizörü</em></div>
+  <div class="vtag">v3 · FIREBASE · OFFSET · MONTE CARLO</div>
+</header>
+
+<div class="layout">
+
+<!-- ═══════════════ LEFT PANEL ═══════════════ -->
+<div class="panel">
+  <div class="ptitle">Veri Girişi</div>
+
+  <!-- Firebase loader -->
+  <div class="subbox" style="background:rgba(56,189,248,0.04);border:1px solid rgba(56,189,248,0.15);">
+    <div class="subbox-title" style="color:var(--cold);">🔥 Firebase'den Yükle</div>
+    <label style="margin-top:0;">Firebase Proje ID</label>
+    <input type="text" id="fbProjectId" value="paralayici" placeholder="proje-id">
+    <label>Collection</label>
+    <input type="text" id="fbCollection" value="cumulative_daily_data" placeholder="collection adı">
+    <label>Değer Alanı</label>
+    <input type="text" id="fbField" value="value" placeholder="value">
+    <label>Sıralama Alanı</label>
+    <input type="text" id="fbOrderField" value="date" placeholder="date">
+    <button class="btn-secondary" style="margin-top:10px;" onclick="loadFromFirebase()">⬇ Firebase'den Çek</button>
+    <div id="fbStatus" class="fbstatus loading" style="display:none;"></div>
+  </div>
+
+  <label style="margin-top:14px;">Veri Seti (virgül / boşlukla ayır)</label>
+  <textarea id="dataInput" placeholder="Örn: -3, 2, 5, -1, 4, -5, 2, -4, 3 ...&#10;Her sayı bir adımlık ölçümü temsil eder."></textarea>
+  <div class="chip" id="dataInfo">Veri girilince: eleman sayısı, kümülatif ve veri kümesi otomatik tespit edilir.</div>
+
+  <div class="g2">
+    <div>
+      <label>Gelecek Adım Sayısı</label>
+      <input type="number" id="futureSteps" value="300" min="1">
+    </div>
+    <div>
+      <label>Hedef Alt</label>
+      <input type="number" id="targetMin" value="-20" step="any" oninput="updateOffsetPreview()">
+    </div>
+  </div>
+  <div class="g2">
+    <div>
+      <label>Hedef Üst</label>
+      <input type="number" id="targetMax" value="-10" step="any" oninput="updateOffsetPreview()">
+    </div>
+    <div>
+      <label><!-- spacer --></label>
+    </div>
+  </div>
+
+  <!-- SIM COUNT SLIDER -->
+  <div class="subbox" style="background:rgba(56,189,248,0.04);border:1px solid rgba(56,189,248,0.15);">
+    <div class="subbox-title" style="color:var(--cold);">⟳ Monte Carlo Simülasyon Sayısı</div>
+    <div class="srow">
+      <input type="range" id="simSlider" min="1000" max="200000" step="1000" value="80000"
+        oninput="document.getElementById('simCount').value=this.value;document.getElementById('simDisplay').textContent=Number(this.value).toLocaleString();"
+        style="accent-color:var(--cold);">
+      <input type="number" id="simCount" value="80000" min="1000" max="500000" step="1000" style="width:90px;"
+        oninput="document.getElementById('simSlider').value=Math.min(200000,Math.max(1000,this.value||1000));document.getElementById('simDisplay').textContent=Number(Math.min(200000,Math.max(1000,this.value||1000))).toLocaleString();">
+    </div>
+    <div style="text-align:center;margin-top:5px;">
+      <span id="simDisplay" style="font-family:'Unbounded',sans-serif;font-size:1rem;font-weight:700;color:var(--cold);">80,000</span>
+      <span style="font-size:0.6rem;color:var(--c3);margin-left:5px;">SİMÜLASYON</span>
+    </div>
+  </div>
+
+  <!-- OFFSET / TRANSFORM -->
+  <div class="subbox" style="background:rgba(250,204,21,0.04);border:1px solid rgba(250,204,21,0.2);">
+    <div class="subbox-title" style="color:var(--yellow);">⊕ Veri Seti Dönüşümü (Offset)</div>
+    <div class="subbox-desc">
+      Veri setine eklenecek sabit değer. <br>
+      Tüm ölçümler, kümülatif son değer <em>ve hedef aralığı</em> otomatik kayar.<br>
+      <small style="color:var(--c4);">Örn: veri {−1,0,1}, offset=1 → {0,1,2}. Kümülatif de aynı oranda artar.</small>
+    </div>
+    <label style="margin-top:0;">Offset Değeri</label>
+    <input type="number" id="offsetVal" value="0" step="any" oninput="updateOffsetPreview()">
+    <div class="offset-preview" id="offsetPreview">Offset 0 — dönüşüm yok.</div>
+  </div>
+
+  <!-- DRIFT -->
+  <div class="subbox" style="background:rgba(251,146,60,0.06);border:1px solid rgba(251,146,60,0.2);">
+    <div class="subbox-title" style="color:var(--warm);">⟳ Sezon / Drift Ayarı</div>
+    <div class="subbox-desc">Kışın topladın, yaz projeksiyonu istiyorsun? Drift her adımın ortalamasını kaydırır.</div>
+    <label style="margin-top:0;">Drift / adım</label>
+    <div class="srow">
+      <input type="range" id="driftSlider" min="-5" max="5" step="0.1" value="0" oninput="syncDrift(this.value)" style="accent-color:var(--warm);">
+      <input type="number" id="driftVal" value="0" step="0.1" style="width:65px;" oninput="syncDrift(this.value)">
+    </div>
+    <label style="margin-top:10px;">Drift Kademesi</label>
+    <select id="driftMode" onchange="syncDrift(document.getElementById('driftVal').value)">
+      <option value="constant">Sabit</option>
+      <option value="linear">Lineer (giderek artan)</option>
+      <option value="sigmoid">Sigmoid (mevsim geçişi)</option>
+    </select>
+    <div style="font-size:0.62rem;color:var(--c3);margin-top:6px;" id="driftHint">Her adıma <strong>0</strong> eklenir.</div>
+  </div>
+
+  <!-- UNCERTAINTY -->
+  <div class="subbox" style="background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.25);">
+    <div class="subbox-title" style="color:var(--purple);">◈ Belirsizlik Seviyesi</div>
+    <div class="subbox-desc">%0 → saf geçmiş dağılımı. %100 → uniform (tam belirsizlik), bantlar teorik sınıra açılır.</div>
+    <label style="margin-top:0;">Belirsizlik</label>
+    <div class="srow">
+      <input type="range" id="uncSlider" min="0" max="100" step="1" value="0"
+        oninput="document.getElementById('uncVal').value=this.value;document.getElementById('uncPct').textContent=this.value+'%';"
+        style="accent-color:var(--purple);">
+      <input type="number" id="uncVal" value="0" min="0" max="100" step="1" style="width:58px;"
+        oninput="const v=Math.max(0,Math.min(100,+this.value||0));document.getElementById('uncSlider').value=v;document.getElementById('uncPct').textContent=v+'%';">
+    </div>
+    <div style="text-align:center;margin-top:5px;">
+      <span id="uncPct" style="font-family:'Unbounded',sans-serif;font-size:1rem;font-weight:700;color:var(--purple);">0%</span>
+      <span style="font-size:0.6rem;color:var(--c3);margin-left:5px;">BELİRSİZLİK</span>
+    </div>
+  </div>
+
+  <button class="btn-primary" onclick="analyze()">▶ ANALİZ ET</button>
+  <button class="btn-secondary" onclick="loadExample()">Örnek Yükle · 200 gün kış ≈ −40</button>
+</div>
+
+<!-- ═══════════════ RIGHT: RESULTS ═══════════════ -->
+<div class="results-col" id="resultsArea">
+  <div class="panel placeholder">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+      <path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 4-6"/>
+    </svg>
+    <div>VERİ GİRİN VE ANALİZ BAŞLATIN</div>
+  </div>
+</div>
+
+</div><!-- /layout -->
+</div><!-- /wrap -->
+
+<script>
+// ════════════════════════════════════════════════════════
+// FIREBASE
+// ════════════════════════════════════════════════════════
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",
+  authDomain: "paralayici.firebaseapp.com",
+  projectId: "paralayici",
+  storageBucket: "paralayici.firebasestorage.app",
+  messagingSenderId: "980843550614",
+  appId: "1:980843550614:web:93dd5bda4ddc377b20efb7"
+};
+
+let fbApp = null, fbDb = null;
+
+function initFirebase() {
+  if (fbApp) return;
+  try {
+    fbApp = firebase.initializeApp(FIREBASE_CONFIG);
+    fbDb  = firebase.firestore();
+  } catch(e) { console.warn('Firebase init:', e.message); }
+}
+
+function setFbStatus(type, msg) {
+  const el = document.getElementById('fbStatus');
+  el.style.display = 'flex';
+  el.className = 'fbstatus ' + type;
+  el.innerHTML = `<div class="pulse"></div><span>${msg}</span>`;
+}
+
+function loadFromFirebase() {
+  initFirebase();
+  if (!fbDb) { setFbStatus('err','Firebase başlatılamadı.'); return; }
+
+  const col   = document.getElementById('fbCollection').value.trim();
+  const field = document.getElementById('fbField').value.trim();
+  const order = document.getElementById('fbOrderField').value.trim();
+
+  setFbStatus('loading', `"${col}" yükleniyor…`);
+
+  fbDb.collection(col).orderBy(order, 'asc').get()
+    .then(snap => {
+      const vals = [];
+      snap.forEach(doc => {
+        const v = doc.data()[field];
+        if (v !== undefined && !isNaN(v)) vals.push(Number(v));
+      });
+      if (!vals.length) { setFbStatus('err','Veri bulunamadı.'); return; }
+      document.getElementById('dataInput').value = vals.join(', ');
+      document.getElementById('dataInput').dispatchEvent(new Event('input'));
+      setFbStatus('ok', `${vals.length} kayıt yüklendi ✓`);
+    })
+    .catch(err => setFbStatus('err', 'Hata: ' + err.message));
+}
+
+// ════════════════════════════════════════════════════════
+// OFFSET PREVIEW
+// ════════════════════════════════════════════════════════
+function updateOffsetPreview() {
+  const offset  = parseFloat(document.getElementById('offsetVal').value) || 0;
+  const tMin    = parseFloat(document.getElementById('targetMin').value) || 0;
+  const tMax    = parseFloat(document.getElementById('targetMax').value) || 0;
+  const rawData = parseData(document.getElementById('dataInput').value);
+  const el      = document.getElementById('offsetPreview');
+
+  if (offset === 0) { el.innerHTML = 'Offset 0 — dönüşüm yok.'; return; }
+
+  const origCum = rawData.length ? rawData.reduce((a,b)=>a+b,0) : '?';
+  const newCum  = rawData.length ? (origCum + offset * rawData.length).toFixed(2) : '?';
+  const newTmin = (tMin + offset * (rawData.length || 0)).toFixed(2);
+  const newTmax = (tMax + offset * (rawData.length || 0)).toFixed(2);
+
+  el.innerHTML =
+    `Her ölçüme <strong>+${offset}</strong> ekleniyor<br>
+     Kümülatif: <strong>${typeof origCum==='number'?origCum.toFixed(2):origCum}</strong> → <strong style="color:var(--yellow)">${newCum}</strong><br>
+     Hedef: <strong>[${tMin}, ${tMax}]</strong> → <strong style="color:var(--yellow)">[${newTmin}, ${newTmax}]</strong>`;
+}
+
+// ════════════════════════════════════════════════════════
+// DRIFT SYNC
+// ════════════════════════════════════════════════════════
+function syncDrift(val) {
+  const v = parseFloat(val) || 0;
+  document.getElementById('driftSlider').value = v;
+  document.getElementById('driftVal').value = v;
+  const mode = document.getElementById('driftMode').value;
+  const hints = {
+    constant: `Her adıma <strong>${v}</strong> eklenir.`,
+    linear:   `0'dan başlayıp son adımda <strong>${v}</strong>'a ulaşır.`,
+    sigmoid:  `S-eğrisi: yavaş başlar, ortada hızlanır → <strong>${v}</strong>.`
+  };
+  document.getElementById('driftHint').innerHTML = hints[mode];
+}
+
+// ════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════
+function parseData(str) {
+  return str.trim().split(/[\s,;|]+/).map(Number).filter(v => !isNaN(v) && isFinite(v));
+}
+function buildSet(data) {
+  return [...new Set(data.map(v => parseFloat(v.toFixed(10))))].sort((a,b)=>a-b);
+}
+function buildEmpDist(data, setVals) {
+  const counts = {}; setVals.forEach(v => counts[v] = 0);
+  data.forEach(v => {
+    let best = setVals[0], bd = Math.abs(v - setVals[0]);
+    setVals.forEach(sv => { const d=Math.abs(v-sv); if(d<bd){bd=d;best=sv;} });
+    counts[best]++;
+  });
+  const tot = data.length, probs = {};
+  setVals.forEach(v => probs[v] = counts[v]/tot);
+  return probs;
+}
+function buildCDF(probs, setVals) {
+  const r=[]; let acc=0;
+  setVals.forEach(v=>{ acc+=probs[v]; r.push({val:v,cdf:acc}); });
+  return r;
+}
+function getDriftAt(step, total, dVal, mode) {
+  if (mode==='constant') return dVal;
+  if (mode==='linear')   return dVal * (step/total);
+  const t = (step/total)*12-6;
+  return dVal / (1+Math.exp(-t));
+}
+function pctile(sorted, p) { return sorted[Math.floor(p*sorted.length)] ?? sorted[sorted.length-1]; }
+
+function formatProb(p) {
+  if (p === 0) return '0%';
+  const pct = p * 100;
+  if (pct >= 0.01)      return pct.toFixed(4) + '%';
+  if (pct >= 0.0001)    return pct.toFixed(6) + '%';
+  if (pct >= 0.000001)  return pct.toFixed(8) + '%';
+  if (pct >= 1e-10)     return pct.toFixed(10) + '%';
+  return pct.toExponential(4) + '%';
+}
+
+// ════════════════════════════════════════════════════════
+// MONTE CARLO  (with hard clamp)
+// ════════════════════════════════════════════════════════
+function monteCarlo(startCum, probs, setVals, steps, simN, drift, dMode) {
+  const finals = new Float64Array(simN);
+  const cdf = buildCDF(probs, setVals);
+  const sMin = setVals[0], sMax = setVals[setVals.length-1];
+  for (let s=0; s<simN; s++) {
+    let cum = startCum;
+    for (let d=0; d<steps; d++) {
+      const r=Math.random(); let pick=sMin;
+      for (const c of cdf) if(r<=c.cdf){pick=c.val;break;}
+      cum += pick + getDriftAt(d, steps, drift, dMode);
+      const e=d+1, hMin=startCum+e*sMin, hMax=startCum+e*sMax;
+      if(cum<hMin) cum=hMin; if(cum>hMax) cum=hMax;
+    }
+    finals[s]=cum;
+  }
+  return finals;
+}
+
+function computeBands(startCum, probs, setVals, steps, simN, drift, dMode, checkSteps) {
+  const cdf=buildCDF(probs,setVals), dist=checkSteps.map(()=>[]);
+  const sMin=setVals[0], sMax=setVals[setVals.length-1];
+  for (let s=0; s<simN; s++) {
+    let cum=startCum, ci=0;
+    for (let d=0; d<steps&&ci<checkSteps.length; d++) {
+      const r=Math.random(); let pick=sMin;
+      for(const c of cdf) if(r<=c.cdf){pick=c.val;break;}
+      cum+=pick+getDriftAt(d,steps,drift,dMode);
+      const e=d+1, hMin=startCum+e*sMin, hMax=startCum+e*sMax;
+      if(cum<hMin) cum=hMin; if(cum>hMax) cum=hMax;
+      if(d+1===checkSteps[ci]){dist[ci].push(cum);ci++;}
+    }
+  }
+  return dist.map(arr=>{
+    arr.sort((a,b)=>a-b);
+    return {p5:arr[Math.floor(0.05*arr.length)]||0,p25:arr[Math.floor(0.25*arr.length)]||0,
+            p50:arr[Math.floor(0.50*arr.length)]||0,p75:arr[Math.floor(0.75*arr.length)]||0,
+            p95:arr[Math.floor(0.95*arr.length)]||0};
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// DATA INPUT AUTO-DETECT
+// ════════════════════════════════════════════════════════
+document.getElementById('dataInput').addEventListener('input', function() {
+  const data = parseData(this.value);
+  if (data.length < 2) {
+    document.getElementById('dataInfo').innerHTML = 'Veri girince: eleman sayısı, kümülatif ve veri kümesi otomatik tespit edilir.';
+    return;
+  }
+  const set = buildSet(data);
+  const cum = data.reduce((a,b)=>a+b,0);
+  document.getElementById('dataInfo').innerHTML =
+    `<strong>${data.length}</strong> gözlem &nbsp;·&nbsp; Kümülatif: <strong>${cum.toFixed(2)}</strong> &nbsp;·&nbsp; Ort: <strong>${(cum/data.length).toFixed(3)}/adım</strong><br>
+     Veri kümesi (${set.length} değer):<div class="setvals">[${set.join(' , ')}]</div>`;
+  updateOffsetPreview();
+});
+
+// ════════════════════════════════════════════════════════
+// EXAMPLE DATA
+// ════════════════════════════════════════════════════════
+function loadExample() {
+  const wp={'-5':0.13,'-4':0.14,'-3':0.13,'-2':0.11,'-1':0.10,'0':0.09,'1':0.09,'2':0.08,'3':0.07,'4':0.04,'5':0.02};
+  const vals=Object.keys(wp).map(Number);
+  let acc2=0; const cdf2=vals.map(v=>{acc2+=wp[v];return{val:v,cdf:acc2};});
+  const pick=()=>{const r=Math.random();for(const c of cdf2)if(r<=c.cdf)return c.val;return 0;};
+  const data=Array.from({length:200},pick);
+  const cur=data.reduce((a,b)=>a+b,0), diff=-40-cur, pa=diff/data.length;
+  const adj=data.map(v=>parseFloat((v+pa).toFixed(1)));
+  document.getElementById('dataInput').value=adj.join(', ');
+  document.getElementById('dataInput').dispatchEvent(new Event('input'));
+  document.getElementById('futureSteps').value=300;
+  document.getElementById('targetMin').value=-20;
+  document.getElementById('targetMax').value=-10;
+  document.getElementById('offsetVal').value=0;
+  updateOffsetPreview();
+}
+
+// ════════════════════════════════════════════════════════
+// MAIN ANALYZE
+// ════════════════════════════════════════════════════════
+let charts = {};
+function destroyCharts(){Object.values(charts).forEach(c=>{try{c.destroy();}catch(e){}});charts={};}
+function showErr(msg){destroyCharts();document.getElementById('resultsArea').innerHTML=`<div class="panel"><div class="err-box">⚠ ${msg}</div></div>`;}
+
+function analyze() {
+  const rawData = parseData(document.getElementById('dataInput').value);
+  if (rawData.length < 2) { showErr('En az 2 veri noktası gerekli.'); return; }
+
+  const offset      = parseFloat(document.getElementById('offsetVal').value) || 0;
+  const futureSteps = parseInt(document.getElementById('futureSteps').value) || 300;
+  const simN        = Math.min(500000, Math.max(1000, parseInt(document.getElementById('simCount').value)||80000));
+  const drift       = parseFloat(document.getElementById('driftVal').value) || 0;
+  const dMode       = document.getElementById('driftMode').value;
+  const uncertainty = Math.max(0, Math.min(100, parseFloat(document.getElementById('uncVal').value)||0)) / 100;
+
+  // Apply offset to each data point
+  // offset=2 means: every measurement gets +2 added
+  // Cumulative grows by: offset × n
+  const data = rawData.map(v => v + offset);
+
+  // Original (raw) target values — shift by offset × n  (same ratio as cumulative)
+  const rawTMin = parseFloat(document.getElementById('targetMin').value);
+  const rawTMax = parseFloat(document.getElementById('targetMax').value);
+  const n = rawData.length;
+  const targetMin = rawTMin + offset * n;
+  const targetMax = rawTMax + offset * n;
+
+  if (targetMin > targetMax) { showErr('Hedef min ≤ max olmalı.'); return; }
+
+  const setVals = buildSet(data);
+  const probs   = buildEmpDist(data, setVals);
+  const unifP   = 1 / setVals.length;
+  const bProbs  = {};
+  setVals.forEach(v => bProbs[v] = (1-uncertainty)*probs[v] + uncertainty*unifP);
+
+  const currentCum = data.reduce((a,b)=>a+b,0);
+
+  // Theoretical bounds
+  const sMin = setVals[0], sMax = setVals[setVals.length-1];
+  const driftTotal = Array.from({length:futureSteps},(_,i)=>getDriftAt(i,futureSteps,drift,dMode)).reduce((a,b)=>a+b,0);
+  const theorMin = currentCum + futureSteps*sMin + driftTotal;
+  const theorMax = currentCum + futureSteps*sMax + driftTotal;
+  const possible = targetMax >= theorMin && targetMin <= theorMax;
+
+  // Monte Carlo
+  const rawFinals = monteCarlo(currentCum, bProbs, setVals, futureSteps, simN, drift, dMode);
+  const finals    = Array.from(rawFinals).sort((a,b)=>a-b);
+
+  const inTarget  = finals.filter(v => v >= targetMin && v <= targetMax).length;
+  const prob      = inTarget / simN;
+  const probStr   = formatProb(prob);
+
+  const mean = finals.reduce((a,b)=>a+b,0) / finals.length;
+  const std  = Math.sqrt(finals.reduce((a,b)=>a+(b-mean)**2,0)/finals.length);
+  const p5   = pctile(finals,0.05), p25=pctile(finals,0.25), p50=pctile(finals,0.50);
+  const p75  = pctile(finals,0.75), p95=pctile(finals,0.95);
+  const sigmaD = std>0 ? Math.abs(((targetMin+targetMax)/2-mean)/std).toFixed(2) : '∞';
+
+  // Cumulative path
+  const cumPath=[]; let cc=0; data.forEach(v=>{cc+=v;cumPath.push(cc);});
+
+  // Fan paths
+  const cdfFan = buildCDF(bProbs, setVals);
+  const fanPaths = Array.from({length:8},()=>{
+    const path=[]; let cum=currentCum;
+    for(let d=0;d<futureSteps;d++){
+      const r=Math.random();let pick=sMin;
+      for(const c of cdfFan)if(r<=c.cdf){pick=c.val;break;}
+      cum+=pick+getDriftAt(d,futureSteps,drift,dMode);
+      const e=d+1,hMin=currentCum+e*sMin,hMax=currentCum+e*sMax;
+      if(cum<hMin)cum=hMin;if(cum>hMax)cum=hMax;
+      path.push(parseFloat(cum.toFixed(2)));
+    }
+    return path;
+  });
+
+  // Bands
+  const BS = Math.min(futureSteps,100);
+  const ss = Math.max(1,Math.floor(futureSteps/BS));
+  const bandSteps = Array.from({length:BS},(_,i)=>(i+1)*ss);
+  const stepBands = computeBands(currentCum,bProbs,setVals,futureSteps,5000,drift,dMode,bandSteps);
+
+  renderResults({
+    rawData, data, offset, currentCum, setVals, probs, bProbs, uncertainty,
+    drift, dMode, futureSteps, targetMin, targetMax, rawTMin, rawTMax, simN,
+    theorMin, theorMax, possible, prob, probStr, inTarget,
+    mean, std, p5, p25, p50, p75, p95, sigmaD,
+    cumPath, fanPaths, stepBands, bandSteps, finals, sMin, sMax
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// RENDER
+// ════════════════════════════════════════════════════════
+function renderResults(r) {
+  destroyCharts();
+
+  const probClass = !r.possible ? 'impossible' : r.prob<0.005 ? 'rare' : '';
+  const tagEl = !r.possible
+    ? `<span class="tag tag-err">TEORİK İMKÂNSIZ</span>`
+    : r.prob<0.001 ? `<span class="tag tag-warn">AŞIRI DÜŞÜK</span>`
+    : r.prob<0.05  ? `<span class="tag tag-warn">DÜŞÜK OLASILIK</span>`
+    : `<span class="tag tag-ok">MÜMKÜN</span>`;
+
+  const uncPct = Math.round(r.uncertainty*100);
+  const uncDesc = uncPct===0
+    ? `<span style="color:var(--green)">%0 · Saf geçmiş dağılımı</span>`
+    : uncPct===100 ? `<span style="color:var(--red)">%100 · Tam belirsizlik</span>`
+    : `<span style="color:var(--purple)">%${uncPct} belirsizlik</span>`;
+
+  const driftDesc = r.drift!==0
+    ? `<br><small style="color:var(--warm)">Drift: ${r.drift>0?'+':''}${r.drift}/adım (${r.dMode})</small>` : '';
+
+  const zeroNote = r.inTarget===0
+    ? `<br><small style="color:var(--yellow)">⚠ Simülasyonda isabet yok · Üst sınır tahmini: &lt;${(3/r.simN*100).toExponential(2)}% (Rule of 3)</small>`
+    : `<br><small style="color:var(--c3)">${r.inTarget.toLocaleString()} / ${r.simN.toLocaleString()} denemede hedefe düştü</small>`;
+
+  const offsetNote = r.offset!==0
+    ? `<br><small style="color:var(--yellow)">Offset <strong>${r.offset>0?'+':''}${r.offset}</strong> uygulandı · Ham hedef [${r.rawTMin},${r.rawTMax}] → Hesaplanan [${r.targetMin.toFixed(1)},${r.targetMax.toFixed(1)}]</small>` : '';
+
+  document.getElementById('resultsArea').innerHTML = `
+    <div class="panel prob-hero">
+      <div class="prob-number ${probClass}">${r.possible ? r.probStr : '≈ 0%'}</div>
+      <div class="prob-desc">
+        <strong>${r.futureSteps}</strong> adım sonra kümülatif değerin
+        <span class="prob-range">[${r.targetMin.toFixed(1)} , ${r.targetMax.toFixed(1)}]</span> aralığında olma olasılığı
+        &nbsp;${tagEl}${driftDesc}${zeroNote}${offsetNote}<br>
+        <small style="color:var(--c3)">Teorik min: <strong>${Math.round(r.theorMin)}</strong> · Teorik max: <strong>${Math.round(r.theorMax)}</strong></small><br>
+        <small>${uncDesc}</small>
+      </div>
+    </div>
+
+    <div class="statgrid">
+      <div class="statcard"><span class="sv" style="color:var(--cold)">${r.currentCum.toFixed(1)}</span><span class="sl">Mevcut Küm.</span></div>
+      <div class="statcard"><span class="sv">${Math.round(r.mean)}</span><span class="sl">Proj. Ort.</span></div>
+      <div class="statcard"><span class="sv">±${Math.round(r.std)}</span><span class="sl">Std Sapma</span></div>
+      <div class="statcard"><span class="sv" style="color:var(--yellow)">${r.sigmaD}σ</span><span class="sl">Hedefe Uzaklık</span></div>
+      <div class="statcard"><span class="sv" style="color:var(--yellow)">${r.offset>0?'+':''}${r.offset}</span><span class="sl">Offset</span></div>
+    </div>
+
+    <div class="panel chart-panel">
+      <div class="chart-title">📈 Kümülatif Yol · Geçmiş + Projeksiyon</div>
+      <div class="chart-wrap" style="height:340px"><canvas id="cumChart"></canvas></div>
+      <div class="legend">
+        <span><div class="dot" style="background:rgba(56,189,248,0.9)"></div>Geçmiş</span>
+        <span><div class="dot" style="background:rgba(251,146,60,0.6)"></div>Simüle yollar</span>
+        <span><div class="dot" style="background:rgba(74,222,128,0.3)"></div>%25–%75 bant</span>
+        <span><div class="dot" style="background:rgba(74,222,128,0.1)"></div>%5–%95 bant</span>
+        <span><div class="dot" style="background:rgba(200,200,200,0.5)"></div>Medyan</span>
+        <span><div class="dot" style="background:rgba(248,113,113,0.7);border:1px dashed rgba(248,113,113,0.9)"></div>Teorik min/max (sabit sınır)</span>
+        <span><div class="dot" style="background:rgba(74,222,128,0.5)"></div>Hedef aralık</span>
+      </div>
+    </div>
+
+    <div class="panel chart-panel">
+      <div class="chart-title">📊 Final Dağılımı — ${r.futureSteps}. Adım</div>
+      <div class="chart-wrap" style="height:220px"><canvas id="distChart"></canvas></div>
+      <div class="pct-row">
+        <div class="pct-item"><div class="pv">${Math.round(r.p5)}</div><div class="pl">P5</div></div>
+        <div class="pct-item"><div class="pv">${Math.round(r.p25)}</div><div class="pl">P25</div></div>
+        <div class="pct-item"><div class="pv" style="color:var(--green)">${Math.round(r.p50)}</div><div class="pl">Medyan</div></div>
+        <div class="pct-item"><div class="pv">${Math.round(r.p75)}</div><div class="pl">P75</div></div>
+        <div class="pct-item"><div class="pv">${Math.round(r.p95)}</div><div class="pl">P95</div></div>
+      </div>
+    </div>
+
+    <div class="panel chart-panel">
+      <div class="chart-title">⬡ Veri Kümesi Dağılımı · ${r.setVals.length} değer &nbsp;${uncDesc}</div>
+      <div class="chart-wrap" style="height:160px"><canvas id="empChart"></canvas></div>
+    </div>
+  `;
+
+  // ── Cumulative Chart ────────────────────────────────────────
+  const hLen = r.cumPath.length, tot = hLen + r.bandSteps.length;
+  const labels = [...Array.from({length:hLen},(_,i)=>i+1), ...r.bandSteps.map(s=>hLen+s)];
+  const histD  = [...r.cumPath, ...Array(r.bandSteps.length).fill(null)];
+  const medD   = [...Array(hLen).fill(null), ...r.stepBands.map(b=>Math.round(b.p50))];
+  const p95a   = [...Array(hLen).fill(null), ...r.stepBands.map(b=>b.p95)];
+  const p5a    = [...Array(hLen).fill(null), ...r.stepBands.map(b=>b.p5)];
+  const p75a   = [...Array(hLen).fill(null), ...r.stepBands.map(b=>b.p75)];
+  const p25a   = [...Array(hLen).fill(null), ...r.stepBands.map(b=>b.p25)];
+  const thMaxA = [...Array(hLen).fill(null), ...r.bandSteps.map(s=>r.currentCum+s*r.sMax)];
+  const thMinA = [...Array(hLen).fill(null), ...r.bandSteps.map(s=>r.currentCum+s*r.sMin)];
+  const tgMaxA = Array(tot).fill(r.targetMax);
+  const tgMinA = Array(tot).fill(r.targetMin);
+
+  const fanDS = r.fanPaths.map((path,i)=>({
+    data:[...Array(hLen).fill(null), ...r.bandSteps.map(s=>{ const idx=s-1; return idx<path.length?path[idx]:null; })],
+    borderColor:`rgba(251,146,60,${0.10+i*0.04})`,borderWidth:1,pointRadius:0,tension:0.4,fill:false
+  }));
+
+  charts.cum = new Chart(document.getElementById('cumChart'),{
+    type:'line',
+    data:{labels,datasets:[
+      // Theo bounds (filled region)
+      {data:thMaxA,borderColor:'rgba(248,113,113,0.65)',borderWidth:1.5,borderDash:[3,3],pointRadius:0,fill:'+1',backgroundColor:'rgba(248,113,113,0.04)',tension:0},
+      {data:thMinA,borderColor:'rgba(248,113,113,0.65)',borderWidth:1.5,borderDash:[3,3],pointRadius:0,fill:false,tension:0},
+      // Wide band
+      {data:p95a,borderColor:'transparent',pointRadius:0,backgroundColor:'rgba(74,222,128,0.06)',fill:'+1',tension:0.4},
+      {data:p5a, borderColor:'transparent',pointRadius:0,backgroundColor:'transparent',fill:false,tension:0.4},
+      // Inner band
+      {data:p75a,borderColor:'transparent',pointRadius:0,backgroundColor:'rgba(74,222,128,0.16)',fill:'+1',tension:0.4},
+      {data:p25a,borderColor:'transparent',pointRadius:0,backgroundColor:'transparent',fill:false,tension:0.4},
+      // Fan
+      ...fanDS,
+      // Median
+      {data:medD,borderColor:'rgba(200,200,200,0.45)',borderWidth:1.5,borderDash:[6,4],pointRadius:0,fill:false,tension:0.4},
+      // Historical
+      {data:histD,borderColor:'rgb(56,189,248)',borderWidth:2.5,pointRadius:0,fill:false,tension:0.3},
+      // Target zone
+      {data:tgMaxA,borderColor:'rgba(74,222,128,0.5)',borderWidth:1,borderDash:[4,4],pointRadius:0,fill:'+1',backgroundColor:'rgba(74,222,128,0.05)'},
+      {data:tgMinA,borderColor:'rgba(74,222,128,0.5)',borderWidth:1,borderDash:[4,4],pointRadius:0,fill:false},
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,animation:{duration:600},
+      plugins:{legend:{display:false},tooltip:{
+        callbacks:{
+          title:ctx=>`Adım ${ctx[0].label}`,
+          label:ctx=>{
+            const bc=ctx.dataset.borderColor;
+            if(bc==='rgb(56,189,248)') return `Kümülatif: ${ctx.raw}`;
+            if(bc==='rgba(200,200,200,0.45)') return `Medyan: ${ctx.raw}`;
+            if(bc==='rgba(248,113,113,0.65)') return `Teorik sınır: ${ctx.raw}`;
+            return null;
+          }
+        },
+        filter:ctx=>ctx.raw!==null&&['rgb(56,189,248)','rgba(200,200,200,0.45)','rgba(248,113,113,0.65)'].includes(ctx.dataset.borderColor)
+      }},
+      scales:{
+        x:{ticks:{color:'#3a6a8a',maxTicksLimit:12,font:{family:'Space Mono',size:10}},grid:{color:'rgba(22,32,53,0.8)'}},
+        y:{ticks:{color:'#3a6a8a',font:{family:'Space Mono',size:10}},grid:{color:'rgba(22,32,53,0.8)'}}
+      }
+    }
+  });
+
+  // ── Distribution Chart ───────────────────────────────────────
+  const BINS=80, minV=r.finals[0], maxV=r.finals[r.finals.length-1];
+  const bSz=(maxV-minV)/BINS||1, hist=Array(BINS).fill(0);
+  r.finals.forEach(v=>{let i=Math.floor((v-minV)/bSz);if(i>=BINS)i=BINS-1;hist[i]++;});
+  const bCenters=Array.from({length:BINS},(_,i)=>Math.round(minV+(i+0.5)*bSz));
+  charts.dist=new Chart(document.getElementById('distChart'),{
+    type:'bar',
+    data:{labels:bCenters,datasets:[{
+      data:hist.map(v=>v/r.simN*100),
+      backgroundColor:bCenters.map(bc=>bc>=r.targetMin&&bc<=r.targetMax?'rgba(74,222,128,0.8)':'rgba(56,189,248,0.28)'),
+      borderWidth:0
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${Number(ctx.raw).toFixed(4)}%`}}},
+      scales:{
+        x:{ticks:{color:'#3a6a8a',maxTicksLimit:10,font:{family:'Space Mono',size:9}},grid:{color:'rgba(22,32,53,0.6)'}},
+        y:{ticks:{color:'#3a6a8a',font:{family:'Space Mono',size:9}},grid:{color:'rgba(22,32,53,0.6)'}}
+      }
+    }
+  });
+
+  // ── Empirical chart ──────────────────────────────────────────
+  charts.emp=new Chart(document.getElementById('empChart'),{
+    type:'bar',
+    data:{labels:r.setVals,datasets:[
+      {label:'Empirik',data:r.setVals.map(v=>(r.probs[v]*100).toFixed(3)),backgroundColor:'rgba(251,146,60,0.4)',borderColor:'rgba(251,146,60,0.8)',borderWidth:1},
+      {label:'Karışım',data:r.setVals.map(v=>(r.bProbs[v]*100).toFixed(3)),backgroundColor:'rgba(167,139,250,0.28)',borderColor:'rgba(167,139,250,0.8)',borderWidth:1}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,labels:{color:'#7ab3d4',font:{family:'Space Mono',size:9}}},
+        tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.raw}%`}}},
+      scales:{
+        x:{ticks:{color:'#3a6a8a',font:{family:'Space Mono',size:9}},grid:{color:'rgba(22,32,53,0.6)'}},
+        y:{ticks:{color:'#3a6a8a',font:{family:'Space Mono',size:9},callback:v=>v+'%'},grid:{color:'rgba(22,32,53,0.6)'}}
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
