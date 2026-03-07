@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS // DASHBOARD</title>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+:root {
+  --bg:     #050810;
+  --bg2:    #080d1a;
+  --bg3:    #0c1220;
+  --panel:  #0a0f1e;
+  --b1:     #0f3460;
+  --b2:     #1a4a7a;
+  --cyan:   #00f5ff;
+  --cyan2:  #00c8d4;
+  --green:  #00ff88;
+  --red:    #ff2d55;
+  --amber:  #ffb800;
+  --text:   #c8d8e8;
+  --text2:  #6a8aaa;
+  --text3:  #3a5a7a;
+  --scan:   rgba(0,245,255,0.03);
+  --grid:   rgba(0,245,255,0.04);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+body {
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Share Tech Mono',monospace;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* scanline */
+body::before {
+  content:'';position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,var(--scan) 2px,var(--scan) 4px);
+  pointer-events:none;z-index:9999;
+}
+/* grid */
+body::after {
+  content:'';position:fixed;inset:0;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;z-index:0;
+}
+
+.wrap {
+  position:relative;z-index:1;
+  max-width:1400px;margin:0 auto;
+  padding:28px 24px 80px;
+}
+
+/* ── HEADER ── */
+header {
+  display:flex;align-items:flex-end;justify-content:space-between;
+  flex-wrap:wrap;gap:12px;
+  border-bottom:1px solid var(--b1);
+  padding-bottom:18px;margin-bottom:28px;
+  position:relative;
+}
+header::after {
+  content:'';position:absolute;bottom:-1px;left:0;
+  width:160px;height:1px;
+  background:var(--cyan);box-shadow:0 0 10px var(--cyan);
+}
+.logo {
+  font-family:'Orbitron',monospace;
+  font-size:clamp(16px,3vw,36px);
+  font-weight:900;letter-spacing:4px;line-height:1.1;
+}
+.logo .acc { color:var(--cyan);text-shadow:0 0 18px var(--cyan); }
+.logo .slash { color:var(--text3); }
+.header-meta {
+  text-align:right;font-size:9px;letter-spacing:2px;
+  color:var(--text3);line-height:2;
+}
+.live-dot {
+  display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--green);box-shadow:0 0 6px var(--green);
+  animation:pulse 1.4s infinite;vertical-align:middle;margin-right:5px;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── BOOT / STATUS ── */
+#bootScreen {
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:60vh;gap:24px;
+}
+.boot-title {
+  font-family:'Orbitron',monospace;font-size:clamp(10px,2vw,14px);
+  letter-spacing:4px;color:var(--cyan2);text-transform:uppercase;opacity:.7;
+}
+.boot-log {
+  font-size:11px;color:var(--text2);line-height:2;text-align:center;
+  max-width:500px;
+}
+.boot-log .ok   { color:var(--green); }
+.boot-log .err  { color:var(--red); }
+.boot-log .wait { color:var(--amber); }
+
+/* progress bar */
+.prog-wrap { width:360px;max-width:90vw; }
+.prog-label { font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:6px; }
+.prog-outer { height:3px;background:var(--bg3);overflow:hidden; }
+.prog-inner { height:100%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);transition:width .1s linear; }
+.prog-pct   { font-size:11px;font-weight:700;color:var(--cyan);margin-top:5px;text-align:right; }
+
+/* ── DASHBOARD ── */
+#dashboard { display:none; }
+
+/* top KPI strip */
+.kpi-strip {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:10px;margin-bottom:20px;
+}
+.kpi {
+  background:var(--panel);border:1px solid var(--b1);
+  padding:14px 16px;position:relative;overflow:hidden;
+}
+.kpi::before {
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+  opacity:.4;
+}
+.kpi-label { font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:6px;font-family:'Orbitron',monospace; }
+.kpi-value { font-family:'Orbitron',monospace;font-size:clamp(1rem,2.5vw,1.6rem);font-weight:700;line-height:1; }
+.kpi-sub   { font-size:9px;color:var(--text3);margin-top:4px; }
+
+/* corner accent */
+.corner { position:absolute;width:8px;height:8px;border-color:var(--cyan);border-style:solid;opacity:.35; }
+.tl{top:-1px;left:-1px;border-width:1px 0 0 1px}
+.tr{top:-1px;right:-1px;border-width:1px 1px 0 0}
+.bl{bottom:-1px;left:-1px;border-width:0 0 1px 1px}
+.br{bottom:-1px;right:-1px;border-width:0 1px 1px 0}
+
+/* grid layout */
+.dash-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+  margin-bottom:16px;
+}
+@media(max-width:800px){ .dash-grid{ grid-template-columns:1fr; } }
+
+.panel {
+  background:var(--panel);border:1px solid var(--b1);
+  padding:18px 20px;position:relative;
+}
+.panel-title {
+  font-family:'Orbitron',monospace;font-size:10px;
+  letter-spacing:3px;text-transform:uppercase;color:var(--cyan);
+  border-bottom:1px solid var(--b1);padding-bottom:10px;margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;
+}
+.panel-title::before {
+  content:'';width:5px;height:5px;border-radius:50%;
+  background:var(--cyan);box-shadow:0 0 6px var(--cyan);flex-shrink:0;
+}
+
+.panel-full { grid-column:1/-1; }
+
+/* chart wrapper */
+.cw { position:relative;width:100%;height:280px; }
+.cw canvas { position:absolute;inset:0;width:100%!important;height:100%!important; }
+.cw-tall { height:360px; }
+
+/* legend row */
+.leg-row { display:flex;gap:12px;flex-wrap:wrap;font-size:9px;color:var(--text3);margin-bottom:10px; }
+.leg { display:flex;align-items:center;gap:4px; }
+.ll  { width:16px;height:3px;border-radius:1px; }
+
+/* ── 2D TABLE ── */
+.p2d-outer { overflow-x:auto; }
+.p2d {
+  border-collapse:separate;border-spacing:0;
+  font-size:10px;width:100%;font-family:'Share Tech Mono',monospace;
+}
+.p2d th {
+  padding:6px 8px;background:var(--bg3);color:var(--cyan2);
+  font-size:8px;letter-spacing:2px;text-transform:uppercase;
+  border:1px solid var(--b1);white-space:nowrap;text-align:center;
+  font-family:'Orbitron',monospace;
+}
+.p2d th.rh { background:var(--bg2);color:var(--text2); }
+.p2d td {
+  padding:4px 7px;border:1px solid rgba(0,245,255,0.05);
+  text-align:center;white-space:nowrap;font-weight:700;
+  transition:filter .1s;
+}
+.p2d tr:hover td { filter:brightness(1.2); }
+.p2d td.sh { background:var(--bg2)!important;color:var(--cyan);text-align:left;padding-left:10px;border-color:var(--b1); }
+.p2d td.bt { background:var(--bg2)!important;color:var(--green);font-size:9px; }
+.p2d td.bs { background:var(--bg2)!important;color:var(--amber);font-size:9px; }
+.p2d tr.foot-row td { background:var(--bg2)!important; }
+
+/* ── PROB BIG ── */
+.prob-hero {
+  display:flex;align-items:center;gap:24px;flex-wrap:wrap;
+  background:linear-gradient(135deg,rgba(0,255,136,.07),rgba(0,245,255,.03));
+  border:1px solid rgba(0,255,136,.2);padding:20px 24px;margin-bottom:16px;
+}
+.prob-num {
+  font-family:'Orbitron',monospace;
+  font-size:clamp(2rem,6vw,4rem);font-weight:900;line-height:1;
+  color:var(--green);text-shadow:0 0 40px rgba(0,255,136,.4);
+}
+.prob-num.imp { color:var(--red);text-shadow:0 0 40px rgba(255,45,85,.4); }
+.prob-num.rare{ color:var(--amber);text-shadow:0 0 40px rgba(255,184,0,.4); }
+.prob-detail { font-size:11px;color:var(--text2);line-height:1.9; }
+.prob-detail strong { color:var(--text); }
+.badge {
+  display:inline-block;padding:2px 8px;font-size:9px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;
+}
+.badge-ok  { background:rgba(0,255,136,.12);color:var(--green); }
+.badge-warn{ background:rgba(255,184,0,.12);color:var(--amber); }
+.badge-err { background:rgba(255,45,85,.12);color:var(--red); }
+.prange {
+  background:rgba(0,255,136,.12);border:1px solid rgba(0,255,136,.3);
+  padding:1px 8px;color:var(--green);font-weight:700;
+}
+
+/* pct strip */
+.pct-strip { display:flex;gap:8px;margin-top:10px;flex-wrap:wrap; }
+.pct-item  { background:var(--bg2);border:1px solid var(--b1);padding:6px 10px;text-align:center;flex:1;min-width:55px; }
+.pct-item .pv { font-size:.9rem;font-weight:700;color:var(--text); }
+.pct-item .pl { font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em; }
+
+/* fr rows */
+.fr { display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:1px solid rgba(0,245,255,.05);font-size:11px; }
+.fr:last-child{ border-bottom:none; }
+.fr-l { color:var(--text2); }
+.fr-r { font-weight:700;font-family:'Orbitron',monospace;font-size:10px; }
+.fr-r.ok  { color:var(--green); }
+.fr-r.warn{ color:var(--amber); }
+.fr-r.err { color:var(--red); }
+.fr-r.cyan{ color:var(--cyan); }
+
+/* ── TIMESTAMP ── */
+#lastUpdated { font-size:9px;color:var(--text3);letter-spacing:1px;margin-top:6px; }
+
+::-webkit-scrollbar{width:6px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:var(--b2);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div>
+    <div style="font-size:9px;letter-spacing:4px;color:var(--cyan2);opacity:.7;margin-bottom:6px;text-transform:uppercase;">// NEXUS PREDICTION ENGINE</div>
+    <div class="logo">NEXUS <span class="slash">//</span> <span class="acc">DASHBOARD</span></div>
+  </div>
+  <div class="header-meta">
+    <div><span class="live-dot"></span>SİSTEM AKTİF</div>
+    <div id="lastUpdated">—</div>
+    <div style="margin-top:4px;color:var(--cyan2);">ENSEMBLE[NB+NHiTS+DTW+CRF] · MONTE CARLO</div>
+  </div>
+</header>
+
+<!-- BOOT SCREEN -->
+<div id="bootScreen">
+  <div class="boot-title">// sistem başlatılıyor</div>
+  <div class="prog-wrap">
+    <div class="prog-label" id="progLabel">Firebase bağlantısı...</div>
+    <div class="prog-outer"><div class="prog-inner" id="progBar" style="width:0%"></div></div>
+    <div class="prog-pct" id="progPct">0%</div>
+  </div>
+  <div class="boot-log" id="bootLog"></div>
+</div>
+
+<!-- DASHBOARD (hidden until ready) -->
+<div id="dashboard">
+
+  <!-- PROB HERO -->
+  <div class="prob-hero" id="probHero"></div>
+
+  <!-- KPI STRIP -->
+  <div class="kpi-strip" id="kpiStrip"></div>
+
+  <!-- MAIN GRID: cumulative path + 2D table -->
+  <div class="dash-grid">
+
+    <div class="panel panel-full">
+      <div class="panel-title">KÜMÜLATİF YOL · GEÇMİŞ + PROJEKSİYON</div>
+      <div class="leg-row">
+        <div class="leg"><div class="ll" style="background:var(--cyan)"></div>Geçmiş</div>
+        <div class="leg"><div class="ll" style="background:rgba(251,146,60,.6)"></div>Fan yollar</div>
+        <div class="leg"><div class="ll" style="background:rgba(0,255,136,.3)"></div>%25–%75</div>
+        <div class="leg"><div class="ll" style="background:rgba(0,255,136,.1)"></div>%5–%95</div>
+        <div class="leg"><div class="ll" style="background:rgba(200,200,200,.5)"></div>Medyan</div>
+        <div class="leg"><div class="ll" style="background:rgba(0,255,136,.5)"></div>Hedef [A1,A2]</div>
+      </div>
+      <div class="cw cw-tall"><canvas id="cumChart"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">FİNAL DAĞILIMI</div>
+      <div class="cw"><canvas id="distChart"></canvas></div>
+      <div class="pct-strip" id="pctStrip"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">ANALİZ BULGULARI</div>
+      <div id="findings"></div>
+    </div>
+
+  </div>
+
+  <!-- 2D TABLE — full width -->
+  <div class="panel" style="margin-bottom:16px;">
+    <div class="panel-title">2B OLASILIK TABLOSU · Satır=Değer · Sütun=Adım</div>
+    <div class="p2d-outer" id="p2dWrap"></div>
+  </div>
+
+</div><!-- /dashboard -->
+</div><!-- /wrap -->
+
+<script>
+'use strict';
+
+/* ════════════════════════════════════════
+   CONFIG — burası değiştirilebilir
+════════════════════════════════════════ */
+const CONFIG = {
+  firebase: {
+    apiKey: "AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",
+    authDomain: "paralayici.firebaseapp.com",
+    projectId: "paralayici",
+    storageBucket: "paralayici.firebasestorage.app",
+    messagingSenderId: "980843550614",
+    appId: "1:980843550614:web:93dd5bda4ddc377b20efb7"
+  },
+  collection:  "cumulative_daily_data",
+  valueField:  "value",
+  orderField:  "date",
+  // Projeksiyon ve hedef
+  futureSteps: 300,
+  targetMin:   -20,
+  targetMax:   -10,
+  targetStep:  300,   // kaçıncı adımda bant hesabı
+  simN:        30000, // Monte Carlo sim sayısı
+  ensSteps:    15,    // 2D tablo için tahmin adımı
+};
+
+/* ════════════════════════════════════════
+   HELPERS
+════════════════════════════════════════ */
+function $(id){ return document.getElementById(id); }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function mean(a){ let s=0;for(const v of a)s+=v;return s/a.length; }
+function vari(a){ const m=mean(a);let s=0;for(const v of a)s+=(v-m)**2;return s/a.length; }
+function sd(a){ return Math.sqrt(vari(a)); }
+function acf1(a){ const n=a.length,m=mean(a);let num=0,den=0;for(let i=1;i<n;i++)num+=(a[i]-m)*(a[i-1]-m);for(const v of a)den+=(v-m)**2;return den<1e-12?0:num/den; }
+function pct(a,p){ const s=a.slice().sort((x,y)=>x-y);return s[Math.max(0,Math.min(s.length-1,Math.floor(p*(s.length-1))))]; }
+function pctile(s,p){ return s[Math.floor(p*s.length)]??s[s.length-1]; }
+function linTrend(a){ const n=a.length;let sx=0,sy=0,sxy=0,sxx=0;for(let i=0;i<n;i++){sx+=i;sy+=a[i];sxy+=i*a[i];sxx+=i*i;}const d=n*sxx-sx*sx;return d<1e-12?0:(n*sxy-sx*sy)/d; }
+function grnd(){ let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+function snap(v,set){ let best=set[0];for(const s of set)if(Math.abs(s-v)<Math.abs(best-v))best=s;return best; }
+function buildAutoSet(data){ const seen={},v=[];for(const x of data){const k=x.toString();if(!seen[k]){seen[k]=true;v.push(x);}}v.sort((a,b)=>a-b);return v; }
+function formatProb(p){ if(p===0)return'0%';const q=p*100;if(q>=.01)return q.toFixed(4)+'%';if(q>=.0001)return q.toFixed(6)+'%';return q.toExponential(3)+'%'; }
+
+function log(msg, cls=''){
+  const el=$('bootLog');
+  el.innerHTML += `<div class="${cls}">${msg}</div>`;
+}
+function setProgress(pct, label){
+  $('progBar').style.width = Math.min(100,pct)+'%';
+  $('progPct').textContent = Math.round(pct)+'%';
+  if(label) $('progLabel').textContent = label;
+}
+
+/* chart grid/tick colors */
+const CC = { grid:'rgba(15,52,96,0.8)', tick:'#3a5a7a' };
+
+/* ════════════════════════════════════════
+   TRANSITION MATRIX & ENSEMBLE
+════════════════════════════════════════ */
+function buildTrans(data,set){
+  const n=set.length;if(!n)return null;
+  const idx=v=>{for(let i=0;i<set.length;i++)if(Math.abs(set[i]-v)<1e-9)return i;return -1;};
+  const T=Array.from({length:n},()=>Array(n).fill(0.1));
+  for(let i=1;i<data.length;i++){const fi=idx(data[i-1]),ti=idx(data[i]);if(fi>=0&&ti>=0)T[fi][ti]++;}
+  for(let i=0;i<n;i++){const s=T[i].reduce((a,b)=>a+b,0);for(let j=0;j<n;j++)T[i][j]/=s;}
+  return T;
+}
+function mcFallback(data,steps,set,T){
+  if(!set.length||!T){const s=sd(data),m=mean(data),a=acf1(data);let last=data[data.length-1];const p=[];for(let i=0;i<steps;i++){last=last*a+m*(1-Math.abs(a))+s*grnd()*(1-Math.abs(a));p.push(last);}return p;}
+  const idx=v=>{for(let i=0;i<set.length;i++)if(Math.abs(set[i]-v)<1e-9)return i;return -1;};
+  let cur=idx(data[data.length-1]);if(cur<0)cur=Math.floor(set.length/2);
+  const p=[];for(let i=0;i<steps;i++){const row=T[cur],r=Math.random();let c=0;for(let j=0;j<set.length;j++){c+=row[j];if(r<=c){cur=j;break;}}p.push(set[cur]);}return p;
+}
+function nbPredict(data,steps,set){
+  const es=set.length?set:buildAutoSet(data),win=3;
+  if(!es.length||data.length<win+1)return mcFallback(data,steps,es,buildTrans(data,es));
+  const idx=v=>{for(let i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i;return 0;};
+  const key=w=>w.map(v=>Math.max(0,idx(v))).join('-');
+  const cnts={};
+  for(let ww=1;ww<=win;ww++){cnts[ww]={};for(let i=ww;i<data.length;i++){const k=key(data.slice(i-ww,i)),ni=idx(data[i]);if(!cnts[ww][k])cnts[ww][k]=Array(es.length).fill(0.05);cnts[ww][k][ni]++;}}
+  let w=data.slice(-win);const p=[];
+  for(let i=0;i<steps;i++){let row=null;for(let ww=win;ww>=1;ww--){const k=key(w.slice(win-ww));if(cnts[ww][k]){row=cnts[ww][k];break;}}if(!row)row=Array(es.length).fill(1);const tot=row.reduce((a,b)=>a+b,0);let r=Math.random()*tot,c=0,ch=0;for(let j=0;j<es.length;j++){c+=row[j];if(r<=c){ch=j;break;}}w=w.slice(1);w.push(es[ch]);p.push(es[ch]);}return p;
+}
+function fitAR(data,pg){const n=data.length;if(n<=pg||pg<1)return[0];const m=mean(data),c=[];for(let k=0;k<=pg;k++){let s=0;for(let i=k;i<n;i++)s+=(data[i]-m)*(data[i-k]-m);c.push(s/(n-k));}let phi=[c[1]/(c[0]||1e-10)],V=c[0]*(1-phi[0]**2);for(let lag=2;lag<=pg;lag++){let num=c[lag];for(let j=0;j<phi.length;j++)num-=phi[j]*(c[lag-1-j]||0);const kk=num/(V||1e-10);const phi2=phi.map((v,j)=>v-kk*(phi[phi.length-2-j]||0));phi2.push(kk);phi=phi2;V*=(1-kk*kk);if(isNaN(V)||V<=0)break;}return phi;}
+function arPredict(data,phi,steps,nStd,set){const m=mean(data),hist=data.map(v=>v-m);const p=[];for(let i=0;i<steps;i++){let pred=0;for(let j=0;j<phi.length;j++)pred+=phi[j]*(hist[hist.length-1-j]||0);pred+=m+nStd*grnd();if(set.length)pred=snap(pred,set);hist.push(pred-m);p.push(pred);}return p;}
+function nhitsPredict(data,steps,set){
+  const n=data.length,dm=mean(data),ds=sd(data)||1,norm=data.map(v=>(v-dm)/ds);
+  function basis(t,H,nP,nF){const b=[1];for(let p=1;p<=nP;p++)b.push((t/H)**p);for(let k=1;k<=nF;k++){b.push(Math.sin(2*Math.PI*k*t/H));b.push(Math.cos(2*Math.PI*k*t/H));}return b;}
+  function ols(X,y){const nb=X[0].length,ns=X.length;const XtX=Array.from({length:nb},()=>Array(nb).fill(0)),Xty=Array(nb).fill(0);for(let r=0;r<ns;r++)for(let i=0;i<nb;i++){Xty[i]+=X[r][i]*y[r];for(let j=0;j<nb;j++)XtX[i][j]+=X[r][i]*X[r][j];}for(let i=0;i<nb;i++)XtX[i][i]+=1e-4;const aug=XtX.map((row,i)=>[...row,Xty[i]]);for(let col=0;col<nb;col++){let piv=col;for(let row=col+1;row<nb;row++)if(Math.abs(aug[row][col])>Math.abs(aug[piv][col]))piv=row;[aug[col],aug[piv]]=[aug[piv],aug[col]];const d=aug[col][col]||1e-12;for(let row=0;row<nb;row++)if(row!==col){const f=aug[row][col]/d;for(let k=0;k<=nb;k++)aug[row][k]-=f*aug[col][k];}for(let k=0;k<=nb;k++)aug[col][k]/=d;}return aug.map(row=>row[nb]);}
+  const cfgs=[[1,2,3],[2,1,2],[4,1,1]];let res=norm.slice();const outs=[];
+  for(const[pool,nPoly,nFreq]of cfgs){const pooled=[],rDown=[];for(let i=0;i<n;i+=pool){const c1=norm.slice(i,Math.min(i+pool,n));const rc=res.slice(i,Math.min(i+pool,n));pooled.push(mean(c1));rDown.push(mean(rc));}const np2=pooled.length;if(np2<3)continue;const lb=Math.min(np2,Math.max(4,Math.floor(np2*.5)));const rw=rDown.slice(-lb),H=steps;const Xlb=Array.from({length:lb},(_,t)=>basis(t,lb,nPoly,nFreq));const beta=ols(Xlb,rw);const fc=Array.from({length:H},(_,t)=>basis(t,H,nPoly,nFreq).reduce((s,v,i)=>s+v*beta[i],0));outs.push(fc);const bc=Xlb.map(b=>b.reduce((s,v,i)=>s+v*beta[i],0));const start=n-lb*pool;for(let i=0;i<lb*pool&&start+i<n;i++){const bi=Math.floor(i/pool);if(bi<bc.length)res[start+i]-=bc[bi];}}
+  if(!outs.length)return arPredict(data,fitAR(data,3),steps,ds*.3,set);
+  const rStd=sd(res)||0.01;
+  return Array.from({length:steps},(_,s)=>{let sum=0;for(const o of outs)sum+=o[s]||0;let v=sum*ds+dm+grnd()*rStd*ds;if(set.length)v=snap(v,set);return v;});
+}
+function dtwDist(a,b){const n=a.length,m=b.length;const dtw=Array.from({length:n+1},()=>Array(m+1).fill(Infinity));dtw[0][0]=0;for(let i=1;i<=n;i++)for(let j=1;j<=m;j++){const c=Math.abs(a[i-1]-b[j-1]);dtw[i][j]=c+Math.min(dtw[i-1][j],dtw[i][j-1],dtw[i-1][j-1]);}return dtw[n][m];}
+function dtw1nnPredict(data,steps,set){const wlen=Math.min(8,Math.max(3,Math.floor(data.length*.3)));const query=data.slice(-wlen);let best=null,bestD=Infinity;for(let i=0;i<=data.length-wlen-steps;i++){const d=dtwDist(query,data.slice(i,i+wlen));if(d<bestD){bestD=d;best=i;}}if(best===null)return mcFallback(data,steps,set,buildTrans(data,set));return Array.from({length:steps},(_,s)=>{let v=data[best+wlen+s]!==undefined?data[best+wlen+s]:data[data.length-1];if(set.length)v=snap(v,set);return v;});}
+function crfPredict(data,steps,set){const es=set.length?set:buildAutoSet(data),N=es.length;if(!N)return Array(steps).fill(data[data.length-1]);const idx=v=>{for(let i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i;return 0;};const wT=Array.from({length:N},()=>Array(N).fill(0)),wE=Array.from({length:N},()=>Array(N).fill(0));const obs2=data.map(idx);for(let pass=0;pass<5;pass++){for(let t=1;t<obs2.length;t++){const xt=obs2[t-1],yt=obs2[t];const sc=wT[xt].map((v,j)=>v+wE[xt][j]);const mx=Math.max(...sc);const ex=sc.map(s=>Math.exp(s-mx));const Z=ex.reduce((a,b)=>a+b,0)||1;const pr=ex.map(e=>e/Z);for(let j=0;j<N;j++){const d=(j===yt?1:0)-pr[j];wT[xt][j]+=.1*d;wE[xt][j]+=.1*d;}}}let prev=obs2[obs2.length-1];const p=[];for(let s=0;s<steps;s++){const sc=wT[prev].map((v,j)=>v+wE[prev][j]);const mx=Math.max(...sc);const ex=sc.map(v=>Math.exp(v-mx));const Z=ex.reduce((a,b)=>a+b,0)||1;const pr=ex.map(e=>e/Z);let r=Math.random(),c=0,chosen=0;for(let j=0;j<N;j++){c+=pr[j];if(r<=c){chosen=j;break;}}p.push(es[chosen]);prev=chosen;}return p;}
+
+function ensemblePath(data,steps,set,T){
+  const paths=[nbPredict,nhitsPredict,dtw1nnPredict,crfPredict].map(fn=>fn(data,steps,set));
+  return Array.from({length:steps},(_,s)=>{
+    const vals=paths.map(p=>p[s]);
+    if(set.length){const freq={};vals.forEach(v=>{const k=snap(v,set).toString();freq[k]=(freq[k]||0)+1;});return parseFloat(Object.entries(freq).sort((a,b)=>b[1]-a[1])[0][0]);}
+    return mean(vals);
+  });
+}
+
+/* ════════════════════════════════════════
+   MONTE CARLO helpers
+════════════════════════════════════════ */
+function buildCDF(probs,setVals){ const r=[];let acc=0;setVals.forEach(v=>{acc+=probs[v];r.push({val:v,cdf:acc});});return r; }
+function buildEmpDist(data,setVals){ const cnt={};setVals.forEach(v=>cnt[v]=0);data.forEach(v=>{let best=setVals[0],bd=Math.abs(v-setVals[0]);setVals.forEach(sv=>{const d=Math.abs(v-sv);if(d<bd){bd=d;best=sv;}});cnt[best]++;});const tot=data.length,probs={};setVals.forEach(v=>probs[v]=cnt[v]/tot);return probs; }
+
+function monteCarloFinals(startCum,probs,setVals,steps,simN){
+  const finals=new Float64Array(simN),cdf=buildCDF(probs,setVals);
+  const sMin=setVals[0],sMax=setVals[setVals.length-1];
+  for(let s=0;s<simN;s++){let cum=startCum;for(let d=0;d<steps;d++){const r=Math.random();let pick=sMin;for(const c of cdf)if(r<=c.cdf){pick=c.val;break;}cum+=pick;const e=d+1,hMin=startCum+e*sMin,hMax=startCum+e*sMax;if(cum<hMin)cum=hMin;if(cum>hMax)cum=hMax;}finals[s]=cum;}
+  return finals;
+}
+function computeBands(startCum,probs,setVals,steps,simN,checkSteps){
+  const cdf=buildCDF(probs,setVals),dist=checkSteps.map(()=>[]);
+  const sMin=setVals[0],sMax=setVals[setVals.length-1];
+  for(let s=0;s<simN;s++){let cum=startCum,ci=0;for(let d=0;d<steps&&ci<checkSteps.length;d++){const r=Math.random();let pick=sMin;for(const c of cdf)if(r<=c.cdf){pick=c.val;break;}cum+=pick;const e=d+1,hMin=startCum+e*sMin,hMax=startCum+e*sMax;if(cum<hMin)cum=hMin;if(cum>hMax)cum=hMax;if(d+1===checkSteps[ci]){dist[ci].push(cum);ci++;}}}
+  return dist.map(arr=>{arr.sort((a,b)=>a-b);return{p5:arr[Math.floor(.05*arr.length)]||0,p25:arr[Math.floor(.25*arr.length)]||0,p50:arr[Math.floor(.50*arr.length)]||0,p75:arr[Math.floor(.75*arr.length)]||0,p95:arr[Math.floor(.95*arr.length)]||0};});
+}
+
+/* ════════════════════════════════════════
+   MAIN BOOT
+════════════════════════════════════════ */
+async function boot(){
+  // 1. Firebase
+  setProgress(5,'Firebase bağlanıyor...');
+  log('▸ Firebase başlatılıyor...');
+  await sleep(200);
+  let data;
+  try {
+    firebase.initializeApp(CONFIG.firebase);
+    const db = firebase.firestore();
+    setProgress(15,'Veri çekiliyor...');
+    log('<span class="ok">✓ Firebase bağlantısı kuruldu</span>');
+    const snap = await db.collection(CONFIG.collection).orderBy(CONFIG.orderField,'asc').get();
+    const vals=[];
+    snap.forEach(doc=>{ const v=doc.data()[CONFIG.valueField]; if(v!==undefined&&!isNaN(v))vals.push(Number(v)); });
+    if(!vals.length){ log('<span class="err">✗ Veri bulunamadı</span>');return; }
+    data = vals;
+    log(`<span class="ok">✓ ${data.length} kayıt yüklendi</span>`);
+    $('lastUpdated').textContent = 'Son güncelleme: '+new Date().toLocaleTimeString('tr-TR');
+  } catch(e) {
+    log(`<span class="err">✗ Firebase hatası: ${e.message}</span>`);
+    return;
+  }
+
+  setProgress(25,'Veri kümesi hesaplanıyor...');
+  await sleep(50);
+
+  // 2. Prep
+  const effSet = buildAutoSet(data);
+  const probs  = buildEmpDist(data, effSet);
+  const T      = buildTrans(data, effSet);
+  const currentCum = data.reduce((a,b)=>a+b,0);
+  const sMin=effSet[0], sMax=effSet[effSet.length-1];
+  const m=mean(data), s=sd(data), a1c=acf1(data), tr=linTrend(data);
+
+  log(`▸ Küme boyutu: ${effSet.length} değer | Kümülatif: ${currentCum.toFixed(1)}`);
+
+  // 3. Monte Carlo — finals
+  setProgress(30,'Monte Carlo simülasyonu...');
+  log(`▸ ${CONFIG.simN.toLocaleString()} simülasyon başlatıldı...`);
+  await sleep(30);
+
+  const rawFinals = monteCarloFinals(currentCum, probs, effSet, CONFIG.futureSteps, CONFIG.simN);
+  const finals = Array.from(rawFinals).sort((a,b)=>a-b);
+  const inTarget = finals.filter(v=>v>=CONFIG.targetMin&&v<=CONFIG.targetMax).length;
+  const prob = inTarget/CONFIG.simN;
+  const mn = finals.reduce((a,b)=>a+b,0)/finals.length;
+  const std2 = Math.sqrt(finals.reduce((a,b)=>a+(b-mn)**2,0)/finals.length);
+  const p5=pctile(finals,.05),p25=pctile(finals,.25),p50=pctile(finals,.50),p75=pctile(finals,.75),p95=pctile(finals,.95);
+  const sigmaD = std2>0?Math.abs(((CONFIG.targetMin+CONFIG.targetMax)/2-mn)/std2).toFixed(2):'∞';
+
+  log(`<span class="ok">✓ Monte Carlo tamamlandı</span>`);
+  setProgress(55,'Bantlar hesaplanıyor...');
+  await sleep(30);
+
+  // 4. Bands for path chart
+  const BS=Math.min(CONFIG.futureSteps,80), ss=Math.max(1,Math.floor(CONFIG.futureSteps/BS));
+  const bandSteps=Array.from({length:BS},(_,i)=>(i+1)*ss);
+  const stepBands = computeBands(currentCum,probs,effSet,CONFIG.futureSteps,3000,bandSteps);
+
+  setProgress(68,'Ensemble tahmin...');
+  await sleep(30);
+
+  // 5. Ensemble for 2D table
+  const CONF=0.90, ALPHA=(1-CONF)/2;
+  const simPaths=[];
+  const bSz=60;
+  for(let i=0;i<1500;i+=bSz){
+    const nb=Math.min(bSz,1500-i);
+    for(let b=0;b<nb;b++) simPaths.push(ensemblePath(data,CONFIG.ensSteps,effSet,T));
+    setProgress(68+(i/1500)*16,'Ensemble: '+Math.min(i+bSz,1500)+'/1500');
+    await sleep(0);
+  }
+  const predMed=[],predLo=[],predHi=[];
+  for(let st=0;st<CONFIG.ensSteps;st++){const vals=simPaths.map(p=>p[st]);predMed.push(pct(vals,.5));predLo.push(pct(vals,ALPHA));predHi.push(pct(vals,1-ALPHA));}
+  const prob2d=Array.from({length:CONFIG.ensSteps},(_,step)=>{const vals=simPaths.map(p=>p[step]);const cnt={};effSet.forEach(v=>cnt[v]=0);vals.forEach(v=>{const k=snap(v,effSet);cnt[k]=(cnt[k]||0)+1;});return effSet.map(v=>(cnt[v]||0)/vals.length);});
+
+  // 6. Fan paths
+  const cdfFan=buildCDF(probs,effSet);
+  const fanPaths=Array.from({length:10},()=>{const path=[];let cum=currentCum;for(let d=0;d<CONFIG.futureSteps;d++){const r=Math.random();let pick=sMin;for(const c of cdfFan)if(r<=c.cdf){pick=c.val;break;}cum+=pick;const e=d+1,hMin=currentCum+e*sMin,hMax=currentCum+e*sMax;if(cum<hMin)cum=hMin;if(cum>hMax)cum=hMax;path.push(parseFloat(cum.toFixed(2)));}return path;});
+
+  log('<span class="ok">✓ Tüm hesaplamalar tamamlandı</span>');
+  setProgress(95,'Dashboard hazırlanıyor...');
+  await sleep(100);
+
+  // 7. RENDER
+  renderDashboard({
+    data,effSet,probs,currentCum,sMin,sMax,m,s,a1c,tr,
+    prob,inTarget,mn,std2,p5,p25,p50,p75,p95,sigmaD,
+    finals,fanPaths,stepBands,bandSteps,prob2d,predMed,predLo,predHi
+  });
+
+  setProgress(100,'Hazır');
+  await sleep(300);
+  $('bootScreen').style.display='none';
+  $('dashboard').style.display='block';
+}
+
+/* ════════════════════════════════════════
+   RENDER
+════════════════════════════════════════ */
+function renderDashboard(r){
+  // PROB HERO
+  const probClass = r.prob<.005?'rare':'';
+  const badge = r.prob<.001?'<span class="badge badge-warn">AŞIRI DÜŞÜK</span>':r.prob<.05?'<span class="badge badge-warn">DÜŞÜK</span>':'<span class="badge badge-ok">MÜMKÜN</span>';
+  const zeroNote = r.inTarget===0?`<br><small style="color:var(--amber)">⚠ İsabet yok · &lt;${(3/CONFIG.simN*100).toExponential(2)}% (Rule of 3)</small>`:`<small style="color:var(--text3)"> ${r.inTarget.toLocaleString()}/${CONFIG.simN.toLocaleString()} isabet</small>`;
+  $('probHero').innerHTML=`
+    <div>
+      <div style="font-size:9px;letter-spacing:2px;color:var(--text3);margin-bottom:6px;font-family:'Orbitron',monospace;">${CONFIG.futureSteps}. ADIM OLASILIGI</div>
+      <div class="prob-num ${probClass}">${formatProb(r.prob)}</div>
+    </div>
+    <div class="prob-detail">
+      Kümülatif değerin <span class="prange">[${CONFIG.targetMin} , ${CONFIG.targetMax}]</span> aralığında olma olasılığı &nbsp;${badge}${zeroNote}<br>
+      Mevcut kümülatif: <strong>${r.currentCum.toFixed(1)}</strong> &nbsp;·&nbsp;
+      Teorik sınır: <strong>[${Math.round(r.currentCum+CONFIG.futureSteps*r.sMin)} , ${Math.round(r.currentCum+CONFIG.futureSteps*r.sMax)}]</strong><br>
+      Projeksiyon ort: <strong>${Math.round(r.mn)}</strong> &nbsp;±&nbsp; <strong>${Math.round(r.std2)}</strong> (1σ) &nbsp;·&nbsp; Hedefe uzaklık: <strong>${r.sigmaD}σ</strong>
+    </div>`;
+
+  // KPI STRIP
+  const trendStr=Math.abs(r.tr)<.0005?'SABİT':(r.tr>0?'↑ YÜKSELİYOR':'↓ DÜŞÜYOR');
+  const trendC=Math.abs(r.tr)<.0005?'var(--cyan)':r.tr>0?'var(--green)':'var(--red)';
+  const acfStr=Math.abs(r.a1c)>.5?'GÜÇLÜ':Math.abs(r.a1c)>.2?'ORTA':'ZAYIF';
+  $('kpiStrip').innerHTML=[
+    {label:'VERİ SAYISI', value:r.data.length, sub:'gözlem', color:'var(--cyan)'},
+    {label:'KÜMÜLATİF', value:r.currentCum.toFixed(1), sub:'mevcut', color:'var(--cyan)'},
+    {label:'ORTALAMA/ADIM', value:r.m.toFixed(3), sub:'±'+r.s.toFixed(3)+' std', color:'var(--text)'},
+    {label:'P50 PROJEKSİYON', value:Math.round(r.p50), sub:`P5:${Math.round(r.p5)} P95:${Math.round(r.p95)}`, color:'var(--green)'},
+    {label:'TREND', value:trendStr, sub:'eğim: '+(r.tr>0?'+':'')+r.tr.toFixed(4), color:trendC},
+    {label:'ACF(1)', value:r.a1c.toFixed(3), sub:acfStr+' otokorelasyon', color:Math.abs(r.a1c)>.3?'var(--green)':'var(--amber)'},
+    {label:'KÜME BOYUTU', value:r.effSet.length, sub:'benzersiz değer', color:'var(--text)'},
+  ].map(k=>`<div class="kpi"><div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div><div class="kpi-label">${k.label}</div><div class="kpi-value" style="color:${k.color}">${k.value}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
+
+  // FINDINGS
+  const freq={};r.data.forEach(v=>{const k=v.toString();freq[k]=(freq[k]||0)+1;});
+  const top=Object.entries(freq).sort((a,b)=>b[1]-a[1])[0];
+  $('findings').innerHTML=[
+    {l:'Veri uzunluğu', v:r.data.length+' nokta', c:'cyan'},
+    {l:'Küme boyutu', v:r.effSet.length+' değer', c:'cyan'},
+    {l:'Kümülatif', v:r.currentCum.toFixed(2), c:'cyan'},
+    {l:'Ort / Std', v:r.m.toFixed(3)+' / '+r.s.toFixed(3), c:''},
+    {l:'En sık değer', v:`${top[0]} (%${((top[1]/r.data.length)*100).toFixed(1)})`, c:'ok'},
+    {l:'ACF(1)', v:r.a1c.toFixed(4)+' — '+acfStr, c:Math.abs(r.a1c)>.3?'ok':'warn'},
+    {l:'Trend', v:trendStr, c:Math.abs(r.tr)<.0005?'cyan':r.tr>0?'ok':'err'},
+    {l:'Simülasyon', v:CONFIG.simN.toLocaleString()+' yol', c:'cyan'},
+  ].map(f=>`<div class="fr"><span class="fr-l">${f.l}</span><span class="fr-r ${f.c}">${f.v}</span></div>`).join('');
+
+  // PCT STRIP
+  $('pctStrip').innerHTML=[
+    {v:Math.round(r.p5),l:'P5'},{v:Math.round(r.p25),l:'P25'},
+    {v:Math.round(r.p50),l:'Medyan',c:'var(--green)'},
+    {v:Math.round(r.p75),l:'P75'},{v:Math.round(r.p95),l:'P95'},
+  ].map(x=>`<div class="pct-item"><div class="pv" style="${x.c?'color:'+x.c:''}">${x.v}</div><div class="pl">${x.l}</div></div>`).join('');
+
+  // ── CUMULATIVE PATH CHART ──
+  const hLen=r.data.length, tot=hLen+r.bandSteps.length;
+  const labels=[...Array.from({length:hLen},(_,i)=>i+1),...r.bandSteps.map(s=>hLen+s)];
+  let cc2=0; const cumPath=r.data.map(v=>{cc2+=v;return cc2;});
+  const histD=[...cumPath,...Array(r.bandSteps.length).fill(null)];
+  const medD=[...Array(hLen).fill(null),...r.stepBands.map(b=>Math.round(b.p50))];
+  const p95a=[...Array(hLen).fill(null),...r.stepBands.map(b=>b.p95)];
+  const p5a=[...Array(hLen).fill(null),...r.stepBands.map(b=>b.p5)];
+  const p75a=[...Array(hLen).fill(null),...r.stepBands.map(b=>b.p75)];
+  const p25a=[...Array(hLen).fill(null),...r.stepBands.map(b=>b.p25)];
+  const tgMaxA=Array(tot).fill(CONFIG.targetMax), tgMinA=Array(tot).fill(CONFIG.targetMin);
+  const fanDS=r.fanPaths.map((path,i)=>({data:[...Array(hLen).fill(null),...r.bandSteps.map(s=>{const idx=s-1;return idx<path.length?path[idx]:null;})],borderColor:`rgba(251,146,60,${.09+i*.04})`,borderWidth:1,pointRadius:0,tension:.4,fill:false}));
+
+  new Chart($('cumChart').getContext('2d'),{type:'line',data:{labels,datasets:[
+    {data:p95a,borderColor:'transparent',pointRadius:0,backgroundColor:'rgba(0,255,136,0.06)',fill:'+1',tension:.4},
+    {data:p5a,borderColor:'transparent',pointRadius:0,backgroundColor:'transparent',fill:false,tension:.4},
+    {data:p75a,borderColor:'transparent',pointRadius:0,backgroundColor:'rgba(0,255,136,0.15)',fill:'+1',tension:.4},
+    {data:p25a,borderColor:'transparent',pointRadius:0,backgroundColor:'transparent',fill:false,tension:.4},
+    ...fanDS,
+    {data:medD,borderColor:'rgba(200,200,200,0.5)',borderWidth:1.5,borderDash:[6,4],pointRadius:0,fill:false,tension:.4},
+    {data:histD,borderColor:'#00f5ff',borderWidth:2.5,pointRadius:0,fill:false,tension:.3},
+    {data:tgMaxA,borderColor:'rgba(0,255,136,0.5)',borderWidth:1,borderDash:[4,4],pointRadius:0,fill:'+1',backgroundColor:'rgba(0,255,136,0.04)'},
+    {data:tgMinA,borderColor:'rgba(0,255,136,0.5)',borderWidth:1,borderDash:[4,4],pointRadius:0,fill:false},
+  ]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:800},
+    plugins:{legend:{display:false},tooltip:{callbacks:{title:ctx=>`Adım ${ctx[0].label}`,label:ctx=>{const bc=ctx.dataset.borderColor;if(bc==='#00f5ff')return`Kümülatif: ${ctx.raw}`;if(bc==='rgba(200,200,200,0.5)')return`Medyan: ${ctx.raw}`;return null;}},filter:ctx=>ctx.raw!==null&&['#00f5ff','rgba(200,200,200,0.5)'].includes(ctx.dataset.borderColor)}},
+    scales:{x:{ticks:{color:CC.tick,maxTicksLimit:12,font:{family:'Share Tech Mono',size:9}},grid:{color:CC.grid}},y:{ticks:{color:CC.tick,font:{family:'Share Tech Mono',size:9}},grid:{color:CC.grid}}}}});
+
+  // ── DISTRIBUTION CHART ──
+  const BINS=70, minV=r.finals[0], maxV=r.finals[r.finals.length-1];
+  const bSz2=(maxV-minV)/BINS||1, hist=Array(BINS).fill(0);
+  r.finals.forEach(v=>{let i=Math.floor((v-minV)/bSz2);if(i>=BINS)i=BINS-1;hist[i]++;});
+  const bCenters=Array.from({length:BINS},(_,i)=>Math.round(minV+(i+.5)*bSz2));
+  new Chart($('distChart').getContext('2d'),{type:'bar',data:{labels:bCenters,datasets:[{data:hist.map(v=>v/CONFIG.simN*100),backgroundColor:bCenters.map(bc=>bc>=CONFIG.targetMin&&bc<=CONFIG.targetMax?'rgba(0,255,136,0.85)':'rgba(0,245,255,0.25)'),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:600},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${Number(ctx.raw).toFixed(3)}%`}}},scales:{x:{ticks:{color:CC.tick,maxTicksLimit:8,font:{family:'Share Tech Mono',size:9}},grid:{color:CC.grid}},y:{ticks:{color:CC.tick,font:{family:'Share Tech Mono',size:9}},grid:{color:CC.grid}}}}});
+
+  // ── 2D TABLE ──
+  const nSteps=CONFIG.ensSteps, nVals=r.effSet.length;
+  const sIdx=Array.from({length:nVals},(_,i)=>i).sort((a,b)=>r.effSet[b]-r.effSet[a]);
+  const colMax=Array.from({length:nSteps},(_,ci)=>{let mx=0;for(let ri=0;ri<nVals;ri++)if(r.prob2d[ci][ri]>mx)mx=r.prob2d[ci][ri];return mx||1e-9;});
+  const rowMax=Array.from({length:nVals},(_,ri)=>{let mx=0;for(let ci=0;ci<nSteps;ci++)if(r.prob2d[ci][ri]>mx)mx=r.prob2d[ci][ri];return mx||1e-9;});
+  const colR=Array.from({length:nSteps},(_,ci)=>r.effSet.map((v,ri)=>({v,p:r.prob2d[ci][ri]})).sort((a,b)=>b.p-a.p));
+  function cellBg(gN,bN){const br=10,bg=15,bb=30;let rr=Math.round(br+gN*(0-br)*.7+bN*(255-br)*.5),gg=Math.round(bg+gN*(245-bg)*.7+bN*(184-bg)*.5),bb2=Math.round(bb+gN*(255-bb)*.7+bN*(0-bb)*.5);rr=Math.max(0,Math.min(255,rr));gg=Math.max(0,Math.min(255,gg));bb2=Math.max(0,Math.min(255,bb2));const lum=rr*.299+gg*.587+bb2*.114;return{bg:`rgb(${rr},${gg},${bb2})`,tc:lum<100?'rgba(200,216,232,0.9)':'#050810'};}
+  const hdr='<tr><th class="rh" style="text-align:left;padding-left:10px;">Değer \\ Adım</th>'+Array.from({length:nSteps},(_,ci)=>`<th>t+${ci+1}</th>`).join('')+'</tr>';
+  const rows=sIdx.map(ri=>{const val=r.effSet[ri];const cells=Array.from({length:nSteps},(_,ci)=>{const p=r.prob2d[ci][ri];const col=cellBg(colMax[ci]>0?p/colMax[ci]:0,rowMax[ri]>0?p/rowMax[ri]:0);return`<td style="background:${col.bg};color:${col.tc};">${(p*100).toFixed(1)}%</td>`;}).join('');return`<tr><td class="sh">${val}</td>${cells}</tr>`;}).join('');
+  const fB='<tr class="foot-row"><td class="sh" style="font-size:8px;color:var(--green);">EN OLASI</td>'+Array.from({length:nSteps},(_,ci)=>{const b=colR[ci][0];return`<td class="bt">${b.v}<br><span style="font-size:8px;color:var(--text3)">${(b.p*100).toFixed(1)}%</span></td>`;}).join('')+'</tr>';
+  const fS='<tr class="foot-row"><td class="sh" style="font-size:8px;color:var(--amber);">2. OLASI</td>'+Array.from({length:nSteps},(_,ci)=>{const b=colR[ci][1]||colR[ci][0];return`<td class="bs">${b.v}<br><span style="font-size:8px;color:var(--text3)">${(b.p*100).toFixed(1)}%</span></td>`;}).join('')+'</tr>';
+  $('p2dWrap').innerHTML=`<table class="p2d"><thead>${hdr}</thead><tbody>${rows}${fB}${fS}</tbody></table>`;
+}
+
+// Start
+window.addEventListener('load', boot);
+</script>
+</body>
+</html>
