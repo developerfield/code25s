@@ -370,7 +370,7 @@ async function boot(){
   const simPaths=[];
   for(let i=0;i<1200;i+=60){
     for(let b=0;b<60&&simPaths.length<1200;b++)simPaths.push(ensemblePath(data,CFG.ensSteps,effSet,T));
-    prog(20+(simPaths.length/1200)*18,'Ensemble: '+simPaths.length+'/1200');
+    prog(20+(simPaths.length/10000)*18,'Ensemble: '+simPaths.length+'/1200');
     await sleep(0);
   }
   const ALPHA=0.05;
