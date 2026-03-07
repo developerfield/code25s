@@ -272,15 +272,15 @@ function buildEmpDist(data,setVals){
   const tot=data.length,probs={};setVals.forEach(v=>probs[v]=cnt[v]/tot);return probs;
 }
 function computeBands(startCum,probs,setVals,steps,simN,checkSteps,noiseStd){
+  const ns=noiseStd||0;
   const cdf=[];let acc=0;setVals.forEach(v=>{acc+=probs[v];cdf.push({val:v,cdf:acc});});
   const dist=checkSteps.map(()=>[]);
   const sMin=setVals[0],sMax=setVals[setVals.length-1];
-  const ns=noiseStd||0;
   for(let s=0;s<simN;s++){
     let cum=startCum,ci=0;
     for(let d=0;d<steps&&ci<checkSteps.length;d++){
       const r=Math.random();let pick=sMin;for(const c of cdf)if(r<=c.cdf){pick=c.val;break;}
-      if(ns>0) pick+=grnd()*ns*Math.sqrt((d+1)/steps);
+      if(ns>0)pick+=grnd()*ns*Math.sqrt((d+1)/steps);
       cum+=pick;
       const e=d+1,hMin=startCum+e*(sMin-ns*3),hMax=startCum+e*(sMax+ns*3);
       if(cum<hMin)cum=hMin;if(cum>hMax)cum=hMax;
@@ -321,14 +321,14 @@ function monteCarloFinals(startCum,probs,setVals,steps,simN){
 
 /* ── Fan paths (Monte Carlo individual paths) ── */
 function genFanPaths(startCum,probs,setVals,steps,count,noiseStd){
+  const ns=noiseStd||0;
   const cdf=[];let acc=0;setVals.forEach(v=>{acc+=probs[v];cdf.push({val:v,cdf:acc});});
   const sMin=setVals[0],sMax=setVals[setVals.length-1];
-  const ns=noiseStd||0;
   return Array.from({length:count},()=>{
     let cum=startCum;
     return Array.from({length:steps},(_,d)=>{
       const r=Math.random();let pick=sMin;for(const c of cdf)if(r<=c.cdf){pick=c.val;break;}
-      if(ns>0) pick+=grnd()*ns*Math.sqrt((d+1)/steps);
+      if(ns>0)pick+=grnd()*ns*Math.sqrt((d+1)/steps);
       cum+=pick;
       const e=d+1,hMin=startCum+e*(sMin-ns*3),hMax=startCum+e*(sMax+ns*3);
       if(cum<hMin)cum=hMin;if(cum>hMax)cum=hMax;
@@ -599,8 +599,6 @@ function render({data,effSet,probs,currentCum,sMin,sMax,maxEnt,prob2d,stepBands,
       }
     }
   });
-}
-
   /* ── BENFORD İVME ── */
   const WIN=Math.max(5,Math.min(20,Math.floor(data.length*0.08)));
   const upMom=[],downMom=[],netAccel=[],benLabels=[];
@@ -626,10 +624,10 @@ function render({data,effSet,probs,currentCum,sMin,sMax,maxEnt,prob2d,stepBands,
     ]},
     options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},
       plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,backgroundColor:'rgba(5,8,16,0.95)',borderColor:'rgba(0,245,255,0.3)',borderWidth:1,titleColor:'#00f5ff',bodyColor:'#c8d8e8',
-        callbacks:{label:ctx=>{const nm=['','↑ Yukarı','↓ Aşağı','⇔ Net'];return nm[ctx.datasetIndex]?`${nm[ctx.datasetIndex]}: ${Number(ctx.raw).toFixed(3)}`:null;}}}},
+        callbacks:{label:ctx=>{const nm=['','↑ Yukarı','↓ Aşağı','⇔ Net'];return nm[ctx.datasetIndex]?nm[ctx.datasetIndex]+': '+Number(ctx.raw).toFixed(3):null;}}}},
       scales:{
-        x:{ticks:{color:CC.tick,maxTicksLimit:14,font:{family:'Share Tech Mono',size:9}},grid:{color:CC.grid},title:{display:true,text:'Adım',color:CC.tick,font:{family:'Share Tech Mono',size:9}}},
-        y:{min:-1.1,max:1.1,ticks:{color:CC.tick,font:{family:'Share Tech Mono',size:9},callback:v=>v.toFixed(1)},grid:{color:CC.grid},title:{display:true,text:'Momentum',color:CC.tick,font:{family:'Share Tech Mono',size:9}}}
+        x:{ticks:{color:CC.tick,maxTicksLimit:14,font:{family:'Share Tech Mono',size:9}},grid:{color:CC.grid}},
+        y:{min:-1.1,max:1.1,ticks:{color:CC.tick,font:{family:'Share Tech Mono',size:9},callback:v=>v.toFixed(1)},grid:{color:CC.grid}}
       }
     }
   });
@@ -647,10 +645,10 @@ function render({data,effSet,probs,currentCum,sMin,sMax,maxEnt,prob2d,stepBands,
     ]},
     options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},
       plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,backgroundColor:'rgba(5,8,16,0.95)',borderColor:'rgba(0,245,255,0.3)',borderWidth:1,titleColor:'#00f5ff',bodyColor:'#c8d8e8',
-        callbacks:{label:ctx=>{if(ctx.datasetIndex!==3)return null;const v=ctx.raw;return `Küm. momentum: ${v.toFixed(4)}  ${v>0?'↑ Yukarı baskın':'↓ Aşağı baskın'}`;}}}},
+        callbacks:{label:ctx=>{if(ctx.datasetIndex!==3)return null;const v=ctx.raw;return 'Küm. momentum: '+v.toFixed(4)+(v>0?' ↑ Yukarı baskın':' ↓ Aşağı baskın');}}}},
       scales:{
-        x:{ticks:{color:CC.tick,maxTicksLimit:14,font:{family:'Share Tech Mono',size:9}},grid:{color:CC.grid},title:{display:true,text:'Adım',color:CC.tick,font:{family:'Share Tech Mono',size:9}}},
-        y:{ticks:{color:CC.tick,font:{family:'Share Tech Mono',size:9},callback:v=>v.toFixed(2)},grid:{color:CC.grid},title:{display:true,text:'Σ Net Momentum',color:CC.tick,font:{family:'Share Tech Mono',size:9}}}
+        x:{ticks:{color:CC.tick,maxTicksLimit:14,font:{family:'Share Tech Mono',size:9}},grid:{color:CC.grid}},
+        y:{ticks:{color:CC.tick,font:{family:'Share Tech Mono',size:9},callback:v=>v.toFixed(2)},grid:{color:CC.grid}}
       }
     }
   });
