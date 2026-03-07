@@ -368,9 +368,9 @@ async function boot(){
   /* ── 2D ensemble ── */
   prog(20,'Ensemble (2D tablo)...');await sleep(20);
   const simPaths=[];
-  for(let i=0;i<1200;i+=60){
-    for(let b=0;b<60&&simPaths.length<1200;b++)simPaths.push(ensemblePath(data,CFG.ensSteps,effSet,T));
-    prog(20+(simPaths.length/10000)*18,'Ensemble: '+simPaths.length+'/1200');
+  for(let i=0;i<10000;i+=60){
+    for(let b=0;b<60&&simPaths.length<10000;b++)simPaths.push(ensemblePath(data,CFG.ensSteps,effSet,T));
+    prog(20+(simPaths.length/10000)*18,'Ensemble: '+simPaths.length+'/10000');
     await sleep(0);
   }
   const ALPHA=0.05;
