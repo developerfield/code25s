@@ -143,6 +143,30 @@ header::after{content:'';position:absolute;bottom:-1px;left:0;width:130px;height
     <div class="cw ch200"><canvas id="entChart"></canvas></div>
   </div>
 
+  <!-- 5. BENFORD İVME -->
+  <div class="panel">
+    <div class="ptitle">BENFORD KÜMÜLATİF İVME <span class="sub">· log ağırlıklı yön momentumu · yeşil=yukarı kolaylaşıyor · kırmızı=aşağı kolaylaşıyor</span></div>
+    <div class="legrow">
+      <div class="li"><div class="lb" style="background:rgba(0,255,136,0.25)"></div>Yukarı momentum</div>
+      <div class="li"><div class="lb" style="background:rgba(255,45,85,0.25)"></div>Aşağı momentum</div>
+      <div class="li"><div class="ll" style="background:rgba(200,216,232,.5)"></div>Net ivme</div>
+      <div class="li"><div class="ll" style="background:var(--amber);height:1px"></div>Sıfır eşiği</div>
+    </div>
+    <div class="cw ch240"><canvas id="benChart"></canvas></div>
+  </div>
+
+  <!-- 6. KÜMÜLATİF MOMENTUM -->
+  <div class="panel">
+    <div class="ptitle">KÜMÜLATİF MOMENTUM <span class="sub">· her adımdaki net Benford ivmesi birikimli toplanarak oluşan yön eğrisi</span></div>
+    <div class="legrow">
+      <div class="li"><div class="ll" style="background:var(--cyan)"></div>Kümülatif momentum</div>
+      <div class="li"><div class="lb" style="background:rgba(0,255,136,0.15)"></div>Pozitif bölge ↑</div>
+      <div class="li"><div class="lb" style="background:rgba(255,45,85,0.15)"></div>Negatif bölge ↓</div>
+      <div class="li"><div class="ll" style="background:var(--amber);height:1px"></div>Sıfır eşiği</div>
+    </div>
+    <div class="cw ch240"><canvas id="cumMomChart"></canvas></div>
+  </div>
+
 </div>
 </div>
 
@@ -152,11 +176,12 @@ header::after{content:'';position:absolute;bottom:-1px;left:0;width:130px;height
 const CFG={
   firebase:{apiKey:"AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",authDomain:"paralayici.firebaseapp.com",projectId:"paralayici",storageBucket:"paralayici.firebasestorage.app",messagingSenderId:"980843550614",appId:"1:980843550614:web:93dd5bda4ddc377b20efb7"},
   collection:"cumulative_daily_data",valueField:"value",orderField:"date",
-  futureSteps:300,
+  futureSteps:100,
   ensSteps:15,
   simN:50000,
   bandSimN:6000,
-  fanCount:25,
+  fanCount:30,
+  extraNoise:1.8,
 };
 
 /* ── utils ── */
@@ -246,16 +271,18 @@ function buildEmpDist(data,setVals){
   data.forEach(v=>{let best=setVals[0],bd=Math.abs(v-setVals[0]);setVals.forEach(sv=>{const d=Math.abs(v-sv);if(d<bd){bd=d;best=sv;}});cnt[best]++;});
   const tot=data.length,probs={};setVals.forEach(v=>probs[v]=cnt[v]/tot);return probs;
 }
-function computeBands(startCum,probs,setVals,steps,simN,checkSteps){
+function computeBands(startCum,probs,setVals,steps,simN,checkSteps,noiseStd){
   const cdf=[];let acc=0;setVals.forEach(v=>{acc+=probs[v];cdf.push({val:v,cdf:acc});});
   const dist=checkSteps.map(()=>[]);
   const sMin=setVals[0],sMax=setVals[setVals.length-1];
+  const ns=noiseStd||0;
   for(let s=0;s<simN;s++){
     let cum=startCum,ci=0;
     for(let d=0;d<steps&&ci<checkSteps.length;d++){
       const r=Math.random();let pick=sMin;for(const c of cdf)if(r<=c.cdf){pick=c.val;break;}
+      if(ns>0) pick+=grnd()*ns*Math.sqrt((d+1)/steps);
       cum+=pick;
-      const e=d+1,hMin=startCum+e*sMin,hMax=startCum+e*sMax;
+      const e=d+1,hMin=startCum+e*(sMin-ns*3),hMax=startCum+e*(sMax+ns*3);
       if(cum<hMin)cum=hMin;if(cum>hMax)cum=hMax;
       if(d+1===checkSteps[ci]){dist[ci].push(cum);ci++;}
     }
@@ -293,15 +320,17 @@ function monteCarloFinals(startCum,probs,setVals,steps,simN){
 }
 
 /* ── Fan paths (Monte Carlo individual paths) ── */
-function genFanPaths(startCum,probs,setVals,steps,count){
+function genFanPaths(startCum,probs,setVals,steps,count,noiseStd){
   const cdf=[];let acc=0;setVals.forEach(v=>{acc+=probs[v];cdf.push({val:v,cdf:acc});});
   const sMin=setVals[0],sMax=setVals[setVals.length-1];
+  const ns=noiseStd||0;
   return Array.from({length:count},()=>{
     let cum=startCum;
     return Array.from({length:steps},(_,d)=>{
       const r=Math.random();let pick=sMin;for(const c of cdf)if(r<=c.cdf){pick=c.val;break;}
+      if(ns>0) pick+=grnd()*ns*Math.sqrt((d+1)/steps);
       cum+=pick;
-      const e=d+1,hMin=startCum+e*sMin,hMax=startCum+e*sMax;
+      const e=d+1,hMin=startCum+e*(sMin-ns*3),hMax=startCum+e*(sMax+ns*3);
       if(cum<hMin)cum=hMin;if(cum>hMax)cum=hMax;
       return cum;
     });
@@ -360,12 +389,12 @@ async function boot(){
   const BS=Math.min(CFG.futureSteps,120);
   const ss=Math.max(1,Math.floor(CFG.futureSteps/BS));
   const bandSteps=Array.from({length:BS},(_,i)=>(i+1)*ss);
-  const stepBands=computeBands(currentCum,probs,effSet,CFG.futureSteps,CFG.bandSimN,bandSteps);
+  const stepBands=computeBands(currentCum,probs,effSet,CFG.futureSteps,CFG.bandSimN,bandSteps,sd(data)*CFG.extraNoise);
   log('<span class="ok">✓ Bantlar tamamlandı</span>');
 
   /* ── Fan paths ── */
   prog(62,'Fan yolları...');await sleep(20);
-  const fanPaths=genFanPaths(currentCum,probs,effSet,CFG.futureSteps,CFG.fanCount);
+  const fanPaths=genFanPaths(currentCum,probs,effSet,CFG.futureSteps,CFG.fanCount,sd(data)*CFG.extraNoise);
   log('<span class="ok">✓ Fan yolları tamamlandı</span>');
 
   /* ── Monte Carlo finals for distribution ── */
@@ -521,12 +550,7 @@ function render({data,effSet,probs,currentCum,sMin,sMax,maxEnt,prob2d,stepBands,
     type:'bar',
     data:{labels:bCenters,datasets:[{
       data:hist.map(v=>v/CFG.simN*100),
-      backgroundColor:bCenters.map(bc=>{
-        // color by distance from median: center=green, tails=cyan/dim
-        const d=Math.abs(bc-p50f)/(maxV-minV+1);
-        const a=Math.max(0.15,0.9-d*1.8);
-        return `rgba(0,255,136,${a.toFixed(2)})`;
-      }),
+      backgroundColor:'rgba(160,170,185,0.55)',
       borderWidth:0
     }]},
     options:{
@@ -572,6 +596,61 @@ function render({data,effSet,probs,currentCum,sMin,sMax,maxEnt,prob2d,stepBands,
       scales:{
         x:{ticks:{color:CC.tick,maxTicksLimit:14,font:{family:'Share Tech Mono',size:9}},grid:{color:CC.grid},title:{display:true,text:'Adım (veri sayısı)',color:CC.tick,font:{family:'Share Tech Mono',size:9}}},
         y:{min:0,max:1.05,ticks:{color:CC.tick,font:{family:'Share Tech Mono',size:9},callback:v=>v.toFixed(2)},grid:{color:CC.grid},title:{display:true,text:'H / H_max',color:CC.tick,font:{family:'Share Tech Mono',size:9}}}
+      }
+    }
+  });
+}
+
+  /* ── BENFORD İVME ── */
+  const WIN=Math.max(5,Math.min(20,Math.floor(data.length*0.08)));
+  const upMom=[],downMom=[],netAccel=[],benLabels=[];
+  for(let t=1;t<data.length;t++){
+    let upStreak=0,downStreak=0;
+    for(let w=Math.max(0,t-WIN);w<t;w++){
+      if(data[w]>0)upStreak++;else if(data[w]<0)downStreak++;
+    }
+    const uM=Math.log2(1+upStreak)/Math.log2(1+WIN);
+    const dM=Math.log2(1+downStreak)/Math.log2(1+WIN);
+    upMom.push(parseFloat(uM.toFixed(4)));
+    downMom.push(parseFloat(dM.toFixed(4)));
+    netAccel.push(parseFloat((uM-dM).toFixed(4)));
+    benLabels.push(t+1);
+  }
+  new Chart($('benChart').getContext('2d'),{
+    type:'line',
+    data:{labels:benLabels,datasets:[
+      {data:Array(benLabels.length).fill(0),borderColor:'rgba(255,184,0,0.4)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false},
+      {data:upMom.map(v=>Math.max(0,v)),borderColor:'rgba(0,255,136,0.7)',borderWidth:1.5,pointRadius:0,fill:'origin',backgroundColor:'rgba(0,255,136,0.12)',tension:.35},
+      {data:downMom.map(v=>-Math.max(0,v)),borderColor:'rgba(255,45,85,0.7)',borderWidth:1.5,pointRadius:0,fill:'origin',backgroundColor:'rgba(255,45,85,0.12)',tension:.35},
+      {data:netAccel,borderColor:'rgba(200,216,232,0.6)',borderWidth:2,pointRadius:0,fill:false,tension:.35},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},
+      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,backgroundColor:'rgba(5,8,16,0.95)',borderColor:'rgba(0,245,255,0.3)',borderWidth:1,titleColor:'#00f5ff',bodyColor:'#c8d8e8',
+        callbacks:{label:ctx=>{const nm=['','↑ Yukarı','↓ Aşağı','⇔ Net'];return nm[ctx.datasetIndex]?`${nm[ctx.datasetIndex]}: ${Number(ctx.raw).toFixed(3)}`:null;}}}},
+      scales:{
+        x:{ticks:{color:CC.tick,maxTicksLimit:14,font:{family:'Share Tech Mono',size:9}},grid:{color:CC.grid},title:{display:true,text:'Adım',color:CC.tick,font:{family:'Share Tech Mono',size:9}}},
+        y:{min:-1.1,max:1.1,ticks:{color:CC.tick,font:{family:'Share Tech Mono',size:9},callback:v=>v.toFixed(1)},grid:{color:CC.grid},title:{display:true,text:'Momentum',color:CC.tick,font:{family:'Share Tech Mono',size:9}}}
+      }
+    }
+  });
+
+  /* ── KÜMÜLATİF MOMENTUM ── */
+  let momAcc=0;
+  const cumMomVals=netAccel.map(v=>{momAcc+=v;return parseFloat(momAcc.toFixed(4));});
+  new Chart($('cumMomChart').getContext('2d'),{
+    type:'line',
+    data:{labels:benLabels,datasets:[
+      {data:Array(benLabels.length).fill(0),borderColor:'rgba(255,184,0,0.45)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false},
+      {data:cumMomVals.map(v=>Math.max(0,v)),borderColor:'transparent',pointRadius:0,fill:'origin',backgroundColor:'rgba(0,255,136,0.13)',tension:.35},
+      {data:cumMomVals.map(v=>Math.min(0,v)),borderColor:'transparent',pointRadius:0,fill:'origin',backgroundColor:'rgba(255,45,85,0.13)',tension:.35},
+      {data:cumMomVals,borderColor:'#00f5ff',borderWidth:2,pointRadius:0,fill:false,tension:.35},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},
+      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,backgroundColor:'rgba(5,8,16,0.95)',borderColor:'rgba(0,245,255,0.3)',borderWidth:1,titleColor:'#00f5ff',bodyColor:'#c8d8e8',
+        callbacks:{label:ctx=>{if(ctx.datasetIndex!==3)return null;const v=ctx.raw;return `Küm. momentum: ${v.toFixed(4)}  ${v>0?'↑ Yukarı baskın':'↓ Aşağı baskın'}`;}}}},
+      scales:{
+        x:{ticks:{color:CC.tick,maxTicksLimit:14,font:{family:'Share Tech Mono',size:9}},grid:{color:CC.grid},title:{display:true,text:'Adım',color:CC.tick,font:{family:'Share Tech Mono',size:9}}},
+        y:{ticks:{color:CC.tick,font:{family:'Share Tech Mono',size:9},callback:v=>v.toFixed(2)},grid:{color:CC.grid},title:{display:true,text:'Σ Net Momentum',color:CC.tick,font:{family:'Share Tech Mono',size:9}}}
       }
     }
   });
