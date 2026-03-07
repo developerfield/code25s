@@ -346,14 +346,21 @@ async function boot(){
     firebase.initializeApp(CFG.firebase);
     const db=firebase.firestore();
     log('▸ Firebase bağlanıyor...');
-    await sleep(80);
-    const snap=await db.collection(CFG.collection).orderBy(CFG.orderField,'asc').get();
+    const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('Zaman aşımı (10s) — sayfayı yenileyin')),10000));
+    const snap=await Promise.race([
+      db.collection(CFG.collection).orderBy(CFG.orderField,'asc').get(),
+      timeout
+    ]);
     const vals=[];snap.forEach(doc=>{const v=doc.data()[CFG.valueField];if(v!==undefined&&!isNaN(v))vals.push(Number(v));});
     if(!vals.length){log('✗ Veri bulunamadı','er');return;}
     data=vals;
     log(`<span class="ok">✓ ${data.length} kayıt</span>`);
     $('updAt').textContent=new Date().toLocaleTimeString('tr-TR');
-  }catch(e){log(`✗ ${e.message}`,'er');return;}
+  }catch(e){
+    log(`<span class="er">✗ ${e.message}</span>`);
+    $('pLbl').textContent='Hata — sayfayı yenileyin (F5)';
+    return;
+  }
 
   prog(15,'Hazırlanıyor...');await sleep(30);
 
