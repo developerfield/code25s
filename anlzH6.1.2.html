@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS // DASHBOARD</title>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+:root {
+  --bg:    #050810;
+  --bg2:   #080d1a;
+  --bg3:   #0c1220;
+  --panel: #0a0f1e;
+  --b1:    #0f3460;
+  --b2:    #1a4a7a;
+  --cyan:  #00f5ff;
+  --cyan2: #00c8d4;
+  --green: #00ff88;
+  --red:   #ff2d55;
+  --amber: #ffb800;
+  --text:  #c8d8e8;
+  --text2: #6a8aaa;
+  --text3: #3a5a7a;
+  --scan:  rgba(0,245,255,0.03);
+  --grid:  rgba(0,245,255,0.04);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,var(--scan) 2px,var(--scan) 4px);pointer-events:none;z-index:9999;}
+body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+
+.wrap{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:24px 20px 80px;}
+
+/* HEADER */
+header{border-bottom:1px solid var(--b1);padding-bottom:16px;margin-bottom:28px;position:relative;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+header::after{content:'';position:absolute;bottom:-1px;left:0;width:140px;height:1px;background:var(--cyan);box-shadow:0 0 10px var(--cyan);}
+.logo{font-family:'Orbitron',monospace;font-size:clamp(14px,3vw,32px);font-weight:900;letter-spacing:4px;}
+.logo .acc{color:var(--cyan);text-shadow:0 0 16px var(--cyan);}
+.logo .slash{color:var(--text3);}
+.hright{text-align:right;font-size:9px;letter-spacing:2px;color:var(--text3);line-height:2;}
+.live{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 5px var(--green);animation:pulse 1.4s infinite;vertical-align:middle;margin-right:4px;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* BOOT */
+#boot{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:55vh;gap:20px;}
+.boot-label{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:var(--cyan2);opacity:.7;}
+.pbar-wrap{width:320px;}
+.pbar-lbl{font-size:9px;color:var(--text3);letter-spacing:1px;margin-bottom:5px;}
+.pbar-outer{height:2px;background:var(--bg3);}
+.pbar-inner{height:100%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);transition:width .1s linear;}
+.pbar-pct{font-size:10px;font-weight:700;color:var(--cyan);text-align:right;margin-top:4px;}
+.boot-log{font-size:10px;color:var(--text2);line-height:2;text-align:center;}
+.boot-log .ok{color:var(--green);} .boot-log .err{color:var(--red);}
+
+/* DASHBOARD */
+#dash{display:none;}
+
+/* PANEL */
+.panel{background:var(--panel);border:1px solid var(--b1);padding:18px 20px;margin-bottom:14px;position:relative;}
+.ptitle{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--cyan);border-bottom:1px solid var(--b1);padding-bottom:9px;margin-bottom:14px;display:flex;align-items:center;gap:7px;}
+.ptitle::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--cyan);box-shadow:0 0 5px var(--cyan);flex-shrink:0;}
+
+/* STAT ROW — tek satır özet */
+.stat-row{display:flex;gap:0;margin-bottom:14px;border:1px solid var(--b1);}
+.stat-item{flex:1;padding:12px 14px;border-right:1px solid var(--b1);text-align:center;}
+.stat-item:last-child{border-right:none;}
+.sv{font-family:'Orbitron',monospace;font-size:clamp(.8rem,1.8vw,1.2rem);font-weight:700;display:block;line-height:1.1;}
+.sl{font-size:8px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-top:4px;display:block;}
+@media(max-width:700px){.stat-row{flex-wrap:wrap;}.stat-item{flex:1 1 45%;}}
+
+/* 2D TABLE */
+.p2d-outer{overflow-x:auto;}
+.p2d{border-collapse:separate;border-spacing:0;font-size:10px;width:100%;font-family:'Share Tech Mono',monospace;}
+.p2d th{padding:5px 8px;background:var(--bg3);color:var(--cyan2);font-size:8px;letter-spacing:2px;text-transform:uppercase;border:1px solid var(--b1);white-space:nowrap;text-align:center;font-family:'Orbitron',monospace;}
+.p2d th.rh{background:var(--bg2);color:var(--text2);}
+.p2d td{padding:4px 7px;border:1px solid rgba(0,245,255,0.05);text-align:center;white-space:nowrap;font-weight:700;transition:filter .1s;}
+.p2d tr:hover td{filter:brightness(1.2);}
+.p2d td.sh{background:var(--bg2)!important;color:var(--cyan);text-align:left;padding-left:10px;border-color:var(--b1);}
+.p2d td.bt{background:var(--bg2)!important;color:var(--green);font-size:9px;}
+.p2d td.bs{background:var(--bg2)!important;color:var(--amber);font-size:9px;}
+.p2d tr.foot td{background:var(--bg2)!important;}
+
+/* CHART */
+.cw{position:relative;width:100%;height:420px;}
+.cw canvas{position:absolute;inset:0;width:100%!important;height:100%!important;}
+.leg{display:flex;gap:12px;flex-wrap:wrap;font-size:9px;color:var(--text3);margin-bottom:10px;align-items:center;}
+.li{display:flex;align-items:center;gap:4px;}
+.ll{width:16px;height:3px;border-radius:1px;}
+
+/* fr */
+.fr{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(0,245,255,.05);font-size:11px;}
+.fr:last-child{border-bottom:none;}
+.fl{color:var(--text2);}
+.fv{font-weight:700;font-family:'Orbitron',monospace;font-size:9px;}
+.ok{color:var(--green);}.warn{color:var(--amber);}.err{color:var(--red);}.cy{color:var(--cyan);}
+
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:var(--b2);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div>
+    <div style="font-size:8px;letter-spacing:4px;color:var(--cyan2);opacity:.6;margin-bottom:6px;">// NEXUS ENSEMBLE · NB+NHiTS+DTW+CRF · MONTE CARLO</div>
+    <div class="logo">NEXUS <span class="slash">//</span> <span class="acc">DASHBOARD</span></div>
+  </div>
+  <div class="hright">
+    <div><span class="live"></span>SİSTEM AKTİF</div>
+    <div id="updatedAt">—</div>
+  </div>
+</header>
+
+<!-- BOOT -->
+<div id="boot">
+  <div class="boot-label">// sistem başlatılıyor</div>
+  <div class="pbar-wrap">
+    <div class="pbar-lbl" id="pLbl">Başlatılıyor...</div>
+    <div class="pbar-outer"><div class="pbar-inner" id="pBar" style="width:0%"></div></div>
+    <div class="pbar-pct" id="pPct">0%</div>
+  </div>
+  <div class="boot-log" id="bLog"></div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dash">
+
+  <!-- ÖZET STAT SATIRI -->
+  <div class="stat-row" id="statRow"></div>
+
+  <!-- 2B OLASILIK TABLOSU -->
+  <div class="panel">
+    <div class="ptitle">2B OLASILIK TABLOSU &nbsp;<span style="color:var(--text3);font-size:8px;letter-spacing:1px;">satır = değer &nbsp;·&nbsp; sütun = gelecek adım &nbsp;·&nbsp; hücre = olasılık%</span></div>
+    <div class="p2d-outer" id="tblWrap"></div>
+  </div>
+
+  <!-- KÜMÜLATİF GRAFİK -->
+  <div class="panel">
+    <div class="ptitle">KÜMÜLATİF YOL &nbsp;<span style="color:var(--text3);font-size:8px;letter-spacing:1px;">geçmiş + projeksiyon</span></div>
+    <div class="leg">
+      <div class="li"><div class="ll" style="background:var(--cyan)"></div>Gözlem</div>
+      <div class="li"><div class="ll" style="background:rgba(255,45,85,.7)"></div>Teorik sınır</div>
+      <div class="li"><div class="ll" style="height:8px;background:rgba(0,245,255,.25)"></div>P5–P95</div>
+      <div class="li"><div class="ll" style="height:8px;background:rgba(0,245,255,.45)"></div>P25–P75</div>
+      <div class="li"><div class="ll" style="height:8px;background:rgba(0,245,255,.7)"></div>P40–P60</div>
+      <div class="li"><div class="ll" style="background:var(--text)"></div>Medyan</div>
+    </div>
+    <div class="cw"><canvas id="cumChart"></canvas></div>
+  </div>
+
+  <!-- BULGULAR -->
+  <div class="panel">
+    <div class="ptitle">ANALİZ BULGULARI</div>
+    <div id="findings" style="columns:2;column-gap:24px;"></div>
+  </div>
+
+</div>
+</div>
+
+<script>
+'use strict';
+
+/* ═══ CONFIG ═══ */
+const CFG = {
+  firebase:   { apiKey:"AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc", authDomain:"paralayici.firebaseapp.com", projectId:"paralayici", storageBucket:"paralayici.firebasestorage.app", messagingSenderId:"980843550614", appId:"1:980843550614:web:93dd5bda4ddc377b20efb7" },
+  collection: "cumulative_daily_data",
+  valueField: "value",
+  orderField: "date",
+  futureSteps: 300,   // projeksiyon adımı
+  ensSteps:    15,    // 2D tablo adımı
+  simN:        40000, // monte carlo simülasyon sayısı
+  bandSimN:    5000,  // bant hesabı simülasyonu
+};
+
+/* ═══ UTILS ═══ */
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const mean=a=>{let s=0;for(const v of a)s+=v;return s/a.length;};
+const vari=a=>{const m=mean(a);let s=0;for(const v of a)s+=(v-m)**2;return s/a.length;};
+const sd=a=>Math.sqrt(vari(a));
+const acf1=a=>{const n=a.length,m=mean(a);let num=0,den=0;for(let i=1;i<n;i++)num+=(a[i]-m)*(a[i-1]-m);for(const v of a)den+=(v-m)**2;return den<1e-12?0:num/den;};
+const pct=(a,p)=>{const s=a.slice().sort((x,y)=>x-y);return s[Math.max(0,Math.min(s.length-1,Math.floor(p*(s.length-1))))];};
+const pctile=(s,p)=>s[Math.floor(p*s.length)]??s[s.length-1];
+const linTrend=a=>{const n=a.length;let sx=0,sy=0,sxy=0,sxx=0;for(let i=0;i<n;i++){sx+=i;sy+=a[i];sxy+=i*a[i];sxx+=i*i;}const d=n*sxx-sx*sx;return d<1e-12?0:(n*sxy-sx*sy)/d;};
+const grnd=()=>{let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);};
+const snap=(v,set)=>{let best=set[0];for(const s of set)if(Math.abs(s-v)<Math.abs(best-v))best=s;return best;};
+const buildSet=data=>{const seen={},v=[];for(const x of data){const k=x.toString();if(!seen[k]){seen[k]=true;v.push(x);}}v.sort((a,b)=>a-b);return v;};
+
+const CC={grid:'rgba(15,52,96,0.7)',tick:'#3a5a7a'};
+
+function log(msg,cls=''){$('bLog').innerHTML+=`<div class="${cls}">${msg}</div>`;}
+function prog(p,lbl){$('pBar').style.width=Math.min(100,p)+'%';$('pPct').textContent=Math.round(p)+'%';if(lbl)$('pLbl').textContent=lbl;}
+
+/* ═══ TRANSITION MATRIX ═══ */
+function buildTrans(data,set){
+  const n=set.length;if(!n)return null;
+  const idx=v=>{for(let i=0;i<set.length;i++)if(Math.abs(set[i]-v)<1e-9)return i;return -1;};
+  const T=Array.from({length:n},()=>Array(n).fill(0.1));
+  for(let i=1;i<data.length;i++){const fi=idx(data[i-1]),ti=idx(data[i]);if(fi>=0&&ti>=0)T[fi][ti]++;}
+  for(let i=0;i<n;i++){const s=T[i].reduce((a,b)=>a+b,0);for(let j=0;j<n;j++)T[i][j]/=s;}
+  return T;
+}
+function mcFallback(data,steps,set,T){
+  if(!set.length||!T){const s2=sd(data),m=mean(data),a=acf1(data);let last=data[data.length-1];const p=[];for(let i=0;i<steps;i++){last=last*a+m*(1-Math.abs(a))+s2*grnd()*(1-Math.abs(a));p.push(last);}return p;}
+  const idx=v=>{for(let i=0;i<set.length;i++)if(Math.abs(set[i]-v)<1e-9)return i;return -1;};
+  let cur=idx(data[data.length-1]);if(cur<0)cur=Math.floor(set.length/2);
+  const p=[];for(let i=0;i<steps;i++){const row=T[cur],r=Math.random();let c=0;for(let j=0;j<set.length;j++){c+=row[j];if(r<=c){cur=j;break;}}p.push(set[cur]);}return p;
+}
+
+/* ═══ ENSEMBLE METHODS ═══ */
+function nbPredict(data,steps,set){
+  const es=set.length?set:buildSet(data),win=3;
+  if(!es.length||data.length<win+1)return mcFallback(data,steps,es,buildTrans(data,es));
+  const idx=v=>{for(let i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i;return 0;};
+  const key=w=>w.map(v=>Math.max(0,idx(v))).join('-');
+  const cnts={};
+  for(let ww=1;ww<=win;ww++){cnts[ww]={};for(let i=ww;i<data.length;i++){const k=key(data.slice(i-ww,i)),ni=idx(data[i]);if(!cnts[ww][k])cnts[ww][k]=Array(es.length).fill(0.05);cnts[ww][k][ni]++;}}
+  let w=data.slice(-win);const p=[];
+  for(let i=0;i<steps;i++){let row=null;for(let ww=win;ww>=1;ww--){const k=key(w.slice(win-ww));if(cnts[ww][k]){row=cnts[ww][k];break;}}if(!row)row=Array(es.length).fill(1);const tot=row.reduce((a,b)=>a+b,0);let r=Math.random()*tot,c=0,ch=0;for(let j=0;j<es.length;j++){c+=row[j];if(r<=c){ch=j;break;}}w=w.slice(1);w.push(es[ch]);p.push(es[ch]);}return p;
+}
+function fitAR(data,pg){const n=data.length;if(n<=pg||pg<1)return[0];const m=mean(data),c=[];for(let k=0;k<=pg;k++){let s=0;for(let i=k;i<n;i++)s+=(data[i]-m)*(data[i-k]-m);c.push(s/(n-k));}let phi=[c[1]/(c[0]||1e-10)],V=c[0]*(1-phi[0]**2);for(let lag=2;lag<=pg;lag++){let num=c[lag];for(let j=0;j<phi.length;j++)num-=phi[j]*(c[lag-1-j]||0);const kk=num/(V||1e-10);const phi2=phi.map((v,j)=>v-kk*(phi[phi.length-2-j]||0));phi2.push(kk);phi=phi2;V*=(1-kk*kk);if(isNaN(V)||V<=0)break;}return phi;}
+function arPredict(data,phi,steps,nStd,set){const m=mean(data),hist=data.map(v=>v-m);const p=[];for(let i=0;i<steps;i++){let pred=0;for(let j=0;j<phi.length;j++)pred+=phi[j]*(hist[hist.length-1-j]||0);pred+=m+nStd*grnd();if(set.length)pred=snap(pred,set);hist.push(pred-m);p.push(pred);}return p;}
+function nhitsPredict(data,steps,set){
+  const n=data.length,dm=mean(data),ds=sd(data)||1,norm=data.map(v=>(v-dm)/ds);
+  const basis=(t,H,nP,nF)=>{const b=[1];for(let p=1;p<=nP;p++)b.push((t/H)**p);for(let k=1;k<=nF;k++){b.push(Math.sin(2*Math.PI*k*t/H));b.push(Math.cos(2*Math.PI*k*t/H));}return b;};
+  const ols=(X,y)=>{const nb=X[0].length,ns=X.length;const XtX=Array.from({length:nb},()=>Array(nb).fill(0)),Xty=Array(nb).fill(0);for(let r=0;r<ns;r++)for(let i=0;i<nb;i++){Xty[i]+=X[r][i]*y[r];for(let j=0;j<nb;j++)XtX[i][j]+=X[r][i]*X[r][j];}for(let i=0;i<nb;i++)XtX[i][i]+=1e-4;const aug=XtX.map((row,i)=>[...row,Xty[i]]);for(let col=0;col<nb;col++){let piv=col;for(let row=col+1;row<nb;row++)if(Math.abs(aug[row][col])>Math.abs(aug[piv][col]))piv=row;[aug[col],aug[piv]]=[aug[piv],aug[col]];const d=aug[col][col]||1e-12;for(let row=0;row<nb;row++)if(row!==col){const f=aug[row][col]/d;for(let k=0;k<=nb;k++)aug[row][k]-=f*aug[col][k];}for(let k=0;k<=nb;k++)aug[col][k]/=d;}return aug.map(row=>row[nb]);};
+  const cfgs=[[1,2,3],[2,1,2],[4,1,1]];let res=norm.slice();const outs=[];
+  for(const[pool,nPoly,nFreq]of cfgs){const pooled=[],rDown=[];for(let i=0;i<n;i+=pool){const c1=norm.slice(i,Math.min(i+pool,n));const rc=res.slice(i,Math.min(i+pool,n));pooled.push(mean(c1));rDown.push(mean(rc));}const np2=pooled.length;if(np2<3)continue;const lb=Math.min(np2,Math.max(4,Math.floor(np2*.5)));const rw=rDown.slice(-lb),H=steps;const Xlb=Array.from({length:lb},(_,t)=>basis(t,lb,nPoly,nFreq));const beta=ols(Xlb,rw);const fc=Array.from({length:H},(_,t)=>basis(t,H,nPoly,nFreq).reduce((s,v,i)=>s+v*beta[i],0));outs.push(fc);const bc=Xlb.map(b=>b.reduce((s,v,i)=>s+v*beta[i],0));const start=n-lb*pool;for(let i=0;i<lb*pool&&start+i<n;i++){const bi=Math.floor(i/pool);if(bi<bc.length)res[start+i]-=bc[bi];}}
+  if(!outs.length)return arPredict(data,fitAR(data,3),steps,ds*.3,set);
+  const rStd=sd(res)||0.01;
+  return Array.from({length:steps},(_,s)=>{let sum=0;for(const o of outs)sum+=o[s]||0;let v=sum*ds+dm+grnd()*rStd*ds;if(set.length)v=snap(v,set);return v;});
+}
+function dtwDist(a,b){const n=a.length,m=b.length;const dtw=Array.from({length:n+1},()=>Array(m+1).fill(Infinity));dtw[0][0]=0;for(let i=1;i<=n;i++)for(let j=1;j<=m;j++){const c=Math.abs(a[i-1]-b[j-1]);dtw[i][j]=c+Math.min(dtw[i-1][j],dtw[i][j-1],dtw[i-1][j-1]);}return dtw[n][m];}
+function dtw1nnPredict(data,steps,set){const wlen=Math.min(8,Math.max(3,Math.floor(data.length*.3)));const query=data.slice(-wlen);let best=null,bestD=Infinity;for(let i=0;i<=data.length-wlen-steps;i++){const d=dtwDist(query,data.slice(i,i+wlen));if(d<bestD){bestD=d;best=i;}}if(best===null)return mcFallback(data,steps,set,buildTrans(data,set));return Array.from({length:steps},(_,s)=>{let v=data[best+wlen+s]!==undefined?data[best+wlen+s]:data[data.length-1];if(set.length)v=snap(v,set);return v;});}
+function crfPredict(data,steps,set){const es=set.length?set:buildSet(data),N=es.length;if(!N)return Array(steps).fill(data[data.length-1]);const idx=v=>{for(let i=0;i<es.length;i++)if(Math.abs(es[i]-v)<1e-9)return i;return 0;};const wT=Array.from({length:N},()=>Array(N).fill(0)),wE=Array.from({length:N},()=>Array(N).fill(0));const obs2=data.map(idx);for(let pass=0;pass<5;pass++){for(let t=1;t<obs2.length;t++){const xt=obs2[t-1],yt=obs2[t];const sc=wT[xt].map((v,j)=>v+wE[xt][j]);const mx=Math.max(...sc);const ex=sc.map(s=>Math.exp(s-mx));const Z=ex.reduce((a,b)=>a+b,0)||1;const pr=ex.map(e=>e/Z);for(let j=0;j<N;j++){const d=(j===yt?1:0)-pr[j];wT[xt][j]+=.1*d;wE[xt][j]+=.1*d;}}}let prev=obs2[obs2.length-1];const p=[];for(let s=0;s<steps;s++){const sc=wT[prev].map((v,j)=>v+wE[prev][j]);const mx=Math.max(...sc);const ex=sc.map(v=>Math.exp(v-mx));const Z=ex.reduce((a,b)=>a+b,0)||1;const pr=ex.map(e=>e/Z);let r=Math.random(),c=0,chosen=0;for(let j=0;j<N;j++){c+=pr[j];if(r<=c){chosen=j;break;}}p.push(es[chosen]);prev=chosen;}return p;}
+
+function ensemblePath(data,steps,set,T){
+  const paths=[nbPredict,nhitsPredict,dtw1nnPredict,crfPredict].map(fn=>fn(data,steps,set));
+  return Array.from({length:steps},(_,s)=>{
+    const vals=paths.map(p=>p[s]);
+    if(set.length){const freq={};vals.forEach(v=>{const k=snap(v,set).toString();freq[k]=(freq[k]||0)+1;});return parseFloat(Object.entries(freq).sort((a,b)=>b[1]-a[1])[0][0]);}
+    return mean(vals);
+  });
+}
+
+/* ═══ MONTE CARLO BANDS ═══ */
+function computeBands(startCum,probs,setVals,steps,simN,checkSteps){
+  const cdf=[];let acc2=0;setVals.forEach(v=>{acc2+=probs[v];cdf.push({val:v,cdf:acc2});});
+  const dist=checkSteps.map(()=>[]);
+  const sMin=setVals[0],sMax=setVals[setVals.length-1];
+  for(let s=0;s<simN;s++){
+    let cum=startCum,ci=0;
+    for(let d=0;d<steps&&ci<checkSteps.length;d++){
+      const r=Math.random();let pick=sMin;for(const c of cdf)if(r<=c.cdf){pick=c.val;break;}
+      cum+=pick;
+      const e=d+1,hMin=startCum+e*sMin,hMax=startCum+e*sMax;
+      if(cum<hMin)cum=hMin;if(cum>hMax)cum=hMax;
+      if(d+1===checkSteps[ci]){dist[ci].push(cum);ci++;}
+    }
+  }
+  return dist.map(arr=>{
+    arr.sort((a,b)=>a-b);
+    return{p5:arr[Math.floor(.05*arr.length)]||0,p10:arr[Math.floor(.10*arr.length)]||0,p25:arr[Math.floor(.25*arr.length)]||0,p40:arr[Math.floor(.40*arr.length)]||0,p50:arr[Math.floor(.50*arr.length)]||0,p60:arr[Math.floor(.60*arr.length)]||0,p75:arr[Math.floor(.75*arr.length)]||0,p90:arr[Math.floor(.90*arr.length)]||0,p95:arr[Math.floor(.95*arr.length)]||0};
+  });
+}
+
+function buildEmpDist(data,setVals){
+  const cnt={};setVals.forEach(v=>cnt[v]=0);
+  data.forEach(v=>{let best=setVals[0],bd=Math.abs(v-setVals[0]);setVals.forEach(sv=>{const d=Math.abs(v-sv);if(d<bd){bd=d;best=sv;}});cnt[best]++;});
+  const tot=data.length,probs={};setVals.forEach(v=>probs[v]=cnt[v]/tot);return probs;
+}
+
+/* ═══ BOOT ═══ */
+async function boot(){
+  prog(5,'Firebase bağlanıyor...');
+  let data;
+  try{
+    firebase.initializeApp(CFG.firebase);
+    const db=firebase.firestore();
+    log('▸ Firebase bağlanıyor...');
+    await sleep(100);
+    const snap=await db.collection(CFG.collection).orderBy(CFG.orderField,'asc').get();
+    const vals=[];snap.forEach(doc=>{const v=doc.data()[CFG.valueField];if(v!==undefined&&!isNaN(v))vals.push(Number(v));});
+    if(!vals.length){log('✗ Veri bulunamadı','err');return;}
+    data=vals;
+    log(`<span class="ok">✓ ${data.length} kayıt yüklendi</span>`);
+    $('updatedAt').textContent=new Date().toLocaleTimeString('tr-TR');
+  }catch(e){log(`✗ ${e.message}`,'err');return;}
+
+  prog(20,'Hesaplanıyor...');await sleep(30);
+
+  /* prep */
+  const effSet=buildSet(data);
+  const probs=buildEmpDist(data,effSet);
+  const T=buildTrans(data,effSet);
+  const currentCum=data.reduce((a,b)=>a+b,0);
+  const sMin=effSet[0],sMax=effSet[effSet.length-1];
+  const m=mean(data),s2=sd(data),a1=acf1(data),tr=linTrend(data);
+  const freq={};data.forEach(v=>{const k=v.toString();freq[k]=(freq[k]||0)+1;});
+  const topVal=Object.entries(freq).sort((a,b)=>b[1]-a[1])[0];
+
+  log(`▸ Küme: ${effSet.length} değer · Kümülatif: ${currentCum.toFixed(1)}`);
+  prog(30,'Ensemble tahmin (2D tablo)...');await sleep(20);
+
+  /* 2D table — ensemble */
+  const simPaths=[];
+  for(let i=0;i<1200;i+=50){
+    for(let b=0;b<50&&simPaths.length<1200;b++)simPaths.push(ensemblePath(data,CFG.ensSteps,effSet,T));
+    prog(30+(simPaths.length/1200)*20,'Ensemble: '+simPaths.length+'/1200');
+    await sleep(0);
+  }
+  const ALPHA=0.05;
+  const predMed=[],predLo=[],predHi=[];
+  for(let st=0;st<CFG.ensSteps;st++){const vals=simPaths.map(p=>p[st]);predMed.push(pct(vals,.5));predLo.push(pct(vals,ALPHA));predHi.push(pct(vals,1-ALPHA));}
+  const prob2d=Array.from({length:CFG.ensSteps},(_,step)=>{
+    const vals=simPaths.map(p=>p[step]);
+    const cnt={};effSet.forEach(v=>cnt[v]=0);
+    vals.forEach(v=>{const k=snap(v,effSet);cnt[k]=(cnt[k]||0)+1;});
+    return effSet.map(v=>(cnt[v]||0)/vals.length);
+  });
+
+  log('<span class="ok">✓ Ensemble tamamlandı</span>');
+  prog(55,'Kümülatif bantlar hesaplanıyor...');await sleep(20);
+
+  /* band computation */
+  const BS=Math.min(CFG.futureSteps,100);
+  const ss=Math.max(1,Math.floor(CFG.futureSteps/BS));
+  const bandSteps=Array.from({length:BS},(_,i)=>(i+1)*ss);
+  const stepBands=computeBands(currentCum,probs,effSet,CFG.futureSteps,CFG.bandSimN,bandSteps);
+
+  log('<span class="ok">✓ Bantlar tamamlandı</span>');
+  prog(90,'Dashboard çiziliyor...');await sleep(50);
+
+  /* render */
+  render({data,effSet,currentCum,sMin,sMax,m,s2,a1,tr,topVal,prob2d,predMed,predLo,predHi,stepBands,bandSteps});
+
+  prog(100,'Hazır');await sleep(200);
+  $('boot').style.display='none';
+  $('dash').style.display='block';
+}
+
+/* ═══ RENDER ═══ */
+function render(r){
+  const {data,effSet,currentCum,sMin,sMax,m,s2,a1,tr,topVal,prob2d,predMed,predLo,predHi,stepBands,bandSteps}=r;
+  const trendStr=Math.abs(tr)<.0005?'SABİT':(tr>0?'↑ YÜKSELİYOR':'↓ DÜŞÜYOR');
+  const acfStr=Math.abs(a1)>.5?'GÜÇLÜ':Math.abs(a1)>.2?'ORTA':'ZAYIF';
+
+  /* ── STAT ROW ── */
+  $('statRow').innerHTML=[
+    {l:'VERİ',        v:data.length,          sub:'gözlem',      c:'var(--cyan)'},
+    {l:'KÜMÜLATİF',  v:currentCum.toFixed(1), sub:'mevcut',      c:'var(--cyan)'},
+    {l:'ORT / STD',   v:`${m.toFixed(2)} / ${s2.toFixed(2)}`, sub:'adım başı', c:'var(--text)'},
+    {l:'TREND',       v:trendStr,              sub:'eğim '+tr.toFixed(4), c:Math.abs(tr)<.0005?'var(--cyan)':tr>0?'var(--green)':'var(--red)'},
+    {l:'ACF(1)',       v:a1.toFixed(3),         sub:acfStr,        c:Math.abs(a1)>.3?'var(--green)':'var(--amber)'},
+    {l:'EN SIK DEĞER',v:topVal[0],             sub:'%'+((topVal[1]/data.length)*100).toFixed(1)+' sıklık', c:'var(--green)'},
+    {l:'KÜME',        v:effSet.length,          sub:'benzersiz değer', c:'var(--text)'},
+  ].map(x=>`<div class="stat-item"><span class="sv" style="color:${x.c}">${x.v}</span><span class="sl">${x.l}</span><span style="font-size:8px;color:var(--text3);display:block;margin-top:2px;">${x.sub}</span></div>`).join('');
+
+  /* ── 2D TABLE ── */
+  const nS=CFG.ensSteps,nV=effSet.length;
+  const sIdx=Array.from({length:nV},(_,i)=>i).sort((a,b)=>effSet[b]-effSet[a]);
+  const colMax=Array.from({length:nS},(_,ci)=>{let mx=0;for(let ri=0;ri<nV;ri++)if(prob2d[ci][ri]>mx)mx=prob2d[ci][ri];return mx||1e-9;});
+  const rowMax=Array.from({length:nV},(_,ri)=>{let mx=0;for(let ci=0;ci<nS;ci++)if(prob2d[ci][ri]>mx)mx=prob2d[ci][ri];return mx||1e-9;});
+  const colR=Array.from({length:nS},(_,ci)=>effSet.map((v,ri)=>({v,p:prob2d[ci][ri]})).sort((a,b)=>b.p-a.p));
+
+  function cellBg(gN,bN){
+    let rr=Math.round(10+gN*(0-10)*.7+bN*(255-10)*.5);
+    let gg=Math.round(15+gN*(245-15)*.7+bN*(184-15)*.5);
+    let bb=Math.round(30+gN*(255-30)*.7+bN*(0-30)*.5);
+    rr=Math.max(0,Math.min(255,rr));gg=Math.max(0,Math.min(255,gg));bb=Math.max(0,Math.min(255,bb));
+    const lum=rr*.299+gg*.587+bb*.114;
+    return{bg:`rgb(${rr},${gg},${bb})`,tc:lum<100?'rgba(200,216,232,0.9)':'#050810'};
+  }
+  const hdr='<tr><th class="rh" style="text-align:left;padding-left:10px;">Değer</th>'+
+    Array.from({length:nS},(_,ci)=>`<th>t+${ci+1}</th>`).join('')+'</tr>';
+  const rows=sIdx.map(ri=>{
+    const val=effSet[ri];
+    const cells=Array.from({length:nS},(_,ci)=>{
+      const p=prob2d[ci][ri];
+      const col=cellBg(colMax[ci]>0?p/colMax[ci]:0, rowMax[ri]>0?p/rowMax[ri]:0);
+      return`<td style="background:${col.bg};color:${col.tc}">${(p*100).toFixed(1)}%</td>`;
+    }).join('');
+    return`<tr><td class="sh">${val}</td>${cells}</tr>`;
+  }).join('');
+  const fB='<tr class="foot"><td class="sh" style="font-size:8px;color:var(--green)">EN OLASI</td>'+
+    Array.from({length:nS},(_,ci)=>{const b=colR[ci][0];return`<td class="bt">${b.v}<br><span style="font-size:8px;color:var(--text3)">${(b.p*100).toFixed(1)}%</span></td>`;}).join('')+'</tr>';
+  const fS='<tr class="foot"><td class="sh" style="font-size:8px;color:var(--amber)">2. OLASI</td>'+
+    Array.from({length:nS},(_,ci)=>{const b=colR[ci][1]||colR[ci][0];return`<td class="bs">${b.v}<br><span style="font-size:8px;color:var(--text3)">${(b.p*100).toFixed(1)}%</span></td>`;}).join('')+'</tr>';
+  $('tblWrap').innerHTML=`<table class="p2d"><thead>${hdr}</thead><tbody>${rows}${fB}${fS}</tbody></table>`;
+
+  /* ── CUMULATIVE CHART ── */
+  const hLen=data.length;
+  let cc=0; const cumObs=data.map(v=>{cc+=v;return cc;});
+  const labels=[...Array.from({length:hLen},(_,i)=>i+1),...bandSteps.map(s=>hLen+s)];
+  const tot=labels.length;
+
+  // observed
+  const obsD=[...cumObs,...Array(bandSteps.length).fill(null)];
+
+  // theoretical min/max (hard limits)
+  const thMaxD=[...Array(hLen).fill(null),...bandSteps.map(s=>currentCum+s*sMax)];
+  const thMinD=[...Array(hLen).fill(null),...bandSteps.map(s=>currentCum+s*sMin)];
+
+  // bands from monte carlo — layered from widest to narrowest
+  const null_h=Array(hLen).fill(null);
+  const p95D=[...null_h,...stepBands.map(b=>b.p95)];
+  const p5D= [...null_h,...stepBands.map(b=>b.p5)];
+  const p90D=[...null_h,...stepBands.map(b=>b.p90)];
+  const p10D=[...null_h,...stepBands.map(b=>b.p10)];
+  const p75D=[...null_h,...stepBands.map(b=>b.p75)];
+  const p25D=[...null_h,...stepBands.map(b=>b.p25)];
+  const p60D=[...null_h,...stepBands.map(b=>b.p60)];
+  const p40D=[...null_h,...stepBands.map(b=>b.p40)];
+  const p50D=[...null_h,...stepBands.map(b=>b.p50)];
+
+  // connect last observed point to first projected point
+  const connIdx=hLen-1;
+  [p95D,p90D,p75D,p60D,p50D,p40D,p25D,p10D,p5D,thMaxD,thMinD].forEach(arr=>{
+    if(arr[connIdx]===null) arr[connIdx]=cumObs[connIdx];
+  });
+
+  new Chart($('cumChart').getContext('2d'),{
+    type:'line',
+    data:{labels,datasets:[
+      // ── P5–P95 outermost band (most transparent)
+      {data:p95D,borderColor:'transparent',pointRadius:0,backgroundColor:'rgba(0,245,255,0.07)',fill:'+1',tension:.4,order:10},
+      {data:p5D, borderColor:'transparent',pointRadius:0,backgroundColor:'transparent',fill:false,tension:.4,order:10},
+      // ── P10–P90
+      {data:p90D,borderColor:'transparent',pointRadius:0,backgroundColor:'rgba(0,245,255,0.11)',fill:'+1',tension:.4,order:9},
+      {data:p10D,borderColor:'transparent',pointRadius:0,backgroundColor:'transparent',fill:false,tension:.4,order:9},
+      // ── P25–P75
+      {data:p75D,borderColor:'transparent',pointRadius:0,backgroundColor:'rgba(0,245,255,0.18)',fill:'+1',tension:.4,order:8},
+      {data:p25D,borderColor:'transparent',pointRadius:0,backgroundColor:'transparent',fill:false,tension:.4,order:8},
+      // ── P40–P60 (innermost / most opaque)
+      {data:p60D,borderColor:'transparent',pointRadius:0,backgroundColor:'rgba(0,245,255,0.32)',fill:'+1',tension:.4,order:7},
+      {data:p40D,borderColor:'transparent',pointRadius:0,backgroundColor:'transparent',fill:false,tension:.4,order:7},
+      // ── Median
+      {data:p50D,borderColor:'rgba(220,220,220,0.7)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false,tension:.4,order:6},
+      // ── Theoretical max (upper hard limit)
+      {data:thMaxD,borderColor:'rgba(255,45,85,0.55)',borderWidth:1,borderDash:[4,3],pointRadius:0,fill:'+1',backgroundColor:'rgba(255,45,85,0.04)',tension:0,order:5},
+      // ── Theoretical min (lower hard limit)
+      {data:thMinD,borderColor:'rgba(255,45,85,0.55)',borderWidth:1,borderDash:[4,3],pointRadius:0,fill:false,tension:0,order:5},
+      // ── Observed (on top)
+      {data:obsD,borderColor:'#00f5ff',borderWidth:2.5,pointRadius:0,fill:false,tension:.25,order:1},
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      animation:{duration:700},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          mode:'index',intersect:false,
+          backgroundColor:'rgba(5,8,16,0.95)',
+          borderColor:'rgba(0,245,255,0.3)',borderWidth:1,
+          titleColor:'#00f5ff',bodyColor:'#c8d8e8',
+          filter:item=>item.raw!==null,
+          callbacks:{
+            label:ctx=>{
+              const labels2=['P95','P5','P90','P10','P75','P25','P60','P40','Medyan','Teorik max','Teorik min','Gözlem'];
+              const lbl=labels2[ctx.datasetIndex]||'';
+              return lbl&&ctx.raw!==null?`${lbl}: ${Math.round(ctx.raw)}`:null;
+            }
+          }
+        }
+      },
+      scales:{
+        x:{ticks:{color:CC.tick,maxTicksLimit:14,font:{family:'Share Tech Mono',size:9}},grid:{color:CC.grid}},
+        y:{ticks:{color:CC.tick,font:{family:'Share Tech Mono',size:9}},grid:{color:CC.grid},title:{display:true,text:'Kümülatif Toplam',color:CC.tick,font:{family:'Share Tech Mono',size:9}}}
+      }
+    }
+  });
+
+  /* ── BULGULAR ── */
+  $('findings').innerHTML=[
+    {l:'Veri sayısı',      v:`${data.length} gözlem`,          c:'cy'},
+    {l:'Kümülatif',        v:currentCum.toFixed(2),             c:'cy'},
+    {l:'Küme boyutu',      v:`${effSet.length} değer`,          c:'cy'},
+    {l:'Küme aralığı',     v:`[${sMin} , ${sMax}]`,             c:''},
+    {l:'Ortalama/adım',    v:m.toFixed(4),                       c:''},
+    {l:'Standart sapma',   v:s2.toFixed(4),                      c:''},
+    {l:'ACF(1)',           v:`${a1.toFixed(4)} — ${acfStr}`,    c:Math.abs(a1)>.3?'ok':'warn'},
+    {l:'Trend',            v:trendStr,                            c:Math.abs(tr)<.0005?'cy':tr>0?'ok':'err'},
+    {l:'En sık değer',     v:`${topVal[0]} (%${((topVal[1]/data.length)*100).toFixed(1)})`, c:'ok'},
+    {l:'Teorik min ('+CFG.futureSteps+'. adım)', v:Math.round(currentCum+CFG.futureSteps*sMin), c:'err'},
+    {l:'Teorik max ('+CFG.futureSteps+'. adım)', v:Math.round(currentCum+CFG.futureSteps*sMax), c:'ok'},
+    {l:'Medyan proj.',     v:Math.round(stepBands[stepBands.length-1].p50), c:'cy'},
+  ].map(f=>`<div class="fr"><span class="fl">${f.l}</span><span class="fv ${f.c}">${f.v}</span></div>`).join('');
+}
+
+window.addEventListener('load',boot);
+</script>
+</body>
+</html>
