@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hareketli Ortalama Matrisi</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        input {
+            width: 60px;
+            padding: 5px;
+            margin: 0 5px;
+            text-align: center;
+        }
+        button {
+            padding: 8px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        table {
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 15px 20px;
+            text-align: center;
+            min-width: 50px;
+        }
+        th {
+            background-color: #343a40;
+            color: white;
+        }
+        td.zero {
+            color: #ccc;
+        }
+        td.highlight {
+            font-weight: bold;
+            background-color: #e9ecef;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>5x5 Ortalama Matrisi Oluşturucu</h2>
+    
+    <div class="input-group">
+        <label>Sayıları Girin (a, b, c, d, e): </label>
+        <input type="number" id="numA" value="10">
+        <input type="number" id="numB" value="20">
+        <input type="number" id="numC" value="30">
+        <input type="number" id="numD" value="40">
+        <input type="number" id="numE" value="50">
+        <button onclick="generateMatrix()">Hesapla</button>
+    </div>
+
+    <table id="matrixTable">
+        </table>
+
+    <script>
+        function generateMatrix() {
+            // Girdileri alıp bir diziye çeviriyoruz [a, b, c, d, e]
+            const arr = [
+                parseFloat(document.getElementById('numA').value),
+                parseFloat(document.getElementById('numB').value),
+                parseFloat(document.getElementById('numC').value),
+                parseFloat(document.getElementById('numD').value),
+                parseFloat(document.getElementById('numE').value)
+            ];
+
+            const n = arr.length;
+            const table = document.getElementById('matrixTable');
+            table.innerHTML = ''; // Önceki tabloyu temizle
+
+            // Başlık satırını oluştur
+            let thead = '<tr><th>Sütun 1</th><th>Sütun 2</th><th>Sütun 3</th><th>Sütun 4</th><th>Sütun 5</th></tr>';
+            table.innerHTML += thead;
+
+            // Matris hesaplama ve tabloya yazdırma döngüsü
+            for (let i = 0; i < n; i++) {
+                let rowHtml = '<tr>';
+                for (let j = 0; j < n; j++) {
+                    if (j < i) {
+                        // Alt sol kısımlar 0 olacak
+                        rowHtml += '<td class="zero">0</td>';
+                    } else {
+                        // j-i'den j'ye kadar olan elemanların ortalamasını alıyoruz
+                        let sum = 0;
+                        for (let k = j - i; k <= j; k++) {
+                            sum += arr[k];
+                        }
+                        const avg = sum / (i + 1);
+                        
+                        // Sağ üst köşeyi (ilk satır, son sütun) vurgulamak için sınıf ekliyoruz
+                        let cellClass = (i === 0 && j === n - 1) ? 'highlight' : '';
+                        
+                        // Sonuçları virgülden sonra en fazla 2 basamak olacak şekilde formatlıyoruz
+                        rowHtml += `<td class="${cellClass}">${avg.toFixed(2).replace('.00', '')}</td>`;
+                    }
+                }
+                rowHtml += '</tr>';
+                table.innerHTML += rowHtml;
+            }
+        }
+
+        // Sayfa yüklendiğinde varsayılan değerlerle ilk tabloyu oluştur
+        window.onload = generateMatrix;
+    </script>
+</body>
+</html>
