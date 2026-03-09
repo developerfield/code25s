@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>TAHMİN // ANALİZ</title>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+:root{
+  --bg:#050810;--bg2:#080d1a;--bg3:#0c1220;--panel:#0a0f1e;
+  --b1:#0f3460;--b2:#1a4a7a;
+  --cyan:#00f5ff;--cyan2:#00c8d4;
+  --green:#00ff88;--red:#ff2d55;--amber:#ffb800;--purple:#b06aff;
+  --text:#c8d8e8;--text2:#6a8aaa;--text3:#3a5a7a;
+  --scan:rgba(0,245,255,0.025);--grid:rgba(0,245,255,0.035);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,var(--scan) 2px,var(--scan) 4px);pointer-events:none;z-index:9999;}
+body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+.wrap{position:relative;z-index:1;max-width:1500px;margin:0 auto;padding:24px 20px 80px;}
+
+/* HEADER */
+header{border-bottom:1px solid var(--b1);padding-bottom:14px;margin-bottom:28px;position:relative;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+header::after{content:'';position:absolute;bottom:-1px;left:0;width:160px;height:1px;background:var(--cyan);box-shadow:0 0 12px var(--cyan);}
+.logo{font-family:'Orbitron',monospace;font-size:clamp(13px,2.5vw,26px);font-weight:900;letter-spacing:4px;}
+.logo .acc{color:var(--cyan);text-shadow:0 0 16px var(--cyan);}
+.logo .slash{color:var(--text3);}
+.hmeta{text-align:right;font-size:9px;letter-spacing:2px;color:var(--text3);line-height:2.1;}
+.live{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 5px var(--green);animation:pulse 1.4s infinite;vertical-align:middle;margin-right:4px;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* IDLE/LOADING */
+.state-screen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:18px;}
+.state-screen.active{display:flex;}
+.big-btn{font-family:'Orbitron',monospace;font-size:11px;letter-spacing:3px;padding:14px 36px;background:transparent;border:1px solid var(--cyan);color:var(--cyan);cursor:pointer;text-transform:uppercase;position:relative;overflow:hidden;transition:box-shadow .2s;}
+.big-btn:hover{box-shadow:0 0 24px rgba(0,245,255,.35);}
+.idle-sub{font-size:9px;letter-spacing:2px;color:var(--text3);}
+.pw{width:340px;}
+.plbl{font-size:9px;color:var(--text3);letter-spacing:1px;margin-bottom:5px;}
+.po{height:2px;background:var(--bg3);}
+.pi{height:100%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);transition:width .12s linear;width:0%;}
+.pp{font-size:10px;font-weight:700;color:var(--cyan);text-align:right;margin-top:4px;}
+.blog{font-size:10px;color:var(--text2);line-height:2;text-align:center;}
+.blog .ok{color:var(--green);} .blog .er{color:var(--red);}
+
+/* DASHBOARD */
+#dash{display:none;}
+
+/* PANEL */
+.panel{background:var(--panel);border:1px solid var(--b1);padding:16px 18px;margin-bottom:16px;}
+.ptitle{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:var(--cyan);border-bottom:1px solid var(--b1);padding-bottom:8px;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+.ptitle::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--cyan);box-shadow:0 0 5px var(--cyan);flex-shrink:0;}
+.psub{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--text3);font-weight:normal;text-transform:none;}
+
+/* CHART */
+.ch{position:relative;width:100%;margin-bottom:14px;}
+.ch canvas{position:absolute;inset:0;width:100%!important;height:100%!important;}
+.h300{height:300px;} .h260{height:260px;} .h280{height:280px;}
+
+/* LEGEND */
+.legrow{display:flex;gap:12px;flex-wrap:wrap;font-size:9px;color:var(--text3);margin-bottom:10px;align-items:center;}
+.li{display:flex;align-items:center;gap:4px;}
+.ll{width:18px;height:2px;border-radius:1px;}
+.lb{width:14px;height:8px;border-radius:1px;}
+
+/* PARAM PANEL */
+.param-panel{background:var(--bg2);border:1px solid var(--b1);border-top:none;padding:12px 16px 14px;margin-bottom:16px;}
+.param-grid{display:flex;flex-wrap:wrap;gap:16px 28px;align-items:flex-start;}
+.param-item{display:flex;flex-direction:column;gap:5px;min-width:160px;}
+.param-label{font-size:8px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;}
+.param-row{display:flex;align-items:center;gap:6px;}
+.param-val{font-family:'Orbitron',monospace;font-size:10px;color:var(--cyan);min-width:38px;text-align:right;}
+.param-row input[type=range]{
+  -webkit-appearance:none;appearance:none;
+  width:110px;height:3px;
+  background:var(--b1);border-radius:2px;outline:none;cursor:pointer;
+}
+.param-row input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:10px;height:10px;border-radius:50%;
+  background:var(--cyan);box-shadow:0 0 6px var(--cyan);cursor:pointer;
+}
+.param-row input[type=range]::-moz-range-thumb{
+  width:10px;height:10px;border-radius:50%;border:none;
+  background:var(--cyan);box-shadow:0 0 6px var(--cyan);cursor:pointer;
+}
+.param-btn{width:18px;height:18px;background:var(--bg3);border:1px solid var(--b1);color:var(--text2);font-size:11px;line-height:1;cursor:pointer;padding:0;flex-shrink:0;}
+.param-btn:hover{border-color:var(--cyan);color:var(--cyan);}
+.apply-row{display:flex;justify-content:flex-end;margin-top:10px;gap:8px;align-items:center;}
+.apply-btn{background:var(--bg3);border:1px solid var(--cyan);color:var(--cyan);font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;padding:5px 14px;cursor:pointer;box-shadow:0 0 8px rgba(0,245,255,.15);}
+.apply-btn:hover{box-shadow:0 0 16px rgba(0,245,255,.3);}
+.section-lbl{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:4px;color:var(--text3);padding:8px 0 10px;border-top:1px solid var(--b1);margin-top:6px;}
+
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:var(--b2);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div>
+    <div style="font-size:8px;letter-spacing:4px;color:var(--cyan2);opacity:.6;margin-bottom:5px;">// MA · BENFORD · ÜSTEL · KARMA</div>
+    <div class="logo">TAHMİN <span class="slash">//</span> <span class="acc">ANALİZ</span></div>
+  </div>
+  <div class="hmeta">
+    <div><span class="live"></span>SİSTEM AKTİF</div>
+    <div id="updAt">—</div>
+  </div>
+</header>
+
+<!-- IDLE -->
+<div id="sIdle" class="state-screen active">
+  <div class="idle-sub">// VERİ ANALİZ SİSTEMİ v2</div>
+  <button class="big-btn" onclick="startAnalysis()">VERİYİ ANALİZ ET</button>
+  <div class="idle-sub">Firebase · otomatik veri çekimi</div>
+</div>
+
+<!-- LOADING -->
+<div id="sLoad" class="state-screen">
+  <div style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:var(--cyan2);opacity:.7;">// analiz ediliyor</div>
+  <div class="pw">
+    <div class="plbl" id="pLbl">Bağlanıyor...</div>
+    <div class="po"><div class="pi" id="pBar"></div></div>
+    <div class="pp" id="pPct">0%</div>
+  </div>
+  <div class="blog" id="bLog"></div>
+</div>
+
+<!-- ERROR -->
+<div id="sErr" class="state-screen">
+  <div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--red);" id="errMsg">Hata</div>
+  <button class="big-btn" onclick="resetIdle()" style="font-size:9px;padding:10px 24px;">YENİDEN DENE</button>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dash">
+
+  <!-- ① HAM VERİ + MA -->
+  <div class="section-lbl">// 01 · HAM VERİ + HAREKETLİ ORTALAMA</div>
+  <div class="panel">
+    <div class="ptitle">HAM VERİ <span class="psub">· orijinal seri üzerine hareketli ortalama</span></div>
+    <div class="legrow">
+      <div class="li"><div class="ll" style="background:var(--cyan)"></div>Ham veri</div>
+      <div class="li"><div class="ll" style="background:var(--amber)"></div>MA</div>
+    </div>
+    <div class="ch h300"><canvas id="c1"></canvas></div>
+  </div>
+  <div class="param-panel">
+    <div class="param-grid">
+      <div class="param-item">
+        <div class="param-label">Pencere (MA)</div>
+        <div class="param-row">
+          <button class="param-btn" onclick="nudge('p_ma',-1)">−</button>
+          <input type="range" id="r_ma" min="1" max="50" value="5" oninput="syncParam('p_ma','r_ma',1,50,1)">
+          <button class="param-btn" onclick="nudge('p_ma',+1)">+</button>
+          <span class="param-val" id="p_ma">5</span>
+        </div>
+      </div>
+    </div>
+    <div class="apply-row"><button class="apply-btn" onclick="redraw()">UYGULA</button></div>
+  </div>
+
+  <!-- ② KÜMÜLATİF -->
+  <div class="section-lbl">// 02 · KÜMÜLATİF VERİ</div>
+  <div class="panel">
+    <div class="ptitle">KÜMÜLATİF VERİ <span class="psub">· birikimli toplam (parametresiz)</span></div>
+    <div class="legrow">
+      <div class="li"><div class="ll" style="background:var(--cyan)"></div>Kümülatif</div>
+    </div>
+    <div class="ch h300"><canvas id="c2"></canvas></div>
+  </div>
+
+  <!-- ③ MOMENTUM KÜMÜLATİF (BENFORD) -->
+  <div class="section-lbl">// 03 · KÜMÜLATİF MOMENTUM (BENFORD)</div>
+  <div class="panel">
+    <div class="ptitle">KÜMÜLATİF BENFORD MOMENTUM <span class="psub">· net ivmenin birikimli toplamı</span></div>
+    <div class="legrow">
+      <div class="li"><div class="ll" style="background:var(--cyan)"></div>Kümülatif momentum</div>
+      <div class="li"><div class="lb" style="background:rgba(0,255,136,.18)"></div>Pozitif ↑</div>
+      <div class="li"><div class="lb" style="background:rgba(255,45,85,.18)"></div>Negatif ↓</div>
+    </div>
+    <div class="ch h280"><canvas id="c3"></canvas></div>
+  </div>
+  <div class="param-panel">
+    <div class="param-grid">
+      <div class="param-item">
+        <div class="param-label">Benford Pencere</div>
+        <div class="param-row">
+          <button class="param-btn" onclick="nudge('p_bwin',-1)">−</button>
+          <input type="range" id="r_bwin" min="3" max="40" value="10" oninput="syncParam('p_bwin','r_bwin',3,40,1)">
+          <button class="param-btn" onclick="nudge('p_bwin',+1)">+</button>
+          <span class="param-val" id="p_bwin">10</span>
+        </div>
+      </div>
+      <div class="param-item">
+        <div class="param-label">Momentum Ağırlık</div>
+        <div class="param-row">
+          <button class="param-btn" onclick="nudge('p_bw',-.1)">−</button>
+          <input type="range" id="r_bw" min="1" max="50" value="10" oninput="syncParam('p_bw','r_bw',1,50,.1)">
+          <button class="param-btn" onclick="nudge('p_bw',+.1)">+</button>
+          <span class="param-val" id="p_bw">1.0</span>
+        </div>
+      </div>
+    </div>
+    <div class="apply-row"><button class="apply-btn" onclick="redraw()">UYGULA</button></div>
+  </div>
+
+  <!-- ④ MA MOMENTUM -->
+  <div class="section-lbl">// 04 · HAREKETLİ ORTALAMA MOMENTUM</div>
+  <div class="panel">
+    <div class="ptitle">MA MOMENTUM <span class="psub">· MA eğiminin birikimli normalize toplamı</span></div>
+    <div class="legrow">
+      <div class="li"><div class="ll" style="background:var(--purple)"></div>MA momentum</div>
+      <div class="li"><div class="lb" style="background:rgba(176,106,255,.18)"></div>Pozitif ↑</div>
+      <div class="li"><div class="lb" style="background:rgba(255,45,85,.18)"></div>Negatif ↓</div>
+    </div>
+    <div class="ch h280"><canvas id="c4"></canvas></div>
+  </div>
+  <div class="param-panel">
+    <div class="param-grid">
+      <div class="param-item">
+        <div class="param-label">MA Pencere</div>
+        <div class="param-row">
+          <button class="param-btn" onclick="nudge('p_ma4',-1)">−</button>
+          <input type="range" id="r_ma4" min="1" max="50" value="5" oninput="syncParam('p_ma4','r_ma4',1,50,1)">
+          <button class="param-btn" onclick="nudge('p_ma4',+1)">+</button>
+          <span class="param-val" id="p_ma4">5</span>
+        </div>
+      </div>
+      <div class="param-item">
+        <div class="param-label">Normalize Çarpan</div>
+        <div class="param-row">
+          <button class="param-btn" onclick="nudge('p_mnorm',-.1)">−</button>
+          <input type="range" id="r_mnorm" min="1" max="100" value="10" oninput="syncParam('p_mnorm','r_mnorm',1,100,.1)">
+          <button class="param-btn" onclick="nudge('p_mnorm',+.1)">+</button>
+          <span class="param-val" id="p_mnorm">1.0</span>
+        </div>
+      </div>
+    </div>
+    <div class="apply-row"><button class="apply-btn" onclick="redraw()">UYGULA</button></div>
+  </div>
+
+  <!-- ⑤ ÜSTEL KÜMÜLATİF -->
+  <div class="section-lbl">// 05 · ÜSTEL DEĞİŞİMLİ KÜMÜLATİF</div>
+  <div class="panel">
+    <div class="ptitle">ÜSTEL KÜMÜLATİF <span class="psub">· exp(α · tanh(Benford) · tanh(MA eğimi)) ile modüle edilmiş birikimli</span></div>
+    <div class="legrow">
+      <div class="li"><div class="ll" style="background:var(--cyan)"></div>Gerçek kümülatif</div>
+      <div class="li"><div class="ll" style="background:var(--amber)"></div>Üstel model</div>
+    </div>
+    <div class="ch h300"><canvas id="c5"></canvas></div>
+  </div>
+  <div class="param-panel">
+    <div class="param-grid">
+      <div class="param-item">
+        <div class="param-label">Alpha (üstel güç)</div>
+        <div class="param-row">
+          <button class="param-btn" onclick="nudge('p_alpha',-.01)">−</button>
+          <input type="range" id="r_alpha" min="1" max="100" value="8" oninput="syncParam('p_alpha','r_alpha',1,100,.01)">
+          <button class="param-btn" onclick="nudge('p_alpha',+.01)">+</button>
+          <span class="param-val" id="p_alpha">0.08</span>
+        </div>
+      </div>
+      <div class="param-item">
+        <div class="param-label">Benford Ağırlık</div>
+        <div class="param-row">
+          <button class="param-btn" onclick="nudge('p_ealpha',-.1)">−</button>
+          <input type="range" id="r_ealpha" min="1" max="50" value="20" oninput="syncParam('p_ealpha','r_ealpha',1,50,.1)">
+          <button class="param-btn" onclick="nudge('p_ealpha',+.1)">+</button>
+          <span class="param-val" id="p_ealpha">2.0</span>
+        </div>
+      </div>
+      <div class="param-item">
+        <div class="param-label">MA Ağırlık</div>
+        <div class="param-row">
+          <button class="param-btn" onclick="nudge('p_ema',-.1)">−</button>
+          <input type="range" id="r_ema" min="1" max="50" value="20" oninput="syncParam('p_ema','r_ema',1,50,.1)">
+          <button class="param-btn" onclick="nudge('p_ema',+.1)">+</button>
+          <span class="param-val" id="p_ema">2.0</span>
+        </div>
+      </div>
+      <div class="param-item">
+        <div class="param-label">Momentum Ağırlık</div>
+        <div class="param-row">
+          <button class="param-btn" onclick="nudge('p_emom',-.1)">−</button>
+          <input type="range" id="r_emom" min="1" max="50" value="10" oninput="syncParam('p_emom','r_emom',1,50,.1)">
+          <button class="param-btn" onclick="nudge('p_emom',+.1)">+</button>
+          <span class="param-val" id="p_emom">1.0</span>
+        </div>
+      </div>
+    </div>
+    <div class="apply-row"><button class="apply-btn" onclick="redraw()">UYGULA</button></div>
+  </div>
+
+  <!-- ⑥ VEKTÖR GENLİĞİ -->
+  <div class="section-lbl">// 06 · VEKTÖR GENLİĞİ · √(x²+y²+z²)</div>
+  <div class="panel">
+    <div class="ptitle">VEKTÖR GENLİĞİ <span class="psub">· x=MA değeri · y=kümülatif Benford mom. · z=üstel kümülatif · norm: √(x²+y²+z²)</span></div>
+    <div class="legrow">
+      <div class="li"><div class="ll" style="background:var(--green)"></div>√(x²+y²+z²)</div>
+      <div class="li"><div class="ll" style="background:rgba(0,245,255,.35)"></div>MA (x)</div>
+      <div class="li"><div class="ll" style="background:rgba(0,255,136,.35)"></div>Benford mom. (y)</div>
+      <div class="li"><div class="ll" style="background:rgba(255,184,0,.35)"></div>Üstel küm. (z)</div>
+    </div>
+    <div class="ch h300"><canvas id="c6"></canvas></div>
+  </div>
+  <div class="param-panel">
+    <div class="param-grid">
+      <div class="param-item">
+        <div class="param-label">X Ölçek (MA)</div>
+        <div class="param-row">
+          <button class="param-btn" onclick="nudge('p_sx',-.01)">−</button>
+          <input type="range" id="r_sx" min="1" max="200" value="100" oninput="syncParam('p_sx','r_sx',1,200,.01)">
+          <button class="param-btn" onclick="nudge('p_sx',+.01)">+</button>
+          <span class="param-val" id="p_sx">1.00</span>
+        </div>
+      </div>
+      <div class="param-item">
+        <div class="param-label">Y Ölçek (Benford)</div>
+        <div class="param-row">
+          <button class="param-btn" onclick="nudge('p_sy',-.01)">−</button>
+          <input type="range" id="r_sy" min="1" max="200" value="100" oninput="syncParam('p_sy','r_sy',1,200,.01)">
+          <button class="param-btn" onclick="nudge('p_sy',+.01)">+</button>
+          <span class="param-val" id="p_sy">1.00</span>
+        </div>
+      </div>
+      <div class="param-item">
+        <div class="param-label">Z Ölçek (Üstel)</div>
+        <div class="param-row">
+          <button class="param-btn" onclick="nudge('p_sz',-.01)">−</button>
+          <input type="range" id="r_sz" min="1" max="200" value="100" oninput="syncParam('p_sz','r_sz',1,200,.01)">
+          <button class="param-btn" onclick="nudge('p_sz',+.01)">+</button>
+          <span class="param-val" id="p_sz">1.00</span>
+        </div>
+      </div>
+    </div>
+    <div class="apply-row"><button class="apply-btn" onclick="redraw()">UYGULA</button></div>
+  </div>
+
+  <!-- ⑦ BİLEŞİK MASTER -->
+  <div class="section-lbl">// 07 · BİLEŞİK MASTER · MA + Benford + Üstel</div>
+  <div class="panel">
+    <div class="ptitle">BİLEŞİK MASTER <span class="psub">· üç yöntemin ağırlıklı birleşimi → modüle edilmiş kümülatif yol</span></div>
+    <div class="legrow">
+      <div class="li"><div class="ll" style="background:var(--cyan)"></div>Gerçek kümülatif</div>
+      <div class="li"><div class="ll" style="background:var(--amber)"></div>Bileşik model</div>
+      <div class="li"><div class="ll" style="background:rgba(176,106,255,.6)"></div>Vektör genliği (ölçekli)</div>
+    </div>
+    <div class="ch h300"><canvas id="c7"></canvas></div>
+  </div>
+  <div class="param-panel">
+    <div class="param-grid">
+      <div class="param-item">
+        <div class="param-label">MA Ağırlığı (w1)</div>
+        <div class="param-row">
+          <button class="param-btn" onclick="nudge('p_w1',-.05)">−</button>
+          <input type="range" id="r_w1" min="0" max="100" value="33" oninput="syncParam('p_w1','r_w1',0,100,.05)">
+          <button class="param-btn" onclick="nudge('p_w1',+.05)">+</button>
+          <span class="param-val" id="p_w1">1.65</span>
+        </div>
+      </div>
+      <div class="param-item">
+        <div class="param-label">Benford Ağırlığı (w2)</div>
+        <div class="param-row">
+          <button class="param-btn" onclick="nudge('p_w2',-.05)">−</button>
+          <input type="range" id="r_w2" min="0" max="100" value="33" oninput="syncParam('p_w2','r_w2',0,100,.05)">
+          <button class="param-btn" onclick="nudge('p_w2',+.05)">+</button>
+          <span class="param-val" id="p_w2">1.65</span>
+        </div>
+      </div>
+      <div class="param-item">
+        <div class="param-label">Üstel Ağırlığı (w3)</div>
+        <div class="param-row">
+          <button class="param-btn" onclick="nudge('p_w3',-.05)">−</button>
+          <input type="range" id="r_w3" min="0" max="100" value="33" oninput="syncParam('p_w3','r_w3',0,100,.05)">
+          <button class="param-btn" onclick="nudge('p_w3',+.05)">+</button>
+          <span class="param-val" id="p_w3">1.65</span>
+        </div>
+      </div>
+      <div class="param-item">
+        <div class="param-label">Master Alpha</div>
+        <div class="param-row">
+          <button class="param-btn" onclick="nudge('p_malpha',-.01)">−</button>
+          <input type="range" id="r_malpha" min="1" max="100" value="10" oninput="syncParam('p_malpha','r_malpha',1,100,.01)">
+          <button class="param-btn" onclick="nudge('p_malpha',+.01)">+</button>
+          <span class="param-val" id="p_malpha">0.10</span>
+        </div>
+      </div>
+      <div class="param-item">
+        <div class="param-label">Benford Direnç γ</div>
+        <div class="param-row">
+          <button class="param-btn" onclick="nudge('p_gamma',-.05)">−</button>
+          <input type="range" id="r_gamma" min="1" max="100" value="20" oninput="syncParam('p_gamma','r_gamma',1,100,.05)">
+          <button class="param-btn" onclick="nudge('p_gamma',+.05)">+</button>
+          <span class="param-val" id="p_gamma">1.00</span>
+        </div>
+      </div>
+      <div class="param-item">
+        <div class="param-label">Momentum Decay λ</div>
+        <div class="param-row">
+          <button class="param-btn" onclick="nudge('p_lambda',-.01)">−</button>
+          <input type="range" id="r_lambda" min="1" max="100" value="95" oninput="syncParam('p_lambda','r_lambda',1,100,.01)">
+          <button class="param-btn" onclick="nudge('p_lambda',+.01)">+</button>
+          <span class="param-val" id="p_lambda">0.95</span>
+        </div>
+      </div>
+    </div>
+    <div class="apply-row">
+      <span style="font-size:8px;color:var(--text3);letter-spacing:1px;">Benford direnç: başta zor, devam edince kolaylaşır</span>
+      <button class="apply-btn" onclick="redraw()">UYGULA</button>
+    </div>
+  </div>
+
+</div><!-- /dash -->
+</div><!-- /wrap -->
+
+<script>
+'use strict';
+
+const CFG={
+  firebase:{apiKey:"AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",authDomain:"paralayici.firebaseapp.com",projectId:"paralayici",storageBucket:"paralayici.firebasestorage.app",messagingSenderId:"980843550614",appId:"1:980843550614:web:93dd5bda4ddc377b20efb7"},
+  collection:"cumulative_daily_data",valueField:"value",orderField:"date",
+};
+
+/* ── PARAM SYSTEM ── */
+// Each param: {id, rangeId, min, max, step, val}
+// p_alpha raw slider 1-100 maps to 0.01-1.00 (step .01)
+// p_bw raw 1-50 → 0.1-5.0 (step .1)
+// etc.
+
+const PARAMS={
+  p_ma:   {rid:'r_ma',   min:1, max:50, step:1,    val:5},
+  p_bwin: {rid:'r_bwin', min:3, max:40, step:1,    val:10},
+  p_bw:   {rid:'r_bw',   min:1, max:50, step:.1,   val:1.0},
+  p_ma4:  {rid:'r_ma4',  min:1, max:50, step:1,    val:5},
+  p_mnorm:{rid:'r_mnorm',min:1, max:100,step:.1,   val:1.0},
+  p_alpha:{rid:'r_alpha',min:1, max:100,step:.01,  val:0.08},
+  p_ealpha:{rid:'r_ealpha',min:1,max:50,step:.1,   val:2.0},
+  p_ema:  {rid:'r_ema',  min:1, max:50, step:.1,   val:2.0},
+  p_emom: {rid:'r_emom', min:1, max:50, step:.1,   val:1.0},
+  p_sx:   {rid:'r_sx',   min:1, max:200,step:.01,  val:1.0},
+  p_sy:   {rid:'r_sy',   min:1, max:200,step:.01,  val:1.0},
+  p_sz:   {rid:'r_sz',   min:1, max:200,step:.01,  val:1.0},
+  p_w1:   {rid:'r_w1',   min:0, max:100,step:.05,  val:1.65},
+  p_w2:   {rid:'r_w2',   min:0, max:100,step:.05,  val:1.65},
+  p_w3:   {rid:'r_w3',   min:0, max:100,step:.05,  val:1.65},
+  p_malpha:{rid:'r_malpha',min:1,max:100,step:.01, val:0.10},
+  p_gamma:{rid:'r_gamma',min:1, max:100,step:.05,  val:1.0},
+  p_lambda:{rid:'r_lambda',min:1,max:100,step:.01, val:0.95},
+};
+
+function pGet(id){return PARAMS[id].val;}
+function pSet(id,v){
+  const p=PARAMS[id];
+  p.val=Math.round(Math.max(p.min,Math.min(p.max,v))/p.step)*p.step;
+  // Update display
+  const disp=document.getElementById(id);
+  if(disp) disp.textContent=p.val.toFixed(p.step<1?2:0);
+  // Sync slider: slider value = (val - min) / step + 1... 
+  // slider maps 1..sliderMax to min..max linearly
+  const slider=document.getElementById(p.rid);
+  if(slider){
+    const sliderRange=parseInt(slider.max)-parseInt(slider.min);
+    const fraction=(p.val-p.min)/(p.max-p.min);
+    slider.value=Math.round(parseInt(slider.min)+fraction*sliderRange);
+  }
+}
+function syncParam(pid,rid,smin,smax,step){
+  const slider=document.getElementById(rid);
+  const sv=parseInt(slider.value);
+  const fraction=(sv-parseInt(slider.min))/(parseInt(slider.max)-parseInt(slider.min));
+  const p=PARAMS[pid];
+  const newVal=p.min+fraction*(p.max-p.min);
+  pSet(pid, Math.round(newVal/p.step)*p.step);
+}
+function nudge(pid,delta){
+  pSet(pid, pGet(pid)+delta);
+}
+// Init sliders to match default vals
+function initParams(){
+  for(const[id,p] of Object.entries(PARAMS)){
+    pSet(id,p.val);
+    const disp=document.getElementById(id);
+    if(disp) disp.textContent=p.val.toFixed(p.step<1?2:0);
+  }
+}
+
+/* ── UTILS ── */
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const CC={grid:'rgba(15,52,96,0.55)',tick:'#3a5a7a'};
+const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
+
+function movingAvg(arr,w){
+  const ww=Math.max(1,Math.round(w));
+  return arr.map((_,i)=>{const s=Math.max(0,i-ww+1);const sl=arr.slice(s,i+1);return sl.reduce((a,b)=>a+b,0)/sl.length;});
+}
+
+function baseOpts(y2=false){
+  return{
+    responsive:true,maintainAspectRatio:false,animation:{duration:350},
+    plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,backgroundColor:'rgba(5,8,16,0.95)',borderColor:'rgba(0,245,255,0.25)',borderWidth:1,titleColor:'#00f5ff',bodyColor:'#c8d8e8'}},
+    scales:{
+      x:{ticks:{color:CC.tick,maxTicksLimit:14,font:{family:'Share Tech Mono',size:9}},grid:{color:CC.grid}},
+      y:{ticks:{color:CC.tick,font:{family:'Share Tech Mono',size:9}},grid:{color:CC.grid}},
+      ...(y2?{y2:{position:'right',ticks:{color:'rgba(176,106,255,.5)',font:{family:'Share Tech Mono',size:8}},grid:{display:false}}}:{})
+    }
+  };
+}
+
+const _charts={};
+function mkChart(id,cfg){
+  if(_charts[id]){_charts[id].destroy();delete _charts[id];}
+  const canvas=document.getElementById(id);
+  if(!canvas)return;
+  _charts[id]=new Chart(canvas.getContext('2d'),cfg);
+}
+
+/* ── BENFORD ── */
+function benfordNet(data,win){
+  const WIN=Math.max(3,Math.round(win));
+  const net=[];
+  for(let t=1;t<data.length;t++){
+    let up=0,dn=0;
+    for(let w=Math.max(0,t-WIN);w<t;w++){if(data[w]>0)up++;else if(data[w]<0)dn++;}
+    const uM=Math.log2(1+up)/Math.log2(1+WIN);
+    const dM=Math.log2(1+dn)/Math.log2(1+WIN);
+    net.push(uM-dM);
+  }
+  return net; // length = data.length - 1
+}
+
+/* Benford resistance: direction change is hard at first,
+   but if momentum keeps going same direction it gets easier.
+   resistanceFactor(streak, gamma) = 1 / (1 + gamma * log2(1+streak))
+   So at streak=0 resistance=1 (hardest), at large streak → 0 (easiest) */
+function benfordResistance(net,gamma){
+  const g=Math.max(0.01,gamma);
+  let streak=0,lastSign=0;
+  return net.map(v=>{
+    const s=v>0?1:v<0?-1:0;
+    if(s===lastSign&&s!==0) streak++;
+    else{streak=0;lastSign=s;}
+    const res=1/(1+g*Math.log2(1+streak));
+    return v*res; // scaled by resistance
+  });
+}
+
+/* ── MAIN COMPUTE ── */
+function computeAll(data){
+  const n=data.length;
+  const labels=Array.from({length:n},(_,i)=>i+1);
+
+  // params
+  const maWin  =pGet('p_ma');
+  const bWin   =pGet('p_bwin');
+  const bW     =pGet('p_bw');
+  const ma4Win =pGet('p_ma4');
+  const mNorm  =pGet('p_mnorm');
+  const alpha  =pGet('p_alpha');
+  const eAlpha =pGet('p_ealpha');
+  const eMA    =pGet('p_ema');
+  const eMom   =pGet('p_emom');
+  const sx     =pGet('p_sx');
+  const sy     =pGet('p_sy');
+  const sz     =pGet('p_sz');
+  const w1     =pGet('p_w1');
+  const w2     =pGet('p_w2');
+  const w3     =pGet('p_w3');
+  const mAlpha =pGet('p_malpha');
+  const gamma  =pGet('p_gamma');
+  const lambda =pGet('p_lambda');
+
+  /* cumulative series */
+  let acc=0;
+  const cumData=data.map(v=>{acc+=v;return acc;});
+
+  /* MA for chart1 */
+  const maRaw=movingAvg(data,maWin);
+
+  /* Benford net (length n-1) */
+  const bNet=benfordNet(data,bWin);
+  const bNetW=bNet.map(v=>v*bW);
+  const momLabels=Array.from({length:bNet.length},(_,i)=>i+2);
+
+  /* cumulative Benford momentum */
+  let bAcc=0;
+  const cumBenMom=bNetW.map(v=>{bAcc+=v;return bAcc;});
+
+  /* MA for chart4 */
+  const ma4=movingAvg(data,ma4Win);
+  const ma4Slope=ma4.map((v,i)=>i===0?0:v-ma4[i-1]);
+  const maxSl=Math.max(...ma4Slope.map(Math.abs),1e-9);
+  const normSlope=ma4Slope.map(v=>(v/maxSl)*mNorm);
+  let slAcc=0;
+  const cumMAMom=normSlope.map(v=>{slAcc+=v;return slAcc;});
+
+  /* Benford with resistance (for chart7) */
+  const bResist=benfordResistance(bNet,gamma);
+
+  /* Exponential cumulative (chart5) */
+  // at each step t>=2: composite[t] = cumData[t] * exp(alpha * sig(t))
+  // sig(t) = tanh(eAlpha * bNet[t-1]) * tanh(eMA * normSlope[t])
+  //          * (1 + eMom * |cumBenMom[t-1]|)  (exponential momentum boost)
+  const expCum=cumData.map((cv,i)=>{
+    if(i<1) return cv;
+    const bi=i-1;
+    const bn=bNet[bi]||0;
+    const ms=normSlope[i]||0;
+    const cm=cumBenMom[bi]||0;
+    const sig=Math.tanh(eAlpha*bn)*Math.tanh(eMA*ms)*(1+eMom*Math.abs(cm));
+    return cv*Math.exp(alpha*sig);
+  });
+
+  /* Chart6: vector magnitude √(x²+y²+z²)
+     x = MA value (maRaw), y = cumBenMom (padded), z = expCum
+     All need same length n — pad cumBenMom with 0 at start */
+  const cbmPad=[0,...cumBenMom]; // length n
+  const vecMag=Array.from({length:n},(_,i)=>{
+    const x=(maRaw[i]||0)*sx;
+    const y=(cbmPad[i]||0)*sy;
+    const z=(expCum[i]||0)*sz;
+    return Math.sqrt(x*x+y*y+z*z);
+  });
+
+  /* Chart7: composite master
+     Signal = w1*MA_signal + w2*Benford_resistance + w3*exp_signal
+     MA signal = normalize slope
+     Benford resistance = benfordResistance (already scaled)
+     Exp signal = tanh of exp-cum slope
+     Combined with decaying momentum accumulator (lambda decay) */
+  const bResPad=[0,...bResist]; // length n
+  const expSlope=expCum.map((v,i)=>i===0?0:v-expCum[i-1]);
+  const maxExpSl=Math.max(...expSlope.map(Math.abs),1e-9);
+  const normExpSlope=expSlope.map(v=>Math.tanh(v/maxExpSl));
+
+  let momDecay=0;
+  const masterSig=Array.from({length:n},(_,i)=>{
+    const s1=normSlope[i]||0;  // MA signal
+    const s2=bResPad[i]||0;    // Benford resistance signal
+    const s3=normExpSlope[i]||0; // exp slope signal
+    const rawSig=(w1*s1+w2*s2+w3*s3)/(w1+w2+w3+1e-9);
+    momDecay=momDecay*lambda+rawSig*(1-lambda);
+    return momDecay;
+  });
+  const masterCum=cumData.map((cv,i)=>cv*Math.exp(mAlpha*masterSig[i]));
+
+  return{labels,momLabels,maRaw,cumData,cumBenMom,cumMAMom,expCum,vecMag,masterCum,bNetW,normSlope,ma4,cbmPad};
+}
+
+/* ── DRAW ── */
+function redraw(){
+  if(!_data)return;
+  const d=computeAll(_data);
+  const n=_data.length;
+
+  /* C1: Ham + MA */
+  mkChart('c1',{type:'line',data:{labels:d.labels,datasets:[
+    {data:d.maRaw,borderColor:'rgba(255,184,0,.85)',borderWidth:1.5,borderDash:[5,3],pointRadius:0,fill:false,tension:.4},
+    {data:_data,borderColor:'#00f5ff',borderWidth:1.5,pointRadius:0,fill:false,tension:.2},
+  ]},options:baseOpts()});
+
+  /* C2: Kümülatif */
+  mkChart('c2',{type:'line',data:{labels:d.labels,datasets:[
+    {data:d.cumData,borderColor:'#00f5ff',borderWidth:2,pointRadius:0,fill:false,tension:.2},
+  ]},options:baseOpts()});
+
+  /* C3: Kümülatif Benford momentum */
+  mkChart('c3',{type:'line',data:{labels:d.momLabels,datasets:[
+    {data:Array(d.momLabels.length).fill(0),borderColor:'rgba(255,184,0,.3)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false},
+    {data:d.cumBenMom.map(v=>Math.max(0,v)),borderColor:'transparent',pointRadius:0,fill:'origin',backgroundColor:'rgba(0,255,136,.15)',tension:.35},
+    {data:d.cumBenMom.map(v=>Math.min(0,v)),borderColor:'transparent',pointRadius:0,fill:'origin',backgroundColor:'rgba(255,45,85,.15)',tension:.35},
+    {data:d.cumBenMom,borderColor:'#00f5ff',borderWidth:2,pointRadius:0,fill:false,tension:.35},
+  ]},options:baseOpts()});
+
+  /* C4: MA momentum (cumulative slope) */
+  mkChart('c4',{type:'line',data:{labels:d.labels,datasets:[
+    {data:Array(n).fill(0),borderColor:'rgba(255,184,0,.3)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false},
+    {data:d.cumMAMom.map(v=>Math.max(0,v)),borderColor:'transparent',pointRadius:0,fill:'origin',backgroundColor:'rgba(176,106,255,.15)',tension:.35},
+    {data:d.cumMAMom.map(v=>Math.min(0,v)),borderColor:'transparent',pointRadius:0,fill:'origin',backgroundColor:'rgba(255,45,85,.15)',tension:.35},
+    {data:d.cumMAMom,borderColor:'rgba(176,106,255,.9)',borderWidth:2,pointRadius:0,fill:false,tension:.35},
+  ]},options:baseOpts()});
+
+  /* C5: Üstel kümülatif */
+  mkChart('c5',{type:'line',data:{labels:d.labels,datasets:[
+    {data:d.expCum,borderColor:'rgba(255,184,0,.9)',borderWidth:2,pointRadius:0,fill:false,tension:.3},
+    {data:d.cumData,borderColor:'rgba(0,245,255,.45)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false,tension:.2},
+  ]},options:baseOpts()});
+
+  /* C6: Vektör genliği */
+  // Normalize each component to [0,1] for display
+  const maxX=Math.max(...d.maRaw.map(Math.abs),1e-9);
+  const maxY=Math.max(...d.cbmPad.map(Math.abs),1e-9);
+  const maxZ=Math.max(...d.expCum.map(Math.abs),1e-9);
+  const xN=d.maRaw.map(v=>v*pGet('p_sx'));
+  const yN=d.cbmPad.map(v=>v*pGet('p_sy'));
+  const zN=d.expCum.map(v=>v*pGet('p_sz'));
+
+  mkChart('c6',{type:'line',data:{labels:d.labels,datasets:[
+    {data:xN,borderColor:'rgba(0,245,255,.3)',borderWidth:1,pointRadius:0,fill:false,tension:.2},
+    {data:yN,borderColor:'rgba(0,255,136,.3)',borderWidth:1,pointRadius:0,fill:false,tension:.35},
+    {data:zN,borderColor:'rgba(255,184,0,.3)',borderWidth:1,pointRadius:0,fill:false,tension:.3},
+    {data:d.vecMag,borderColor:'#00ff88',borderWidth:2.5,pointRadius:0,fill:false,tension:.3},
+  ]},options:baseOpts()});
+
+  /* C7: Bileşik master */
+  const vecScaled=d.vecMag.map(v=>v*(pGet('p_malpha')*10));
+  mkChart('c7',{type:'line',data:{labels:d.labels,datasets:[
+    {data:d.masterCum,borderColor:'rgba(255,184,0,.9)',borderWidth:2,pointRadius:0,fill:false,tension:.3},
+    {data:d.cumData,borderColor:'rgba(0,245,255,.5)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false,tension:.2},
+  ]},options:baseOpts()});
+}
+
+/* ── FIREBASE ── */
+let _data=null;
+function prog(p,lbl){$('pBar').style.width=Math.min(100,p)+'%';$('pPct').textContent=Math.round(p)+'%';if(lbl)$('pLbl').textContent=lbl;}
+function log(msg){$('bLog').innerHTML+=`<div>${msg}</div>`;}
+function setState(id){['sIdle','sLoad','sErr'].forEach(s=>$(s).className='state-screen');$(id).className='state-screen active';}
+function resetIdle(){setState('sIdle');$('dash').style.display='none';}
+
+async function startAnalysis(){
+  setState('sLoad');
+  $('bLog').innerHTML='';
+  prog(0,'Firebase bağlanıyor...');
+  try{
+    try{firebase.initializeApp(CFG.firebase);}catch(e){}
+    const db=firebase.firestore();
+    log('▸ Veri çekiliyor...');
+    const snap=await Promise.race([
+      db.collection(CFG.collection).orderBy(CFG.orderField,'asc').get(),
+      new Promise((_,r)=>setTimeout(()=>r(new Error('Zaman aşımı (10s)')),10000))
+    ]);
+    prog(50,'Hesaplanıyor...');
+    const vals=[];
+    snap.forEach(doc=>{const v=doc.data()[CFG.valueField];if(v!==undefined&&!isNaN(v))vals.push(Number(v));});
+    if(!vals.length)throw new Error('Veri bulunamadı');
+    log(`<span class="ok">✓ ${vals.length} kayıt</span>`);
+    _data=vals;
+    $('updAt').textContent=new Date().toLocaleTimeString('tr-TR');
+    prog(75,'Grafikler çiziliyor...');
+    await sleep(20);
+    initParams();
+    redraw();
+    prog(100,'Hazır');
+    await sleep(150);
+    setState('sIdle'); // hide loading
+    $('sIdle').className='state-screen'; // hide idle too
+    $('dash').style.display='block';
+  }catch(e){
+    $('errMsg').textContent=e.message;
+    setState('sErr');
+  }
+}
+</script>
+</body>
+</html>
