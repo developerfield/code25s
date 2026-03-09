@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dinamik Hareketli Ortalama Matrisi</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .input-group {
+            margin-bottom: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        input[type="text"] {
+            width: 300px;
+            padding: 8px;
+            margin: 0 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 9px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .table-container {
+            overflow-x: auto;
+            max-width: 100%;
+        }
+        table {
+            border-collapse: collapse;
+            margin-top: 10px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px 18px;
+            text-align: center;
+            min-width: 40px;
+        }
+        th {
+            background-color: #343a40;
+            color: white;
+            white-space: nowrap;
+        }
+        td.zero {
+            color: #ccc;
+            background-color: #fcfcfc;
+        }
+        td.highlight {
+            font-weight: bold;
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>N x N Dinamik Ortalama Matrisi</h2>
+    
+    <div class="input-group">
+        <label>Sayıları virgülle ayırarak girin: </label>
+        <input type="text" id="numArray" value="1, 2, 3, 2, 1, 2" placeholder="Örn: 10, 20, 30...">
+        <button onclick="generateMatrix()">Oluştur</button>
+    </div>
+
+    <div class="table-container">
+        <table id="matrixTable">
+            </table>
+    </div>
+
+    <script>
+        function generateMatrix() {
+            // Girdiyi al, virgüllere göre böl, boşlukları temizle ve sayıya çevir
+            const rawInput = document.getElementById('numArray').value;
+            const arr = rawInput.split(',')
+                                .map(item => parseFloat(item.trim()))
+                                .filter(item => !isNaN(item)); // Geçersiz girişleri (harf vb.) yoksay
+
+            const n = arr.length;
+            const table = document.getElementById('matrixTable');
+            table.innerHTML = ''; // Önceki tabloyu temizle
+
+            if (n === 0) {
+                table.innerHTML = '<tr><td>Lütfen geçerli sayılar girin.</td></tr>';
+                return;
+            }
+
+            // Dinamik başlık satırını oluştur
+            let thead = '<tr>';
+            for (let i = 0; i < n; i++) {
+                thead += `<th>Sütun ${i + 1}</th>`;
+            }
+            thead += '</tr>';
+            table.innerHTML += thead;
+
+            // Matris hesaplama döngüsü
+            for (let i = 0; i < n; i++) {
+                let rowHtml = '<tr>';
+                for (let j = 0; j < n; j++) {
+                    if (j < i) {
+                        // Alt sol kısımlar 0
+                        rowHtml += '<td class="zero">0</td>';
+                    } else {
+                        // j-i'den j'ye kadar olan elemanların ortalamasını hesapla
+                        let sum = 0;
+                        for (let k = j - i; k <= j; k++) {
+                            sum += arr[k];
+                        }
+                        const avg = sum / (i + 1);
+                        
+                        // Sağ üst köşeyi vurgula (İlk satır, son sütun)
+                        let cellClass = (i === 0 && j === n - 1) ? 'highlight' : '';
+                        
+                        // Tam sayıysa virgülden sonrasını at, küsuratlıysa 2 basamak göster
+                        let formattedAvg = Number.isInteger(avg) ? avg : avg.toFixed(2);
+                        
+                        rowHtml += `<td class="${cellClass}">${formattedAvg}</td>`;
+                    }
+                }
+                rowHtml += '</tr>';
+                table.innerHTML += rowHtml;
+            }
+        }
+
+        // Sayfa yüklendiğinde varsayılan dizilimle ilk tabloyu oluştur
+        window.onload = generateMatrix;
+    </script>
+</body>
+</html>
