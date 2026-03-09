@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>TAHMİN // ANALİZ</title>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+:root{
+  --bg:#050810;--bg2:#080d1a;--bg3:#0c1220;--panel:#0a0f1e;
+  --b1:#0f3460;--b2:#1a4a7a;
+  --cyan:#00f5ff;--cyan2:#00c8d4;
+  --green:#00ff88;--red:#ff2d55;--amber:#ffb800;--purple:#b06aff;
+  --text:#c8d8e8;--text2:#6a8aaa;--text3:#3a5a7a;
+  --scan:rgba(0,245,255,0.025);--grid:rgba(0,245,255,0.035);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,var(--scan) 2px,var(--scan) 4px);pointer-events:none;z-index:9999;}
+body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+.wrap{position:relative;z-index:1;max-width:1500px;margin:0 auto;padding:24px 20px 60px;}
+
+/* HEADER */
+header{border-bottom:1px solid var(--b1);padding-bottom:14px;margin-bottom:28px;position:relative;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+header::after{content:'';position:absolute;bottom:-1px;left:0;width:160px;height:1px;background:var(--cyan);box-shadow:0 0 12px var(--cyan);}
+.logo{font-family:'Orbitron',monospace;font-size:clamp(13px,2.5vw,26px);font-weight:900;letter-spacing:4px;}
+.logo .acc{color:var(--cyan);text-shadow:0 0 16px var(--cyan);}
+.logo .slash{color:var(--text3);}
+.hmeta{text-align:right;font-size:9px;letter-spacing:2px;color:var(--text3);line-height:2.1;}
+.live{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 5px var(--green);animation:pulse 1.4s infinite;vertical-align:middle;margin-right:4px;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* STATE SCREENS */
+#stateIdle,#stateLoading,#stateError{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:18px;}
+#stateLoading,#stateError,#stateIdle{display:none;}
+#stateIdle{display:flex;}
+
+.big-btn{font-family:'Orbitron',monospace;font-size:11px;letter-spacing:3px;padding:14px 36px;background:transparent;border:1px solid var(--cyan);color:var(--cyan);cursor:pointer;text-transform:uppercase;position:relative;overflow:hidden;transition:box-shadow .2s;}
+.big-btn::before{content:'';position:absolute;inset:0;background:var(--cyan);opacity:0;transition:opacity .2s;}
+.big-btn:hover{box-shadow:0 0 24px rgba(0,245,255,.35);}
+.big-btn:hover::before{opacity:.07;}
+.idle-sub{font-size:9px;letter-spacing:2px;color:var(--text3);}
+
+.pw{width:340px;}
+.plbl{font-size:9px;color:var(--text3);letter-spacing:1px;margin-bottom:5px;}
+.po{height:2px;background:var(--bg3);}
+.pi{height:100%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);transition:width .12s linear;width:0%;}
+.pp{font-size:10px;font-weight:700;color:var(--cyan);text-align:right;margin-top:4px;}
+.blog{font-size:10px;color:var(--text2);line-height:2;text-align:center;}
+.blog .ok{color:var(--green);}.blog .er{color:var(--red);}
+.err-msg{font-family:'Orbitron',monospace;font-size:10px;color:var(--red);letter-spacing:2px;}
+
+/* PANEL */
+.panel{background:var(--panel);border:1px solid var(--b1);padding:16px 18px;margin-bottom:14px;}
+.ptitle{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:var(--cyan);border-bottom:1px solid var(--b1);padding-bottom:8px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;}
+.ptitle-left{display:flex;align-items:center;gap:6px;}
+.ptitle-left::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--cyan);box-shadow:0 0 5px var(--cyan);flex-shrink:0;}
+.ptitle .sub{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--text3);text-transform:none;font-weight:normal;}
+
+/* MA CONTROL */
+.ma-ctrl{display:flex;align-items:center;gap:8px;font-size:9px;color:var(--text3);}
+.ma-ctrl input{width:48px;background:#080d1a;border:1px solid #1a4a7a;color:var(--cyan);font-family:'Share Tech Mono',monospace;font-size:10px;padding:2px 6px;text-align:center;outline:none;border-radius:2px;}
+.ma-ctrl button{width:18px;height:18px;background:#0a0f1e;border:1px solid var(--cyan);color:var(--cyan);font-size:11px;line-height:1;cursor:pointer;padding:0;box-shadow:0 0 5px rgba(0,245,255,.2);}
+.ma-ctrl .apply-btn{background:#0a0f1e;border:1px solid var(--cyan);color:var(--cyan);font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;padding:2px 8px;cursor:pointer;box-shadow:0 0 6px rgba(0,245,255,.15);}
+
+/* CHARTS */
+.cw{position:relative;width:100%;}
+.cw canvas{width:100%!important;}
+.ch300{height:300px;position:relative;}
+.ch300 canvas{position:absolute;inset:0;width:100%!important;height:100%!important;}
+.ch260{height:260px;position:relative;}
+.ch260 canvas{position:absolute;inset:0;width:100%!important;height:100%!important;}
+
+/* LEGEND */
+.legrow{display:flex;gap:12px;flex-wrap:wrap;font-size:9px;color:var(--text3);margin-bottom:10px;align-items:center;}
+.li{display:flex;align-items:center;gap:4px;}
+.ll{width:18px;height:2px;border-radius:1px;}
+.ll.dashed{background:repeating-linear-gradient(90deg,currentColor 0,currentColor 4px,transparent 4px,transparent 8px);}
+
+/* DIVIDER */
+.section-label{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:4px;color:var(--text3);padding:6px 0 10px;border-top:1px solid var(--b1);margin-top:8px;margin-bottom:4px;}
+
+#dash{display:none;}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:var(--b2);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div>
+    <div style="font-size:8px;letter-spacing:4px;color:var(--cyan2);opacity:.6;margin-bottom:5px;">// VERİ ANALİZİ · MOMENTUM · BENFORD · HAREKETLI ORT.</div>
+    <div class="logo">TAHMİN <span class="slash">//</span> <span class="acc">ANALİZ</span></div>
+  </div>
+  <div class="hmeta">
+    <div><span class="live"></span>SİSTEM AKTİF</div>
+    <div id="updAt">—</div>
+  </div>
+</header>
+
+<!-- IDLE -->
+<div id="stateIdle">
+  <div class="idle-sub">// VERİ ANALİZİ SİSTEMİ</div>
+  <button class="big-btn" onclick="startAnalysis()">VERİYİ ANALİZ ET</button>
+  <div class="idle-sub">Firebase bağlantısı gerekli</div>
+</div>
+
+<!-- LOADING -->
+<div id="stateLoading">
+  <div style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:var(--cyan2);opacity:.7;">// analiz ediliyor</div>
+  <div class="pw">
+    <div class="plbl" id="pLbl">Bağlanıyor...</div>
+    <div class="po"><div class="pi" id="pBar"></div></div>
+    <div class="pp" id="pPct">0%</div>
+  </div>
+  <div class="blog" id="bLog"></div>
+</div>
+
+<!-- ERROR -->
+<div id="stateError">
+  <div class="err-msg" id="errMsg">Bağlantı hatası</div>
+  <button class="big-btn" onclick="resetToIdle()" style="font-size:9px;padding:10px 24px;">YENİDEN DENE</button>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dash">
+
+  <!-- GROUP 1: HAM + KÜMÜLATİF -->
+  <div class="section-label">// 01 · HAM VERİ ANALİZİ</div>
+
+  <div class="panel">
+    <div class="ptitle">
+      <div class="ptitle-left">HAM VERİ <span class="sub">· orijinal seri + hareketli ortalama</span></div>
+      <div class="ma-ctrl" id="maCtrl1">
+        <span>MA:</span>
+        <button onclick="maAdj('ma1',-1)">−</button>
+        <input id="ma1" type="number" min="1" max="100" value="5"/>
+        <button onclick="maAdj('ma1',+1)">+</button>
+        <button class="apply-btn" onclick="applyMA()">UYGULA</button>
+      </div>
+    </div>
+    <div class="legrow">
+      <div class="li"><div class="ll" style="background:var(--cyan)"></div>Ham veri</div>
+      <div class="li"><div class="ll" style="background:var(--amber)"></div>Hareketli ort. (MA)</div>
+    </div>
+    <div class="ch300"><canvas id="rawChart"></canvas></div>
+  </div>
+
+  <div class="panel">
+    <div class="ptitle">
+      <div class="ptitle-left">KÜMÜLATİF VERİ <span class="sub">· birikimli toplam + kümülatif MA</span></div>
+      <div class="ma-ctrl">
+        <span>MA:</span>
+        <button onclick="maAdj('ma2',-1)">−</button>
+        <input id="ma2" type="number" min="1" max="100" value="5"/>
+        <button onclick="maAdj('ma2',+1)">+</button>
+        <button class="apply-btn" onclick="applyMA()">UYGULA</button>
+      </div>
+    </div>
+    <div class="legrow">
+      <div class="li"><div class="ll" style="background:var(--cyan)"></div>Kümülatif</div>
+      <div class="li"><div class="ll" style="background:var(--amber)"></div>Kümülatif MA</div>
+    </div>
+    <div class="ch300"><canvas id="cumChart"></canvas></div>
+  </div>
+
+  <!-- GROUP 2: İVME + MOMENTUM -->
+  <div class="section-label">// 02 · İVME & MOMENTUM ANALİZİ</div>
+
+  <div class="panel">
+    <div class="ptitle">
+      <div class="ptitle-left">BENFORD İVME <span class="sub">· log ağırlıklı yön momentumu</span></div>
+    </div>
+    <div class="legrow">
+      <div class="li"><div class="ll" style="background:var(--green)"></div>Yukarı momentum</div>
+      <div class="li"><div class="ll" style="background:var(--red)"></div>Aşağı momentum</div>
+      <div class="li"><div class="ll" style="background:rgba(200,216,232,.6)"></div>Net ivme</div>
+      <div class="li"><div class="ll" style="background:var(--amber);height:1px"></div>Sıfır</div>
+    </div>
+    <div class="ch260"><canvas id="accelChart"></canvas></div>
+  </div>
+
+  <div class="panel">
+    <div class="ptitle">
+      <div class="ptitle-left">KÜMÜLATİF MOMENTUM <span class="sub">· net Benford ivmesinin birikimli toplamı</span></div>
+    </div>
+    <div class="legrow">
+      <div class="li"><div class="ll" style="background:var(--cyan)"></div>Kümülatif momentum</div>
+      <div class="li"><div class="ll" style="background:rgba(0,255,136,.25);width:18px;height:8px;border-radius:1px;"></div>Pozitif bölge ↑</div>
+      <div class="li"><div class="ll" style="background:rgba(255,45,85,.25);width:18px;height:8px;border-radius:1px;"></div>Negatif bölge ↓</div>
+    </div>
+    <div class="ch260"><canvas id="cumMomChart"></canvas></div>
+  </div>
+
+  <!-- GROUP 3: KARMA MOMENTUM -->
+  <div class="section-label">// 03 · KARMA MOMENTUM · Benford × Hareketli Ortalama</div>
+
+  <div class="panel">
+    <div class="ptitle">
+      <div class="ptitle-left">KARMA MOMENTUM <span class="sub">· Benford net ivmesi × MA normalize eğimi</span></div>
+    </div>
+    <div class="legrow">
+      <div class="li"><div class="ll" style="background:var(--purple)"></div>Karma momentum</div>
+      <div class="li"><div class="ll" style="background:rgba(176,106,255,.2);width:18px;height:8px;border-radius:1px;"></div>Pozitif</div>
+      <div class="li"><div class="ll" style="background:rgba(255,45,85,.2);width:18px;height:8px;border-radius:1px;"></div>Negatif</div>
+      <div class="li"><div class="ll" style="background:var(--amber);height:1px"></div>Sıfır</div>
+    </div>
+    <div class="ch260"><canvas id="hybridChart"></canvas></div>
+  </div>
+
+  <div class="panel">
+    <div class="ptitle">
+      <div class="ptitle-left">KÜMÜLATİF KARMA MOMENTUM <span class="sub">· karma momentumun birikimli toplamı</span></div>
+    </div>
+    <div class="legrow">
+      <div class="li"><div class="ll" style="background:var(--purple)"></div>Kümülatif karma momentum</div>
+    </div>
+    <div class="ch260"><canvas id="cumHybridChart"></canvas></div>
+  </div>
+
+  <!-- GROUP 4: ÜSTEL BİLEŞİK -->
+  <div class="section-label">// 04 · ÜSTEL BİLEŞİK METİN · Benford + MA + Momentum</div>
+
+  <div class="panel">
+    <div class="ptitle">
+      <div class="ptitle-left">BİLEŞİK KÜMÜLATİF <span class="sub">· üstel büyüme: Benford ivmesi × MA eğimi × kümülatif momentum gücü</span></div>
+    </div>
+    <div class="legrow">
+      <div class="li"><div class="ll" style="background:var(--cyan)"></div>Gerçek kümülatif</div>
+      <div class="li"><div class="ll" style="background:var(--amber)"></div>Bileşik model</div>
+      <div class="li"><div class="ll" style="background:rgba(176,106,255,.7)"></div>Kümülatif MA</div>
+    </div>
+    <div class="ch300"><canvas id="compositeChart"></canvas></div>
+  </div>
+
+</div><!-- /dash -->
+</div><!-- /wrap -->
+
+<script>
+'use strict';
+
+const CFG={
+  firebase:{apiKey:"AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",authDomain:"paralayici.firebaseapp.com",projectId:"paralayici",storageBucket:"paralayici.firebasestorage.app",messagingSenderId:"980843550614",appId:"1:980843550614:web:93dd5bda4ddc377b20efb7"},
+  collection:"cumulative_daily_data",valueField:"value",orderField:"date",
+};
+
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const CC={grid:'rgba(15,52,96,0.6)',tick:'#3a5a7a'};
+const baseOpts=(yTitle='')=>({
+  responsive:true,maintainAspectRatio:false,animation:{duration:400},
+  plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,backgroundColor:'rgba(5,8,16,0.95)',borderColor:'rgba(0,245,255,0.3)',borderWidth:1,titleColor:'#00f5ff',bodyColor:'#c8d8e8'}},
+  scales:{
+    x:{ticks:{color:CC.tick,maxTicksLimit:14,font:{family:'Share Tech Mono',size:9}},grid:{color:CC.grid}},
+    y:{ticks:{color:CC.tick,font:{family:'Share Tech Mono',size:9}},grid:{color:CC.grid},title:yTitle?{display:true,text:yTitle,color:CC.tick,font:{family:'Share Tech Mono',size:9}}:{display:false}}
+  }
+});
+
+let _data=null;
+const _charts={};
+
+function prog(p,lbl){$('pBar').style.width=Math.min(100,p)+'%';$('pPct').textContent=Math.round(p)+'%';if(lbl)$('pLbl').textContent=lbl;}
+function log(msg){$('bLog').innerHTML+=`<div>${msg}</div>`;}
+function show(id){$(id).style.display='flex';}
+function hide(id){$(id).style.display='none';}
+function resetToIdle(){hide('stateError');hide('stateLoading');hide('dash');show('stateIdle');}
+
+/* ── UTILS ── */
+function movingAvg(arr,w){
+  if(w<=1)return arr.slice();
+  const out=[];
+  for(let i=0;i<arr.length;i++){
+    const s=Math.max(0,i-w+1),slice=arr.slice(s,i+1);
+    out.push(slice.reduce((a,b)=>a+b,0)/slice.length);
+  }
+  return out;
+}
+function maAdj(id,delta){
+  const el=$(id);
+  el.value=Math.max(1,Math.min(100,(parseInt(el.value)||1)+delta));
+}
+function getMA(id){return Math.max(1,parseInt($(id).value)||5);}
+
+/* ── BENFORD MOMENTUM ── */
+function benfordMomentum(data){
+  const WIN=Math.max(5,Math.min(20,Math.floor(data.length*0.08)));
+  const upMom=[],downMom=[],net=[];
+  for(let t=1;t<data.length;t++){
+    let up=0,dn=0;
+    for(let w=Math.max(0,t-WIN);w<t;w++){if(data[w]>0)up++;else if(data[w]<0)dn++;}
+    const uM=Math.log2(1+up)/Math.log2(1+WIN);
+    const dM=Math.log2(1+dn)/Math.log2(1+WIN);
+    upMom.push(parseFloat(uM.toFixed(4)));
+    downMom.push(parseFloat(dM.toFixed(4)));
+    net.push(parseFloat((uM-dM).toFixed(4)));
+  }
+  return{upMom,downMom,net};
+}
+
+/* ── DESTROY + CREATE ── */
+function mkChart(id,cfg){
+  if(_charts[id])_charts[id].destroy();
+  _charts[id]=new Chart($(id).getContext('2d'),cfg);
+}
+
+/* ── DRAW ALL ── */
+function drawAll(data){
+  const ma1=getMA('ma1'),ma2=getMA('ma2');
+  const n=data.length;
+  const labels=Array.from({length:n},(_,i)=>i+1);
+
+  /* cumulative series */
+  let acc=0;
+  const cumData=data.map(v=>{acc+=v;return acc;});
+
+  /* MA series */
+  const maRaw=movingAvg(data,ma1);
+  const maCum=movingAvg(cumData,ma2);
+
+  /* Benford momentum */
+  const{upMom,downMom,net}=benfordMomentum(data);
+  const momLabels=Array.from({length:net.length},(_,i)=>i+2);
+
+  /* cumulative momentum */
+  let momAcc=0;
+  const cumMom=net.map(v=>{momAcc+=v;return parseFloat(momAcc.toFixed(4));});
+
+  /* hybrid momentum: Benford net × MA slope (normalized) */
+  const maSlope=[];
+  for(let i=1;i<maRaw.length;i++){
+    const slope=maRaw[i]-maRaw[i-1];
+    maSlope.push(slope);
+  }
+  const maxSlope=Math.max(...maSlope.map(Math.abs),1e-9);
+  const normSlope=maSlope.map(v=>v/maxSlope);
+  // hybrid = net[i] × normSlope[i]  (both have length n-1)
+  const hybridLen=Math.min(net.length,normSlope.length);
+  const hybrid=Array.from({length:hybridLen},(_,i)=>parseFloat((net[i]*(normSlope[i]||0)).toFixed(5)));
+  const hybridLabels=Array.from({length:hybridLen},(_,i)=>i+2);
+
+  /* cumulative hybrid */
+  let hacc=0;
+  const cumHybrid=hybrid.map(v=>{hacc+=v;return parseFloat(hacc.toFixed(5));});
+
+  /* composite model:
+     At each step t, composite[t] = cumData[t] * (1 + alpha * compositeSignal[t])
+     compositeSignal = tanh(benfordNet * maSlopeNorm * cumMomPower)
+     This creates an exponentially-modulated cumulative path */
+  const composite=[];
+  for(let i=0;i<n;i++){
+    if(i<2){composite.push(cumData[i]);continue;}
+    const bi=i-1; // benford index offset
+    const bNet=net[bi]||0;
+    const maNorm=normSlope[bi]||0;
+    const cmPow=cumMom[bi]||0;
+    const signal=Math.tanh(bNet*2)*Math.tanh(maNorm*2)*(1+Math.abs(cmPow));
+    // exponential modulation: base cumulative * exp(alpha * signal)
+    const alpha=0.08;
+    composite.push(cumData[i]*Math.exp(alpha*signal));
+  }
+
+  /* ── CHART 1: Raw + MA ── */
+  mkChart('rawChart',{type:'line',data:{labels,datasets:[
+    {data:maRaw,borderColor:'rgba(255,184,0,0.85)',borderWidth:1.5,borderDash:[5,3],pointRadius:0,fill:false,tension:.4},
+    {data:data,borderColor:'#00f5ff',borderWidth:1.5,pointRadius:0,fill:false,tension:.2},
+  ]},options:baseOpts()});
+
+  /* ── CHART 2: Cumulative + cumMA ── */
+  mkChart('cumChart',{type:'line',data:{labels,datasets:[
+    {data:maCum,borderColor:'rgba(255,184,0,0.85)',borderWidth:1.5,borderDash:[5,3],pointRadius:0,fill:false,tension:.4},
+    {data:cumData,borderColor:'#00f5ff',borderWidth:1.5,pointRadius:0,fill:false,tension:.2},
+  ]},options:baseOpts('Kümülatif Toplam')});
+
+  /* ── CHART 3: Benford accel ── */
+  mkChart('accelChart',{type:'line',data:{labels:momLabels,datasets:[
+    {data:Array(momLabels.length).fill(0),borderColor:'rgba(255,184,0,0.35)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false},
+    {data:upMom.map(v=>Math.max(0,v)),borderColor:'rgba(0,255,136,0.7)',borderWidth:1.5,pointRadius:0,fill:'origin',backgroundColor:'rgba(0,255,136,0.1)',tension:.35},
+    {data:downMom.map(v=>-Math.max(0,v)),borderColor:'rgba(255,45,85,0.7)',borderWidth:1.5,pointRadius:0,fill:'origin',backgroundColor:'rgba(255,45,85,0.1)',tension:.35},
+    {data:net,borderColor:'rgba(200,216,232,0.65)',borderWidth:2,pointRadius:0,fill:false,tension:.35},
+  ]},options:{...baseOpts(),scales:{...baseOpts().scales,y:{...baseOpts().scales.y,min:-1.1,max:1.1}}}});
+
+  /* ── CHART 4: Cumulative momentum ── */
+  mkChart('cumMomChart',{type:'line',data:{labels:momLabels,datasets:[
+    {data:Array(momLabels.length).fill(0),borderColor:'rgba(255,184,0,0.35)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false},
+    {data:cumMom.map(v=>Math.max(0,v)),borderColor:'transparent',pointRadius:0,fill:'origin',backgroundColor:'rgba(0,255,136,0.12)',tension:.35},
+    {data:cumMom.map(v=>Math.min(0,v)),borderColor:'transparent',pointRadius:0,fill:'origin',backgroundColor:'rgba(255,45,85,0.12)',tension:.35},
+    {data:cumMom,borderColor:'#00f5ff',borderWidth:2,pointRadius:0,fill:false,tension:.35},
+  ]},options:baseOpts('Σ Momentum')});
+
+  /* ── CHART 5: Hybrid momentum ── */
+  mkChart('hybridChart',{type:'line',data:{labels:hybridLabels,datasets:[
+    {data:Array(hybridLen).fill(0),borderColor:'rgba(255,184,0,0.35)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false},
+    {data:hybrid.map(v=>Math.max(0,v)),borderColor:'transparent',pointRadius:0,fill:'origin',backgroundColor:'rgba(176,106,255,0.18)',tension:.35},
+    {data:hybrid.map(v=>Math.min(0,v)),borderColor:'transparent',pointRadius:0,fill:'origin',backgroundColor:'rgba(255,45,85,0.15)',tension:.35},
+    {data:hybrid,borderColor:'rgba(176,106,255,0.85)',borderWidth:2,pointRadius:0,fill:false,tension:.35},
+  ]},options:{...baseOpts(),scales:{...baseOpts().scales,y:{...baseOpts().scales.y,min:undefined,max:undefined}}}});
+
+  /* ── CHART 6: Cumulative hybrid ── */
+  mkChart('cumHybridChart',{type:'line',data:{labels:hybridLabels,datasets:[
+    {data:Array(hybridLen).fill(0),borderColor:'rgba(255,184,0,0.35)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false},
+    {data:cumHybrid.map(v=>Math.max(0,v)),borderColor:'transparent',pointRadius:0,fill:'origin',backgroundColor:'rgba(176,106,255,0.15)',tension:.35},
+    {data:cumHybrid.map(v=>Math.min(0,v)),borderColor:'transparent',pointRadius:0,fill:'origin',backgroundColor:'rgba(255,45,85,0.12)',tension:.35},
+    {data:cumHybrid,borderColor:'rgba(176,106,255,0.9)',borderWidth:2,pointRadius:0,fill:false,tension:.35},
+  ]},options:baseOpts('Σ Karma Mom.')});
+
+  /* ── CHART 7: Composite cumulative ── */
+  mkChart('compositeChart',{type:'line',data:{labels,datasets:[
+    {data:maCum,borderColor:'rgba(176,106,255,0.6)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false,tension:.4},
+    {data:composite,borderColor:'rgba(255,184,0,0.85)',borderWidth:2,pointRadius:0,fill:false,tension:.3},
+    {data:cumData,borderColor:'#00f5ff',borderWidth:2,pointRadius:0,fill:false,tension:.2},
+  ]},options:baseOpts('Kümülatif')});
+}
+
+function applyMA(){
+  if(!_data)return;
+  drawAll(_data);
+}
+
+/* ── ANALYSIS START ── */
+async function startAnalysis(){
+  hide('stateIdle');
+  show('stateLoading');
+  $('bLog').innerHTML='';
+  prog(0,'Firebase bağlanıyor...');
+
+  try{
+    // Init Firebase (safe to call multiple times)
+    try{firebase.initializeApp(CFG.firebase);}catch(e){}
+    const db=firebase.firestore();
+    log('▸ Firebase bağlanıyor...');
+
+    const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('Zaman aşımı (10s)')),10000));
+    const snap=await Promise.race([
+      db.collection(CFG.collection).orderBy(CFG.orderField,'asc').get(),
+      timeout
+    ]);
+    prog(40,'Veri işleniyor...');
+
+    const vals=[];
+    snap.forEach(doc=>{const v=doc.data()[CFG.valueField];if(v!==undefined&&!isNaN(v))vals.push(Number(v));});
+    if(!vals.length)throw new Error('Veri bulunamadı');
+
+    log(`<span class="ok">✓ ${vals.length} kayıt yüklendi</span>`);
+    _data=vals;
+    $('updAt').textContent=new Date().toLocaleTimeString('tr-TR');
+    prog(70,'Grafikler hesaplanıyor...');
+    await sleep(30);
+
+    drawAll(_data);
+    prog(100,'Hazır');
+    await sleep(200);
+
+    hide('stateLoading');
+    $('dash').style.display='block';
+
+  }catch(e){
+    hide('stateLoading');
+    $('errMsg').textContent=e.message;
+    show('stateError');
+  }
+}
+</script>
+</body>
+</html>
