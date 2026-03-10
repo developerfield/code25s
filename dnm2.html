@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        table { border-collapse: collapse; font-family: sans-serif; margin: 20px; }
+        td { border: 1px solid #333; padding: 12px; text-align: center; min-width: 60px; }
+    </style>
+</head>
+<body>
+
+    <h3>Dinamik 1/a² Matrisi (5x5)</h3>
+    <table id="matris"></table>
+
+    <script>
+        const n = 5;
+        const tablo = document.getElementById('matris');
+
+        for (let satir = 0; satir < n; satir++) {
+            let tr = document.createElement('tr');
+            for (let sutun = 0; sutun < n; sutun++) {
+                // Formül: Sağ üstten (a=1) sola ve aşağı gidildikçe artan a değeri
+                // a = 1 + (Aşağı inme miktarı) + (Sola gitme miktarı)
+                // Sağ üst köşe koordinatları: satir=0, sutun=4 (yani n-1)
+                let a = 1 + satir + ((n - 1) - sutun);
+                
+                let sonuc = 1 / (a * a);
+                
+                let td = document.createElement('td');
+                td.innerText = sonuc.toFixed(3); // 3 basamaklı hassasiyet
+                tr.appendChild(td);
+            }
+            tablo.appendChild(tr);
+        }
+    </script>
+
+</body>
+</html>
