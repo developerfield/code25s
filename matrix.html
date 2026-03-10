@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matris Analiz Sistemi</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Cinzel:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream:       #f5f0e8;
+  --cream-dark:  #ede6d6;
+  --cream-mid:   #e8dfc8;
+  --ivory:       #fdfaf4;
+  --gold:        #a07840;
+  --gold-light:  #c9a96e;
+  --gold-dark:   #7a5c2e;
+  --ink:         #2c2416;
+  --ink-mid:     #4a3f2f;
+  --ink-light:   #7a6e5a;
+  --rule:        #c8b898;
+  --shadow:      rgba(44,36,22,0.13);
+  --green-hdr:   #1e2d1e;
+  --green-light: #a8c8a0;
+  --green-row:   #ddeedd;
+  --blue-hdr:    #1a2535;
+  --blue-light:  #a0b8d0;
+  --blue-row:    #dde8f0;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'EB Garamond', serif;
+  background-color: var(--cream);
+  color: var(--ink);
+  min-height: 100vh;
+  padding: 0 0 100px;
+}
+
+/* ══ MASTHEAD ══ */
+.masthead {
+  background: var(--ink);
+  padding: 40px 48px 32px;
+  text-align: center;
+  border-bottom: 3px double var(--gold);
+  position: relative;
+}
+.masthead::before, .masthead::after {
+  content: '❧';
+  position: absolute;
+  top: 50%; transform: translateY(-50%);
+  color: var(--gold-light);
+  font-size: 1.6rem; opacity: 0.45;
+}
+.masthead::before { left: 40px; }
+.masthead::after  { right: 40px; transform: translateY(-50%) scaleX(-1); }
+.masthead-eyebrow {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem; letter-spacing: 0.38em;
+  color: var(--gold-light); text-transform: uppercase;
+  margin-bottom: 10px; opacity: 0.8;
+}
+.masthead h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 300;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  color: var(--ivory); letter-spacing: 0.05em;
+}
+.masthead-rule {
+  display: flex; align-items: center; justify-content: center;
+  gap: 14px; margin-top: 16px;
+}
+.masthead-rule span { height: 1px; width: 70px; background: var(--gold); opacity: 0.5; }
+.masthead-rule em {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic; color: var(--gold-light); font-size: 0.88rem;
+}
+
+/* ══ PAGE ══ */
+.page { max-width: 1160px; margin: 0 auto; padding: 0 28px; }
+
+/* ══ SECTION HEADER ══ */
+.sec-head {
+  display: flex; align-items: center; gap: 18px;
+  margin: 52px 0 16px;
+}
+.sec-head .roman {
+  font-family: 'Cinzel', serif; font-size: 0.68rem;
+  letter-spacing: 0.28em; color: var(--gold); text-transform: uppercase;
+  white-space: nowrap;
+}
+.sec-head h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 400; font-size: 1.4rem; color: var(--ink); white-space: nowrap;
+}
+.sec-head .rule { flex: 1; height: 1px; background: linear-gradient(to right, var(--rule), transparent); }
+.sec-desc {
+  font-size: 0.88rem; color: var(--ink-light); font-style: italic;
+  margin-bottom: 20px; line-height: 1.75; padding-left: 2px;
+}
+.sec-desc code {
+  font-style: normal; background: var(--cream-dark);
+  padding: 1px 5px; border-radius: 2px;
+  font-family: monospace; font-size: 0.82rem; color: var(--ink-mid);
+}
+
+/* ══ INPUT CARD ══ */
+.input-card {
+  background: var(--ivory);
+  border: 1px solid var(--rule); border-top: 3px solid var(--gold);
+  border-radius: 2px; padding: 22px 26px; margin-bottom: 28px;
+  box-shadow: 0 3px 14px var(--shadow);
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.input-card label {
+  font-family: 'Cinzel', serif; font-size: 0.7rem;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--ink-mid); white-space: nowrap;
+}
+.input-card input[type="text"] {
+  flex: 1; min-width: 200px;
+  padding: 9px 14px;
+  font-family: 'EB Garamond', serif; font-size: 1rem; color: var(--ink);
+  background: var(--cream); border: 1px solid var(--rule);
+  border-radius: 1px; outline: none; transition: border-color .2s;
+}
+.input-card input:focus { border-color: var(--gold); }
+
+.btn {
+  padding: 9px 26px;
+  font-family: 'Cinzel', serif; font-size: 0.7rem;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--ivory); background: var(--ink);
+  border: 1px solid var(--gold-dark); border-radius: 1px;
+  cursor: pointer; transition: background .2s; white-space: nowrap;
+}
+.btn:hover { background: var(--gold-dark); }
+
+/* ══ FORMULA CARD ══ */
+.formula-card {
+  background: var(--ivory);
+  border: 1px solid var(--rule); border-left: 4px solid var(--gold);
+  border-radius: 2px; padding: 16px 22px; margin-bottom: 10px;
+  box-shadow: 0 2px 8px var(--shadow);
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+.formula-card label {
+  font-family: 'Cinzel', serif; font-size: 0.68rem;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-mid); white-space: nowrap;
+}
+.formula-card input[type="text"] {
+  flex: 1; min-width: 160px;
+  padding: 8px 13px;
+  font-family: 'EB Garamond', serif; font-size: 1rem; color: var(--ink);
+  background: var(--cream); border: 1px solid var(--rule);
+  border-radius: 1px; outline: none; transition: border-color .2s;
+}
+.formula-card input:focus { border-color: var(--gold); }
+.formula-hint { font-size: 0.77rem; color: var(--ink-light); font-style: italic; margin-bottom: 20px; }
+
+/* ══ TABLES ══ */
+.tbl-scroll { overflow-x: auto; }
+
+table.classic {
+  border-collapse: collapse; background: var(--ivory);
+  box-shadow: 0 2px 16px var(--shadow);
+  font-size: 0.86rem; width: 100%;
+}
+table.classic th {
+  font-family: 'Cinzel', serif; font-size: 0.62rem;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  background: var(--ink); color: var(--gold-light);
+  padding: 10px 14px; border: 1px solid #3a3020; white-space: nowrap;
+}
+table.classic td {
+  border: 1px solid var(--cream-mid); padding: 8px 13px;
+  text-align: center; color: var(--ink-mid);
+  font-variant-numeric: tabular-nums; transition: background .12s;
+}
+table.classic tr:nth-child(even) td { background: var(--cream-dark); }
+table.classic tr:hover td { background: #e0d8c880; }
+table.classic td.zero { color: var(--rule); }
+table.classic td.hi  { background: var(--gold-dark) !important; color: var(--ivory); font-weight: 600; }
+table.classic td.diag-hi { background: #2a5a2a !important; color: #e8f5e8; font-weight: 600; }
+
+/* Ara euclid tablosu */
+table.tbl-euclid th { background: #2a2010; color: var(--gold-light); border-color: #1e1808; }
+
+/* II — kayan */
+table.tbl2 th { background: #3a2e1a; color: var(--gold-light); border-color: #2a2010; }
+
+/* III — formül */
+table.tbl3 th { background: var(--blue-hdr); color: var(--blue-light); border-color: #101820; }
+table.tbl3 td { color: #1a2535; }
+table.tbl3 tr:nth-child(even) td { background: var(--blue-row); }
+table.tbl3 tr:hover td { background: #c8d8e880; }
+
+/* IV — çarpım */
+table.tbl4 th { background: var(--green-hdr); color: var(--green-light); border-color: #101810; }
+table.tbl4 td { color: #1e2d1e; }
+table.tbl4 tr:nth-child(even) td { background: var(--green-row); }
+table.tbl4 tr:hover td { background: #c0d8c080; }
+
+/* ══ ARA ADIM GRID ══ */
+.step-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-bottom: 28px;
+}
+@media(max-width: 780px) { .step-grid { grid-template-columns: 1fr; } }
+.step-block-title {
+  font-family: 'Cinzel', serif; font-size: 0.62rem;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--ink-mid); margin-bottom: 10px;
+}
+
+/* ══ DİZİ KARTI ══ */
+.series-card {
+  background: var(--ivory);
+  border: 1px solid var(--rule); border-left: 4px solid #2a5a2a;
+  border-radius: 2px; padding: 24px 28px;
+  box-shadow: 0 2px 12px var(--shadow);
+}
+.series-card-title {
+  font-family: 'Cinzel', serif; font-size: 0.68rem;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--green-hdr); margin-bottom: 16px;
+}
+.series-list {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;
+}
+.series-chip {
+  display: flex; flex-direction: column; align-items: center;
+  background: var(--cream); border: 1px solid var(--rule);
+  border-radius: 2px; padding: 7px 13px; min-width: 78px;
+}
+.chip-idx {
+  font-family: 'Cinzel', serif; font-size: 0.56rem;
+  letter-spacing: 0.12em; color: var(--gold); margin-bottom: 4px;
+}
+.chip-val { font-size: 0.9rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+.series-total {
+  display: flex; align-items: baseline; gap: 16px;
+  border-top: 1px solid var(--rule); padding-top: 16px;
+}
+.tot-label {
+  font-family: 'Cinzel', serif; font-size: 0.68rem;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-mid);
+}
+.tot-val {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.6rem; font-weight: 600; color: var(--green-hdr);
+}
+
+/* Ornament */
+.ornament {
+  text-align: center; margin: 44px 0 10px;
+  color: var(--rule); font-size: 1rem; letter-spacing: 0.7em;
+}
+</style>
+</head>
+<body>
+
+<!-- MASTHEAD -->
+<div class="masthead">
+  <div class="masthead-eyebrow">Sayısal Analiz · Matris Hesaplama Sistemi</div>
+  <h1>Matris Analiz Sistemi</h1>
+  <div class="masthead-rule">
+    <span></span>
+    <em>Öklid Uzaklığı · Kayan Ortalama · Çapraz Dizi</em>
+    <span></span>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- I -->
+  <div class="sec-head">
+    <span class="roman">I</span>
+    <h2>Dinamik Ortalama Matrisi</h2>
+    <div class="rule"></div>
+  </div>
+  <p class="sec-desc">
+    Girilen <em>n</em> elemanlı veri dizisinden <em>n×n</em> hareketli ortalama matrisi oluşturulur.
+    Alt üçgen sıfırlanır; her hücre, ilgili penceredeki elemanların ortalamasıdır.
+  </p>
+  <div class="input-card">
+    <label>Veri Dizisi</label>
+    <input type="text" id="numArray" value="1, 2, 3, 2, 1, 2" placeholder="Örn: 10, 20, 30…">
+    <button class="btn" onclick="runAll()">Hesapla</button>
+  </div>
+  <div class="tbl-scroll"><table class="classic" id="tbl1"></table></div>
+
+  <div class="ornament">· · ·</div>
+
+  <!-- II -->
+  <div class="sec-head">
+    <span class="roman">II</span>
+    <h2>Öklid Uzaklığı → 2×2 Kayan Ortalama</h2>
+    <div class="rule"></div>
+  </div>
+  <p class="sec-desc">
+    Veri dizisi <em>n</em> elemanlıysa <em>(n+1)×(n+1)</em> Öklid uzaklık matrisi oluşturulur.
+    <strong>Sağ üst köşe</strong> referans noktasıdır (uzaklık = 0).
+    Bu değerlere doğrudan 2×2 kayan çerçeve uygulanarak <em>n×n</em> nihai tablo elde edilir.
+  </p>
+
+  <p class="step-block-title">Ara — (n+1)×(n+1) Öklid Uzaklık Tablosu</p>
+  <div class="tbl-scroll"><table class="classic tbl-euclid" id="tblEuclid"></table></div>
+  <br>
+  <p class="step-block-title">Sonuç — n×n Kayan Ortalama Tablosu</p>
+  <div class="tbl-scroll"><table class="classic tbl2" id="tbl2"></table></div>
+
+  <div class="ornament">· · ·</div>
+
+  <!-- III -->
+  <div class="sec-head">
+    <span class="roman">III</span>
+    <h2>Fonksiyon Dönüşüm Tablosu</h2>
+    <div class="rule"></div>
+  </div>
+  <p class="sec-desc">II. tablodaki her değere <em>f(x)</em> fonksiyonu uygulanır. <code>x</code> yerine ilgili hücre değeri kullanılır.</p>
+
+  <div class="formula-card">
+    <label>f (x) =</label>
+    <input type="text" id="formulaInput" value="x^(-1)" placeholder="Örn: x^(-1), x^2, sqrt(x)…">
+    <button class="btn" onclick="buildTbl3andBelow()">Uygula</button>
+  </div>
+  <p class="formula-hint">Desteklenen: x^n · x^(-n) · 1/x · sqrt(x) · log(x) · sin(x) · cos(x) · abs(x) · pi · e</p>
+  <div class="tbl-scroll"><table class="classic tbl3" id="tbl3"></table></div>
+
+  <div class="ornament">· · ·</div>
+
+  <!-- IV -->
+  <div class="sec-head">
+    <span class="roman">IV</span>
+    <h2>Çarpım Matrisi — I × III</h2>
+    <div class="rule"></div>
+  </div>
+  <p class="sec-desc">
+    I. tablodaki her hücre değeri, III. tablodaki karşılık gelen değerle çarpılır.
+    Çapraz ortalama hesabına giren hücreler <span style="background:#2a5a2a;color:#e8f5e8;padding:1px 6px;border-radius:2px;font-style:normal;">yeşil</span> ile vurgulanmıştır.
+  </p>
+  <div class="tbl-scroll"><table class="classic tbl4" id="tbl4"></table></div>
+
+  <div class="ornament">· · ·</div>
+
+  <!-- V -->
+  <div class="sec-head">
+    <span class="roman">V</span>
+    <h2>Çapraz Ortalama Dizisi</h2>
+    <div class="rule"></div>
+  </div>
+  <p class="sec-desc">
+    IV. tabloda sol üstten sağ alt köşegeni boyunca çaprazlar taranır.
+    İlk çapraz <em>(0,0)</em>'dan başlar; ardından her seferinde bir sağ (<em>(0,1), (0,2)…</em>)
+    sonra bir aşağı (<em>(1,0), (2,0)…</em>) kayarak tüm çaprazlar elde edilir.
+    Her çaprazdaki değerlerin aritmetik ortalaması bir eleman oluşturur.
+  </p>
+
+  <div class="series-card">
+    <div class="series-card-title">Çapraz Ortalama Değerleri</div>
+    <div class="series-list" id="seriesList"></div>
+    <div class="series-total">
+      <span class="tot-label">Genel Toplam</span>
+      <span class="tot-val" id="seriesTotal">—</span>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+/* ─── GLOBAL STATE ─── */
+let G1 = [], G2 = [], G3 = [], G4 = [];
+let G_n = 0;
+
+/* ─── YARDIMCI: tablo render ─── */
+function renderTable(id, data, rows, cols, opts = {}) {
+  const tbl = document.getElementById(id);
+  if (!tbl) return;
+  tbl.innerHTML = '';
+  let hdr = '<tr><th></th>';
+  for (let c = 0; c < cols; c++) hdr += `<th>S${c+1}</th>`;
+  hdr += '</tr>';
+  tbl.innerHTML = hdr;
+
+  for (let r = 0; r < rows; r++) {
+    let row = `<tr><th>R${r+1}</th>`;
+    for (let c = 0; c < cols; c++) {
+      const v = (data[r] !== undefined) ? data[r][c] : undefined;
+      let cls = '';
+      if (opts.zeroClass && v === 0) cls = 'zero';
+      else if (opts.highlight && r === 0 && c === cols - 1) cls = 'hi';
+      else if (opts.diagSet && opts.diagSet.has(`${r},${c}`)) cls = 'diag-hi';
+
+      let disp;
+      if (v === undefined || v === null || (typeof v === 'number' && isNaN(v))) {
+        disp = '—';
+      } else if (opts.zeroClass && v === 0) {
+        disp = opts.zeroLabel !== undefined ? opts.zeroLabel : '0.00000';
+      } else {
+        disp = Number.isInteger(v) ? v.toString() : v.toFixed(5);
+      }
+      row += `<td class="${cls}">${disp}</td>`;
+    }
+    row += '</tr>';
+    tbl.innerHTML += row;
+  }
+}
+
+/* ─── I. TABLO: Dinamik Ortalama ─── */
+function buildTbl1(arr) {
+  const n = arr.length;
+  const mat = [];
+  for (let i = 0; i < n; i++) {
+    mat[i] = [];
+    for (let j = 0; j < n; j++) {
+      if (j < i) { mat[i][j] = 0; continue; }
+      let s = 0;
+      for (let k = j - i; k <= j; k++) s += arr[k];
+      mat[i][j] = s / (i + 1);
+    }
+  }
+  G1 = mat;
+
+  const tbl = document.getElementById('tbl1');
+  tbl.innerHTML = '';
+  let hdr = '<tr><th></th>';
+  for (let c = 0; c < n; c++) hdr += `<th>S${c+1}</th>`;
+  hdr += '</tr>';
+  tbl.innerHTML = hdr;
+  for (let i = 0; i < n; i++) {
+    let row = `<tr><th>R${i+1}</th>`;
+    for (let j = 0; j < n; j++) {
+      const v = mat[i][j];
+      if (j < i) { row += `<td class="zero">0</td>`; continue; }
+      const cls = (i === 0 && j === n - 1) ? 'hi' : '';
+      row += `<td class="${cls}">${Number.isInteger(v) ? v : v.toFixed(5)}</td>`;
+    }
+    row += '</tr>';
+    tbl.innerHTML += row;
+  }
+}
+
+/* ─── II. TABLO: Öklid + 2×2 Kayan ─── */
+function buildTbl2(n) {
+  const M = n + 1;
+  // Öklid — ref: sağ üst (0, M-1)
+  const euclid = [];
+  for (let r = 0; r < M; r++) {
+    euclid[r] = [];
+    for (let c = 0; c < M; c++) {
+      const dr = r, dc = c - (M - 1);
+      euclid[r][c] = Math.sqrt(dr * dr + dc * dc);
+    }
+  }
+  // 2×2 kayan → doğrudan Öklid üzerinden → n×n
+  const sliding = [];
+  for (let r = 0; r < M - 1; r++) {
+    sliding[r] = [];
+    for (let c = 0; c < M - 1; c++) {
+      sliding[r][c] = (euclid[r][c] + euclid[r][c+1] + euclid[r+1][c] + euclid[r+1][c+1]) / 4;
+    }
+  }
+  G2 = sliding;
+
+  renderTable('tblEuclid', euclid,  M, M, { zeroClass: true, zeroLabel: '0.00000', highlight: true });
+  renderTable('tbl2',      sliding, n, n, {});
+}
+
+/* ─── III. TABLO: Formül dönüşümü ─── */
+function applyFormula(x, expr) {
+  let e = expr.trim()
+    .replace(/\^/g, '**')
+    .replace(/sqrt\(/g, 'Math.sqrt(')
+    .replace(/log\(/g, 'Math.log(')
+    .replace(/sin\(/g, 'Math.sin(')
+    .replace(/cos\(/g, 'Math.cos(')
+    .replace(/tan\(/g, 'Math.tan(')
+    .replace(/abs\(/g, 'Math.abs(')
+    .replace(/\bpi\b/gi, 'Math.PI')
+    .replace(/\be\b/g, 'Math.E');
+  try {
+    // eslint-disable-next-line no-new-func
+    return Function('x', `"use strict"; return (${e});`)(x);
+  } catch { return NaN; }
+}
+
+function buildTbl3() {
+  if (!G2.length) return;
+  const n = G2.length;
+  const formula = document.getElementById('formulaInput').value;
+  G3 = G2.map(row => row.map(v => {
+    if (v === 0) return 0;
+    const r = applyFormula(v, formula);
+    return isFinite(r) ? r : NaN;
+  }));
+  renderTable('tbl3', G3, n, n, { zeroClass: true, zeroLabel: '—' });
+}
+
+/* ─── IV. TABLO: Çarpım I × III ─── */
+function buildTbl4(diagCells) {
+  if (!G1.length || !G3.length) return;
+  const rows = Math.min(G1.length, G3.length);
+  const cols = Math.min(G1[0].length, G3[0].length);
+  G4 = [];
+  for (let r = 0; r < rows; r++) {
+    G4[r] = [];
+    for (let c = 0; c < cols; c++) {
+      const a = G1[r][c], b = G3[r][c];
+      G4[r][c] = (isFinite(a) && isFinite(b)) ? a * b : NaN;
+    }
+  }
+  renderTable('tbl4', G4, rows, cols, { diagSet: diagCells || new Set() });
+}
+
+/* ─── V. ÇAPRAZ ORTALAMA DİZİSİ ─── */
+function buildSeries() {
+  if (!G4.length) return;
+  const n = G4.length;
+  const m = G4[0].length;
+
+  // Çapraz hücreleri topla
+  const diagCells = new Set();
+  const diagonals = [];
+
+  // Üst satır başlangıçları: (0,0),(0,1),...,(0,m-1)
+  for (let sc = 0; sc < m; sc++) {
+    const d = [];
+    let r = 0, c = sc;
+    while (r < n && c < m) {
+      diagCells.add(`${r},${c}`);
+      d.push(G4[r][c]);
+      r++; c++;
+    }
+    diagonals.push(d);
+  }
+  // Sol sütun başlangıçları (r≥1): (1,0),(2,0),...,(n-1,0)
+  for (let sr = 1; sr < n; sr++) {
+    const d = [];
+    let r = sr, c = 0;
+    while (r < n && c < m) {
+      diagCells.add(`${r},${c}`);
+      d.push(G4[r][c]);
+      r++; c++;
+    }
+    diagonals.push(d);
+  }
+
+  // IV. tabloyu vurgulu yeniden çiz
+  buildTbl4(diagCells);
+
+  // Ortalamalar
+  const series = diagonals.map(d => {
+    const valid = d.filter(v => isFinite(v));
+    return valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : 0;
+  });
+
+  const total = series.reduce((a, b) => a + b, 0);
+
+  // Render chips
+  const listEl = document.getElementById('seriesList');
+  listEl.innerHTML = '';
+  series.forEach((v, i) => {
+    listEl.innerHTML += `
+      <div class="series-chip">
+        <span class="chip-idx">D · ${i + 1}</span>
+        <span class="chip-val">${v.toFixed(5)}</span>
+      </div>`;
+  });
+  document.getElementById('seriesTotal').textContent = total.toFixed(5);
+}
+
+/* ─── Zincir: III → IV → V ─── */
+function buildTbl3andBelow() {
+  buildTbl3();
+  buildTbl4();
+  buildSeries();
+}
+
+/* ─── ANA ─── */
+function runAll() {
+  const raw = document.getElementById('numArray').value;
+  const arr = raw.split(',').map(s => parseFloat(s.trim())).filter(v => !isNaN(v));
+  if (!arr.length) return;
+  G_n = arr.length;
+  buildTbl1(arr);
+  buildTbl2(G_n);
+  buildTbl3andBelow();
+}
+
+window.onload = runAll;
+</script>
+</body>
+</html>
