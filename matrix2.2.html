@@ -426,17 +426,17 @@ async function buildCumulative(arr, formula, y) {
   });
 }
 
-/* ══ FİREBASE ══ */
+/* ══ FİREBASE — orijinal çalışan kod ══ */
 const firebaseConfig = {
-  apiKey: "AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",
-  authDomain: "paralayici.firebaseapp.com",
-  projectId: "paralayici",
-  storageBucket: "paralayici.firebasestorage.app",
-  messagingSenderId: "980843550614",
-  appId: "1:980843550614:web:93dd5bda4ddc377b20efb7"
+    apiKey: "AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",
+    authDomain: "paralayici.firebaseapp.com",
+    projectId: "paralayici",
+    storageBucket: "paralayici.firebasestorage.app",
+    messagingSenderId: "980843550614",
+    appId: "1:980843550614:web:93dd5bda4ddc377b20efb7"
 };
 
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 function loadFromFirebase() {
@@ -445,32 +445,33 @@ function loadFromFirebase() {
   btn.textContent = '⏳ Yükleniyor…';
   btn.disabled = true;
   status.style.display = 'block';
-  status.textContent = 'Firebase'den veriler çekiliyor…';
+  status.style.color = 'var(--ink-light)';
+  status.textContent = 'Firebase\'den veriler çekiliyor…';
 
   db.collection("cumulative_daily_data")
     .orderBy("date", "asc")
     .get()
     .then(snapshot => {
-      const vals = [];
-      snapshot.forEach(doc => vals.push(doc.data().value));
-      if (!vals.length) {
+      const rawValues = [];
+      snapshot.forEach(doc => {
+        rawValues.push(doc.data().value);
+      });
+      btn.textContent = '☁ Firebase\'den Yükle';
+      btn.disabled = false;
+      if (!rawValues.length) {
         status.textContent = 'Veri bulunamadı.';
-        btn.textContent = '☁ Firebase'den Yükle';
-        btn.disabled = false;
         return;
       }
-      document.getElementById('numArray').value = vals.join(', ');
-      status.textContent = `✓ ${vals.length} değer yüklendi.`;
+      document.getElementById('numArray').value = rawValues.join(', ');
+      status.textContent = '✓ ' + rawValues.length + ' değer yüklendi.';
       status.style.color = '#2a5a2a';
-      btn.textContent = '☁ Firebase'den Yükle';
-      btn.disabled = false;
       runAll();
     })
     .catch(err => {
+      btn.textContent = '☁ Firebase\'den Yükle';
+      btn.disabled = false;
       status.textContent = 'Hata: ' + err.message;
       status.style.color = '#8b2020';
-      btn.textContent = '☁ Firebase'den Yükle';
-      btn.disabled = false;
     });
 }
 
