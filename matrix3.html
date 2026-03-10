@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matris Analiz Sistemi</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Cinzel:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+<style>
+:root{
+  --cream:#f5f0e8;--cream-dark:#ede6d6;--cream-mid:#e8dfc8;--ivory:#fdfaf4;
+  --gold:#a07840;--gold-light:#c9a96e;--gold-dark:#7a5c2e;
+  --ink:#2c2416;--ink-mid:#4a3f2f;--ink-light:#7a6e5a;--rule:#c8b898;
+  --shadow:rgba(44,36,22,0.14);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'EB Garamond',serif;background:var(--cream);color:var(--ink);min-height:100vh;padding:0 0 80px}
+
+/* MASTHEAD */
+.masthead{background:var(--ink);padding:44px 48px 34px;text-align:center;border-bottom:3px double var(--gold);position:relative}
+.masthead::before,.masthead::after{content:'❧';position:absolute;top:50%;transform:translateY(-50%);color:var(--gold-light);font-size:1.8rem;opacity:.4}
+.masthead::before{left:44px}.masthead::after{right:44px;transform:translateY(-50%) scaleX(-1)}
+.eyebrow{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.4em;color:var(--gold-light);text-transform:uppercase;margin-bottom:12px;opacity:.75}
+.masthead h1{font-family:'Cormorant Garamond',serif;font-weight:300;font-size:clamp(2rem,5vw,3.2rem);color:var(--ivory);letter-spacing:.06em}
+.mhr{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:18px}
+.mhr span{height:1px;width:80px;background:var(--gold);opacity:.45;display:block}
+.mhr em{font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--gold-light);font-size:.9rem}
+
+/* PAGE */
+.page{max-width:900px;margin:0 auto;padding:0 28px}
+
+/* PANEL */
+.panel{background:var(--ivory);border:1px solid var(--rule);border-top:3px solid var(--gold);border-radius:3px;padding:26px 30px;margin-top:36px;box-shadow:0 4px 20px var(--shadow)}
+.panel-label{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);margin-bottom:14px;display:flex;align-items:center;gap:12px}
+.panel-label::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--rule),transparent)}
+
+/* DATA ROW */
+.data-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.inp{flex:1;min-width:180px;padding:10px 15px;font-family:'EB Garamond',serif;font-size:1rem;color:var(--ink);background:var(--cream);border:1px solid var(--rule);border-radius:2px;outline:none;transition:border-color .2s,box-shadow .2s}
+.inp:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(160,120,64,.1)}
+.btn{padding:10px 26px;font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--ivory);background:var(--ink);border:1px solid var(--gold-dark);border-radius:2px;cursor:pointer;transition:background .2s;white-space:nowrap}
+.btn:hover{background:var(--gold-dark)}
+.btn-clear{background:transparent;color:var(--ink-mid);border-color:var(--rule)}
+.btn-clear:hover{background:var(--cream-dark);color:var(--ink)}
+
+/* FORMULA ROW */
+.formula-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.fx-label{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.15rem;color:var(--ink-mid);white-space:nowrap;min-width:58px}
+.hint{font-size:.76rem;color:var(--ink-light);font-style:italic;margin-bottom:18px}
+
+/* RANGE ROW (aralık girişi) */
+.range-inputs{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.range-inputs label{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.15em;text-transform:uppercase;color:var(--ink-light);white-space:nowrap}
+.range-inp{width:74px;padding:7px 10px;font-family:'EB Garamond',serif;font-size:.95rem;color:var(--ink);background:var(--cream);border:1px solid var(--rule);border-radius:2px;outline:none;text-align:center;transition:border-color .2s}
+.range-inp:focus{border-color:var(--gold)}
+.range-sep{color:var(--ink-light);font-size:.9rem}
+
+/* Y SLIDER */
+.y-row{display:flex;align-items:center;gap:14px;background:var(--cream);border:1px solid var(--cream-mid);border-radius:2px;padding:13px 16px;margin-bottom:4px}
+.y-badge{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.1rem;color:var(--ink-mid);white-space:nowrap;min-width:18px}
+.y-slider{flex:1;-webkit-appearance:none;appearance:none;height:5px;background:linear-gradient(to right,#c0392b,#e8b84b,#2a7a2a);border-radius:3px;outline:none;cursor:pointer}
+.y-slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--gold);border:2px solid var(--ivory);box-shadow:0 2px 8px rgba(44,36,22,.3);cursor:grab;transition:transform .1s}
+.y-slider::-webkit-slider-thumb:hover{transform:scale(1.15)}
+.y-slider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--gold);border:2px solid var(--ivory);cursor:grab}
+.y-val-display{font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.08em;color:var(--gold-dark);white-space:nowrap;min-width:56px;text-align:right}
+.y-range-hint{display:flex;justify-content:space-between;font-size:.68rem;color:var(--ink-light);font-style:italic;padding:3px 0 0}
+
+/* PROGRESS */
+.progress-wrap{height:4px;background:var(--cream-mid);border-radius:2px;margin:18px 0 0;overflow:hidden;display:none}
+.progress-bar{height:100%;background:var(--gold);width:0%;transition:width .08s linear}
+
+/* HEAT STRIP — tek satırlık ısı tablosu */
+.strip-label-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap}
+.btn-use{padding:6px 16px;font-size:.58rem;background:var(--gold-dark);border-color:var(--gold-dark)}
+.btn-use:hover{background:var(--ink)}
+.strip-wrap{margin-top:24px}
+.strip-label{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-mid);margin-bottom:8px}
+.strip-scroll{overflow-x:auto;border:1px solid var(--rule);border-radius:2px;background:var(--ivory)}
+.strip-table{border-collapse:collapse;white-space:nowrap;font-size:.82rem}
+.strip-table td{padding:8px 13px;text-align:center;font-variant-numeric:tabular-nums;font-family:'EB Garamond',serif;border-right:1px solid rgba(200,184,152,.4);min-width:72px}
+.strip-table td:last-child{border-right:none}
+.strip-table .strip-idx{font-family:'Cinzel',serif;font-size:.52rem;letter-spacing:.1em;display:block;opacity:.7;margin-bottom:2px}
+
+/* COPY BOX */
+.copy-panel{background:var(--ivory);border:1px solid var(--rule);border-top:3px solid var(--gold-dark);border-radius:3px;padding:22px 28px;margin-top:32px;box-shadow:0 4px 20px var(--shadow)}
+.copy-row{display:flex;gap:10px;align-items:center}
+.copy-input{flex:1;padding:10px 14px;font-family:'EB Garamond',serif;font-size:.95rem;color:var(--ink);background:var(--cream);border:1px solid var(--rule);border-radius:2px;outline:none;cursor:text}
+.copy-btn{padding:10px 22px;font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;color:var(--ivory);background:var(--gold-dark);border:none;border-radius:2px;cursor:pointer;transition:background .2s;white-space:nowrap}
+.copy-btn:hover{background:var(--ink)}
+.copy-btn.copied{background:#2a5a2a}
+
+/* CHART */
+.chart-panel{background:var(--ivory);border:1px solid var(--rule);border-radius:3px;padding:28px 30px;margin-top:36px;box-shadow:0 4px 20px var(--shadow)}
+.chart-label{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);margin-bottom:20px;display:flex;align-items:center;gap:12px}
+.chart-label::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--rule),transparent)}
+.chart-wrap{position:relative;height:380px}
+
+.ornament{text-align:center;margin:40px 0 0;color:var(--rule);font-size:1rem;letter-spacing:.8em}
+.chart-panel2{background:var(--ivory);border:1px solid var(--rule);border-top:3px solid #2a5a2a;border-radius:3px;padding:28px 30px;margin-top:36px;box-shadow:0 4px 20px var(--shadow)}
+.copy-panel2{background:var(--ivory);border:1px solid var(--rule);border-top:3px solid #2a5a2a;border-radius:3px;padding:22px 28px;margin-top:20px;box-shadow:0 4px 20px var(--shadow)}
+.chart-panel3{background:var(--ivory);border:1px solid var(--rule);border-top:3px solid #1a3a6a;border-radius:3px;padding:28px 30px;margin-top:36px;box-shadow:0 4px 20px var(--shadow)}
+.copy-panel3{background:var(--ivory);border:1px solid var(--rule);border-top:3px solid #1a3a6a;border-radius:3px;padding:22px 28px;margin-top:20px;box-shadow:0 4px 20px var(--shadow)}
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="eyebrow">Sayısal Analiz · Matris Hesaplama</div>
+  <h1>Matris Analiz Sistemi</h1>
+  <div class="mhr"><span></span><em>Öklid · Kayan Ortalama · Kümülatif Analiz</em><span></span></div>
+</div>
+
+<div class="page">
+
+  <!-- VERİ GİRİŞİ -->
+  <div class="panel">
+    <div class="panel-label">Veri Dizisi</div>
+    <div class="data-row">
+      <input class="inp" type="text" id="numArray" value="1, 2, 3, 2, 1, 2" placeholder="Virgülle ayrılmış sayılar…">
+      <button class="btn" onclick="runAll()">Hesapla</button>
+      <button class="btn" onclick="loadFromFirebase()" id="fbBtn">☁ Firebase'den Yükle</button>
+      <button class="btn btn-clear" onclick="clearInput()">Temizle</button>
+    </div>
+    <div id="fbStatus" style="margin-top:10px;font-size:.8rem;font-style:italic;color:var(--ink-light);display:none"></div>
+  </div>
+
+  <!-- DENKLEM + AYARLAR -->
+  <div class="panel">
+    <div class="panel-label">Dönüşüm Fonksiyonu</div>
+
+    <div class="formula-row">
+      <span class="fx-label">f (x, y) =</span>
+      <input class="inp" type="text" id="formulaInput"
+        value="(((x^(y))*1)/((0.85355)^(y)))"
+        placeholder="x ve y değişkenlerini kullanın…">
+      <button class="btn" onclick="runAll()">Uygula</button>
+    </div>
+    <p class="hint">x, y, x^n, x^(-n), sqrt(x), log(x), sin(x), cos(x), abs(x), pi, e &nbsp;·&nbsp; <strong>y</strong> kaydırıcıyla değişir</p>
+
+    <!-- Aralık girişi -->
+    <div class="range-inputs">
+      <label>y aralığı:</label>
+      <input class="range-inp" type="number" id="yMin" value="-1.5" step="0.1" placeholder="Min">
+      <span class="range-sep">—</span>
+      <input class="range-inp" type="number" id="yMax" value="1" step="0.1" placeholder="Max">
+      <button class="btn" style="padding:7px 16px;font-size:.58rem" onclick="applyRange()">Uygula</button>
+    </div>
+
+    <!-- y kaydırıcı -->
+    <div class="y-row">
+      <span class="y-badge">y =</span>
+      <input type="range" class="y-slider" id="ySlider" min="-150" max="100" step="1" value="0">
+      <span class="y-val-display" id="yValDisplay">0.00</span>
+    </div>
+    <div class="y-range-hint">
+      <span id="yMinLabel">−1.50</span>
+      <span id="yMaxLabel">+1.00</span>
+    </div>
+
+    <!-- ilerleme -->
+    <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+
+    <!-- ISIL ŞERİT -->
+    <div class="strip-wrap">
+      <div class="strip-label-row">
+        <span class="strip-label">Denklem Isı Haritası — Çapraz Ortalama Serisi</span>
+        <button class="btn btn-use" onclick="useStripAsInput()">↑ Girdi Olarak Kullan</button>
+      </div>
+      <div class="strip-scroll" id="stripScroll">
+        <table class="strip-table" id="stripTable"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRAFİK -->
+  <div class="chart-panel">
+    <div class="chart-label">Kümülatif Analiz Grafiği</div>
+    <div class="chart-wrap"><canvas id="cumChart"></canvas></div>
+  </div>
+
+  <!-- KOPYALAMA -->
+  <div class="copy-panel">
+    <div class="panel-label">Son Türetilmiş Seriyi Kopyala</div>
+    <div class="copy-row">
+      <input class="copy-input" type="text" id="copyInput" readonly placeholder="Hesapla'ya bastıktan sonra burada görünür…">
+      <button class="copy-btn" id="copyBtn" onclick="copySerial()">Kopyala</button>
+    </div>
+  </div>
+
+  <!-- ÖZ-BESLEMELI SERİ -->
+  <div class="chart-panel2">
+    <div class="chart-label" style="color:#2a5a2a">Öz-Beslemeli Dönüşüm Serisi</div>
+    <div class="chart-wrap"><canvas id="feedChart"></canvas></div>
+  </div>
+
+  <div class="copy-panel2">
+    <div class="panel-label" style="color:#2a5a2a">Öz-Beslemeli Seriyi Kopyala</div>
+    <div class="copy-row">
+      <input class="copy-input" type="text" id="copyInput2" readonly placeholder="Hesapla'ya bastıktan sonra burada görünür…">
+      <button class="copy-btn" id="copyBtn2" onclick="copySerial2()" style="background:#2a5a2a">Kopyala</button>
+    </div>
+  </div>
+
+  <!-- G FONKSİYONU — 3. GRAFİK (normal kümülatif) -->
+  <div class="chart-panel3">
+    <div class="chart-label" style="color:#1a3a6a">g Fonksiyonu — Kümülatif Analiz</div>
+    <div class="chart-wrap"><canvas id="gCumChart"></canvas></div>
+  </div>
+
+  <div class="copy-panel3">
+    <div class="panel-label" style="color:#1a3a6a">g Serisi — Kopyala</div>
+    <div class="copy-row">
+      <input class="copy-input" type="text" id="copyInput3" readonly placeholder="Hesapla'ya bastıktan sonra burada görünür…">
+      <button class="copy-btn" id="copyBtn3" onclick="copySerial3()" style="background:#1a3a6a">Kopyala</button>
+    </div>
+  </div>
+
+  <!-- G FONKSİYONU — 4. GRAFİK (öz-beslemeli) -->
+  <div class="chart-panel3" style="border-top-color:#2a3a8a">
+    <div class="chart-label" style="color:#2a3a8a">g Fonksiyonu — Öz-Beslemeli Dönüşüm</div>
+    <div class="chart-wrap"><canvas id="gFeedChart"></canvas></div>
+  </div>
+
+  <div class="copy-panel3" style="border-top-color:#2a3a8a">
+    <div class="panel-label" style="color:#2a3a8a">g Öz-Beslemeli Serisi — Kopyala</div>
+    <div class="copy-row">
+      <input class="copy-input" type="text" id="copyInput4" readonly placeholder="Hesapla'ya bastıktan sonra burada görünür…">
+      <button class="copy-btn" id="copyBtn4" onclick="copySerial4()" style="background:#2a3a8a">Kopyala</button>
+    </div>
+  </div>
+
+  <div class="ornament">❧</div>
+</div>
+
+<script>
+/* ══ GLOBAL ══ */
+let G_arr = [];
+let G_y   = 0;
+let G_yMin = -1.5, G_yMax = 1.0;
+let cumChartInst = null;
+let debounceTimer = null;
+let G_lastDerived = [];   // son türetilmiş seri (kopyalama için)
+let G_lastStrip = [];      // son ısı şeridi filtrelenmiş değerler
+let feedChartInst = null;  // öz-beslemeli grafik
+let gCumChartInst = null;  // g kümülatif grafik
+let gFeedChartInst = null; // g öz-beslemeli grafik
+
+/* ══ RANGE (aralık) ══ */
+function applyRange() {
+  const mn = parseFloat(document.getElementById('yMin').value);
+  const mx = parseFloat(document.getElementById('yMax').value);
+  if (isNaN(mn)||isNaN(mx)||mn>=mx) return;
+  G_yMin = mn; G_yMax = mx;
+  document.getElementById('yMinLabel').textContent = (mn>=0?'+':'')+mn.toFixed(2);
+  document.getElementById('yMaxLabel').textContent = (mx>=0?'+':'')+mx.toFixed(2);
+  // Slider'ı int aralığına göre yeniden ölçekle: 0..1000 → yMin..yMax
+  const sl = document.getElementById('ySlider');
+  sl.min = 0; sl.max = 1000; sl.step = 1;
+  sl.value = Math.round((G_y - G_yMin) / (G_yMax - G_yMin) * 1000);
+  updateYDisplay();
+  scheduleRun();
+}
+
+function sliderToY() {
+  const sl = document.getElementById('ySlider');
+  const t = sl.value / (parseFloat(sl.max) - parseFloat(sl.min));
+  return G_yMin + t * (G_yMax - G_yMin);
+}
+
+function updateYDisplay() {
+  G_y = sliderToY();
+  document.getElementById('yValDisplay').textContent = G_y.toFixed(3);
+}
+
+/* ══ Y SLIDER ══ */
+document.getElementById('ySlider').addEventListener('input', () => {
+  updateYDisplay();
+  scheduleRun();
+});
+
+function scheduleRun() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => runAll(false), 180);
+}
+
+/* ══ FORMÜL ══ */
+function applyFormula(x, y, expr) {
+  let e = expr.trim()
+    .replace(/\^/g,'**').replace(/sqrt\(/g,'Math.sqrt(').replace(/log\(/g,'Math.log(')
+    .replace(/sin\(/g,'Math.sin(').replace(/cos\(/g,'Math.cos(').replace(/tan\(/g,'Math.tan(')
+    .replace(/abs\(/g,'Math.abs(').replace(/\bpi\b/gi,'Math.PI').replace(/\be\b/g,'Math.E');
+  try{ return Function('x','y',`"use strict";return (${e});`)(x,y); }
+  catch{ return NaN; }
+}
+
+/* ══ CORE: sadece denklem ısı haritası → çapraz ortalama ══ */
+function computeFormulaStrip(n, formula, y) {
+  // (n+1)×(n+1) Öklid matrisi
+  const M = n + 1;
+  const eu = [];
+  for(let r=0;r<M;r++){eu[r]=[];for(let c=0;c<M;c++){const dr=r,dc=c-(M-1);eu[r][c]=Math.sqrt(dr*dr+dc*dc);}}
+  // 2×2 kayan → n×n
+  const sl=[];
+  for(let r=0;r<M-1;r++){sl[r]=[];for(let c=0;c<M-1;c++){sl[r][c]=(eu[r][c]+eu[r][c+1]+eu[r+1][c]+eu[r+1][c+1])/4;}}
+  // Formül uygula (sadece denklem, veri çarpımı yok)
+  const mat=sl.map(row=>row.map(v=>{if(v===0)return 0;const r=applyFormula(v,y,formula);return isFinite(r)?r:NaN;}));
+  // Çapraz ortalama dizisi
+  const diags=[];
+  const addD=(sr,sc)=>{const d=[];let r=sr,c=sc;while(r<n&&c<n){if(isFinite(mat[r][c]))d.push(mat[r][c]);r++;c++;}if(d.length)diags.push(d.reduce((a,b)=>a+b,0)/d.length);};
+  for(let sc=0;sc<n;sc++) addD(0,sc);
+  for(let sr=1;sr<n;sr++) addD(sr,0);
+  return diags;
+}
+
+/* ══ COMPUTE TOTAL (tek sayı döndürür) ══ */
+function computeTotal(arr, formula, y) {
+  const res = computeFullResult(arr, formula, y);
+  return res.total;
+}
+
+/* ══ CORE ══ */
+function computeFullResult(arr, formula, y) {
+  const n = arr.length;
+  if(n===0) return {total:0, derived:[]};
+
+  // I. Dinamik ortalama
+  const mat1=[];
+  for(let i=0;i<n;i++){mat1[i]=[];for(let j=0;j<n;j++){if(j<i){mat1[i][j]=0;continue;}let s=0;for(let k=j-i;k<=j;k++)s+=arr[k];mat1[i][j]=s/(i+1);}}
+
+  // II. Öklid → kayan
+  const M=n+1;
+  const eu=[];
+  for(let r=0;r<M;r++){eu[r]=[];for(let c=0;c<M;c++){const dr=r,dc=c-(M-1);eu[r][c]=Math.sqrt(dr*dr+dc*dc);}}
+  const sl=[];
+  for(let r=0;r<M-1;r++){sl[r]=[];for(let c=0;c<M-1;c++){sl[r][c]=(eu[r][c]+eu[r][c+1]+eu[r+1][c]+eu[r+1][c+1])/4;}}
+
+  // III. Formül
+  const mat3=sl.map(row=>row.map(v=>{if(v===0)return 0;const r=applyFormula(v,y,formula);return isFinite(r)?r:NaN;}));
+
+  // IV. Çarpım
+  const mat4=[];
+  for(let r=0;r<n;r++){mat4[r]=[];for(let c=0;c<n;c++){const a=mat1[r][c],b=mat3[r][c];mat4[r][c]=(isFinite(a)&&isFinite(b))?a*b:NaN;}}
+
+  // V. Çapraz dizisi + toplam
+  const diagSeries=[];
+  let total=0;
+  const addDiag=(sr,sc)=>{const d=[];let r=sr,c=sc;while(r<n&&c<n){if(isFinite(mat4[r][c]))d.push(mat4[r][c]);r++;c++;}if(d.length){const avg=d.reduce((a,b)=>a+b,0)/d.length;diagSeries.push(avg);total+=avg;}};
+  for(let sc=0;sc<n;sc++) addDiag(0,sc);
+  for(let sr=1;sr<n;sr++) addDiag(sr,0);
+
+  return {total, diagSeries, mat3};
+}
+
+/* ══ ISIL ŞERİT ══ */
+function heatColor(t) {
+  // t: 0→kırmızı, 0.5→sarı, 1→yeşil
+  const h = Math.round(t * 120);
+  const l = 88 - Math.abs(t - 0.5) * 12;
+  return `hsl(${h},62%,${l}%)`;
+}
+
+function renderStrip(series) {
+  if(!series||!series.length){ document.getElementById('stripTable').innerHTML=''; return; }
+  const filtered=series.map((v,i)=>({v,i})).filter(({v})=>isFinite(v)&&Math.abs(v)>1e-9);
+  if(!filtered.length){ document.getElementById('stripTable').innerHTML=''; return; }
+  const vals=filtered.map(({v})=>v);
+  const min=Math.min(...vals);
+  const max=Math.max(...vals);
+  const range=max-min||1;
+  let html='<tr>';
+  filtered.forEach(({v,i})=>{
+    const t=(v-min)/range;
+    const bg=heatColor(t);
+    const fg=t<0.35?'#7a1010':t<0.65?'#7a6010':'#1a4a1a';
+    html+=`<td style="background:${bg};color:${fg}"><span class="strip-idx">D·${i+1}</span>${v.toFixed(4)}</td>`;
+  });
+  html+='</tr>';
+  document.getElementById('stripTable').innerHTML=html;
+  // Sona scroll
+  requestAnimationFrame(()=>{
+    const sc=document.getElementById('stripScroll');
+    sc.scrollLeft=sc.scrollWidth;
+  });
+}
+
+/* ══ KÜMÜLATİF ══ */
+async function buildCumulative(arr, formula, y) {
+  const n=arr.length;
+  const pw=document.getElementById('progressWrap');
+  const pb=document.getElementById('progressBar');
+  pw.style.display='block'; pb.style.width='0%';
+
+  const derived=[];
+  let lastDiagSeries=[];
+  for(let i=1;i<=n;i++){
+    const res=computeFullResult(arr.slice(0,i),formula,y);
+    derived.push(res.total);
+    if(i===n) lastDiagSeries=res.diagSeries;
+    pb.style.width=`${Math.round(i/n*100)}%`;
+    if(i%5===0) await new Promise(r=>setTimeout(r,0));
+  }
+  pw.style.display='none';
+
+  // Isıl şerit: sadece denklem ısı haritasından çapraz ortalama (veri çarpımı yok)
+  const formulaStrip = computeFormulaStrip(n, formula, y);
+  G_lastStrip = formulaStrip.filter(v=>isFinite(v)&&Math.abs(v)>1e-9);
+  renderStrip(formulaStrip);
+
+  // Kopyalama alanını güncelle
+  G_lastDerived=derived;
+  document.getElementById('copyInput').value=derived.map(v=>v.toFixed(6)).join(', ');
+
+  // Kümülatif toplam
+  const cumSum=[];
+  derived.reduce((acc,v,i)=>{cumSum[i]=acc+v;return acc+v;},0);
+
+  const labels=arr.map((_,i)=>`n=${i+1}`);
+  const ctx=document.getElementById('cumChart').getContext('2d');
+  if(cumChartInst){cumChartInst.destroy();cumChartInst=null;}
+
+  cumChartInst=new Chart(ctx,{
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        // Kümülatif ALTTA (önce çizilir, fill:true)
+        {
+          label:'Kümülatif Toplam',
+          data:cumSum,
+          borderColor:'#2a7a2a',
+          backgroundColor:'rgba(42,122,42,0.18)',
+          pointBackgroundColor:'#2a7a2a',
+          pointBorderColor:'#fdfaf4',
+          pointBorderWidth:2,
+          pointRadius:5,
+          pointHoverRadius:8,
+          tension:.38,
+          fill:true,
+          order:2,
+          yAxisID:'y2'
+        },
+        // Türetilmiş ÜSTTE (sonra çizilir, daha öne gelir)
+        {
+          label:'Türetilmiş Değer',
+          data:derived,
+          borderColor:'#a07840',
+          backgroundColor:'rgba(160,120,64,0.0)',
+          pointBackgroundColor:'#a07840',
+          pointBorderColor:'#fdfaf4',
+          pointBorderWidth:2,
+          pointRadius:6,
+          pointHoverRadius:9,
+          tension:.38,
+          order:1,
+          yAxisID:'y1'
+        }
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      animation:{duration:280},
+      plugins:{
+        legend:{labels:{font:{family:'EB Garamond, serif',size:14},color:'#4a3f2f',padding:20,usePointStyle:true}},
+        tooltip:{
+          backgroundColor:'#2c2416',
+          titleFont:{family:'Cinzel, serif',size:11},
+          bodyFont:{family:'EB Garamond, serif',size:13},
+          padding:12,cornerRadius:2,
+          callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y.toFixed(5)}`}
+        }
+      },
+      scales:{
+        x:{ticks:{font:{family:'Cinzel, serif',size:10},color:'#7a6e5a'},grid:{color:'#e8dfc8'}},
+        y1:{type:'linear',position:'left',ticks:{font:{family:'EB Garamond, serif',size:12},color:'#a07840'},grid:{color:'#e8dfc8'},title:{display:true,text:'Türetilmiş Değer',font:{family:'Cinzel, serif',size:10},color:'#a07840'}},
+        y2:{type:'linear',position:'right',ticks:{font:{family:'EB Garamond, serif',size:12},color:'#2a7a2a'},grid:{drawOnChartArea:false},title:{display:true,text:'Kümülatif Toplam',font:{family:'Cinzel, serif',size:10},color:'#2a7a2a'}}
+      }
+    }
+  });
+}
+
+
+/* ══ G FONKSİYONU CORE ══
+   I.  Dinamik ortalama matrisi (mat1) — f ile aynı
+   V.  1/(a²) matrisi: a = 1 + satir + (n-1-sutun)
+   IV. mat1 × mat5
+   Çapraz ortalama toplamı → tek sayı
+*/
+function computeGResult(arr) {
+  const n = arr.length;
+  if(n===0) return 0;
+
+  // I. Dinamik ortalama (f ile aynı)
+  const mat1=[];
+  for(let i=0;i<n;i++){
+    mat1[i]=[];
+    for(let j=0;j<n;j++){
+      if(j<i){mat1[i][j]=0;continue;}
+      let s=0;for(let k=j-i;k<=j;k++)s+=arr[k];
+      mat1[i][j]=s/(i+1);
+    }
+  }
+
+  // V. 1/a² matrisi (Öklid ve formül YOK)
+  const mat5=[];
+  for(let r=0;r<n;r++){
+    mat5[r]=[];
+    for(let col=0;col<n;col++){
+      const a = 1 + r + ((n-1) - col);
+      mat5[r][col] = 1/(a*a);
+    }
+  }
+
+  // IV. Çarpım mat1 × mat5
+  const mat4=[];
+  for(let r=0;r<n;r++){
+    mat4[r]=[];
+    for(let col=0;col<n;col++){
+      const a=mat1[r][col], b=mat5[r][col];
+      mat4[r][col]=(isFinite(a)&&isFinite(b))?a*b:NaN;
+    }
+  }
+
+  // Çapraz ortalama + toplam
+  let total=0;
+  const addDiag=(sr,sc)=>{
+    const d=[];let r=sr,c=sc;
+    while(r<n&&c<n){if(isFinite(mat4[r][c]))d.push(mat4[r][c]);r++;c++;}
+    if(d.length) total+=d.reduce((a,b)=>a+b,0)/d.length;
+  };
+  for(let sc=0;sc<n;sc++) addDiag(0,sc);
+  for(let sr=1;sr<n;sr++) addDiag(sr,0);
+
+  return total;
+}
+
+/* ── Grafik çizici (renk parametrik) ── */
+function makeChartConfig(labels, derived, cumSum, color1, color2, label1, label2) {
+  return {
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        {
+          label: label2,
+          data: cumSum,
+          borderColor: color2,
+          backgroundColor: color2.replace(')',',0.13)').replace('rgb','rgba'),
+          pointBackgroundColor: color2,
+          pointBorderColor:'#fdfaf4',pointBorderWidth:2,
+          pointRadius:5,pointHoverRadius:8,
+          tension:.38,fill:true,order:2,yAxisID:'y2'
+        },
+        {
+          label: label1,
+          data: derived,
+          borderColor: color1,
+          backgroundColor:'rgba(0,0,0,0)',
+          pointBackgroundColor: color1,
+          pointBorderColor:'#fdfaf4',pointBorderWidth:2,
+          pointRadius:6,pointHoverRadius:9,
+          tension:.38,order:1,yAxisID:'y1'
+        }
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      animation:{duration:280},
+      plugins:{
+        legend:{labels:{font:{family:'EB Garamond, serif',size:14},color:'#2c2d3a',padding:20,usePointStyle:true}},
+        tooltip:{
+          backgroundColor:'#1a1a2a',
+          titleFont:{family:'Cinzel, serif',size:11},
+          bodyFont:{family:'EB Garamond, serif',size:13},
+          padding:12,cornerRadius:2,
+          callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(5)}`}
+        }
+      },
+      scales:{
+        x:{ticks:{font:{family:'Cinzel, serif',size:10},color:'#3a3a5a'},grid:{color:'#e0e4f0'}},
+        y1:{type:'linear',position:'left',
+          ticks:{font:{family:'EB Garamond, serif',size:12},color:color1},
+          grid:{color:'#e0e4f0'},
+          title:{display:true,text:label1,font:{family:'Cinzel, serif',size:10},color:color1}},
+        y2:{type:'linear',position:'right',
+          ticks:{font:{family:'EB Garamond, serif',size:12},color:color2},
+          grid:{drawOnChartArea:false},
+          title:{display:true,text:label2,font:{family:'Cinzel, serif',size:10},color:color2}}
+      }
+    }
+  };
+}
+
+/* ── 3. Grafik: g normal kümülatif ── */
+async function buildGCumulative(arr) {
+  const n=arr.length;
+  const derived=[];
+  for(let i=1;i<=n;i++){
+    derived.push(computeGResult(arr.slice(0,i)));
+    if(i%5===0) await new Promise(r=>setTimeout(r,0));
+  }
+  document.getElementById('copyInput3').value=derived.map(v=>v.toFixed(6)).join(', ');
+
+  const cumSum=[];
+  derived.reduce((acc,v,i)=>{cumSum[i]=acc+v;return acc+v;},0);
+
+  const labels=arr.map((_,i)=>`n=${i+1}`);
+  const ctx=document.getElementById('gCumChart').getContext('2d');
+  if(gCumChartInst){gCumChartInst.destroy();gCumChartInst=null;}
+  gCumChartInst=new Chart(ctx, makeChartConfig(
+    labels, derived, cumSum,
+    '#2a5a9a','#1a3a6a',
+    'g Türetilmiş Değer','g Kümülatif Toplam'
+  ));
+}
+
+/* ── 4. Grafik: g öz-beslemeli ── */
+async function buildGFeedback(arr) {
+  const n=arr.length;
+  const ySeries=[];
+  for(let i=0;i<n;i++){
+    const input=[...ySeries, arr[i]];
+    ySeries.push(computeGResult(input));
+    if(i%5===0) await new Promise(r=>setTimeout(r,0));
+  }
+  document.getElementById('copyInput4').value=ySeries.map(v=>v.toFixed(6)).join(', ');
+
+  const cumSum=[];
+  ySeries.reduce((acc,v,i)=>{cumSum[i]=acc+v;return acc+v;},0);
+
+  const labels=arr.map((_,i)=>`n=${i+1}`);
+  const ctx=document.getElementById('gFeedChart').getContext('2d');
+  if(gFeedChartInst){gFeedChartInst.destroy();gFeedChartInst=null;}
+  gFeedChartInst=new Chart(ctx, makeChartConfig(
+    labels, ySeries, cumSum,
+    '#4a4aaa','#2a3a8a',
+    'g Öz-Beslemeli Değer','g Öz-Beslemeli Kümülatif'
+  ));
+}
+
+/* ══ KOPYALA 3 & 4 ══ */
+function copySerial3() {
+  const inp=document.getElementById('copyInput3');
+  if(!inp.value)return;
+  navigator.clipboard.writeText(inp.value).then(()=>{
+    const btn=document.getElementById('copyBtn3');
+    btn.textContent='Kopyalandı ✓';btn.classList.add('copied');
+    setTimeout(()=>{btn.textContent='Kopyala';btn.classList.remove('copied');},2000);
+  }).catch(()=>{inp.select();document.execCommand('copy');});
+}
+function copySerial4() {
+  const inp=document.getElementById('copyInput4');
+  if(!inp.value)return;
+  navigator.clipboard.writeText(inp.value).then(()=>{
+    const btn=document.getElementById('copyBtn4');
+    btn.textContent='Kopyalandı ✓';btn.classList.add('copied');
+    setTimeout(()=>{btn.textContent='Kopyala';btn.classList.remove('copied');},2000);
+  }).catch(()=>{inp.select();document.execCommand('copy');});
+}
+
+/* ══ FİREBASE — orijinal çalışan kod ══ */
+const firebaseConfig = {
+    apiKey: "AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",
+    authDomain: "paralayici.firebaseapp.com",
+    projectId: "paralayici",
+    storageBucket: "paralayici.firebasestorage.app",
+    messagingSenderId: "980843550614",
+    appId: "1:980843550614:web:93dd5bda4ddc377b20efb7"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+function loadFromFirebase() {
+  const btn = document.getElementById('fbBtn');
+  const status = document.getElementById('fbStatus');
+  btn.textContent = '⏳ Yükleniyor…';
+  btn.disabled = true;
+  status.style.display = 'block';
+  status.style.color = 'var(--ink-light)';
+  status.textContent = 'Firebase\'den veriler çekiliyor…';
+
+  db.collection("cumulative_daily_data")
+    .orderBy("date", "asc")
+    .get()
+    .then(snapshot => {
+      const rawValues = [];
+      snapshot.forEach(doc => {
+        rawValues.push(doc.data().value);
+      });
+      btn.textContent = '☁ Firebase\'den Yükle';
+      btn.disabled = false;
+      if (!rawValues.length) {
+        status.textContent = 'Veri bulunamadı.';
+        return;
+      }
+      document.getElementById('numArray').value = rawValues.join(', ');
+      status.textContent = '✓ ' + rawValues.length + ' değer yüklendi.';
+      status.style.color = '#2a5a2a';
+      runAll();
+    })
+    .catch(err => {
+      btn.textContent = '☁ Firebase\'den Yükle';
+      btn.disabled = false;
+      status.textContent = 'Hata: ' + err.message;
+      status.style.color = '#8b2020';
+    });
+}
+
+/* ══ ŞERİDİ GİRDİ OLARAK KULLAN ══ */
+function useStripAsInput() {
+  if(!G_lastStrip.length) return;
+  document.getElementById('numArray').value = G_lastStrip.map(v=>v.toFixed(6)).join(', ');
+  document.getElementById('numArray').focus();
+  runAll(false);
+}
+
+/* ══ TEMİZLE ══ */
+function clearInput() {
+  document.getElementById('numArray').value = '';
+  document.getElementById('numArray').focus();
+}
+
+/* ══ ÖZ-BESLEMELİ SERİ ══ */
+async function buildFeedback(arr, formula, y) {
+  // f([a1]) = y1
+  // f([y1, a2]) = y2
+  // f([y1, y2, a3]) = y3  ...
+  const n = arr.length;
+  const ySeries = [];
+
+  for (let i = 0; i < n; i++) {
+    // Girdi: önceki y'ler + ham serinin i. elemanı
+    const input = [...ySeries, arr[i]];
+    const val = computeTotal(input, formula, y);
+    ySeries.push(val);
+    if (i % 5 === 0) await new Promise(r => setTimeout(r, 0));
+  }
+
+  // Kopyalama kutusunu güncelle
+  document.getElementById('copyInput2').value = ySeries.map(v => v.toFixed(6)).join(', ');
+
+  // Kümülatif toplam
+  const cumSum = [];
+  ySeries.reduce((acc, v, i) => { cumSum[i] = acc + v; return acc + v; }, 0);
+
+  const labels = arr.map((_, i) => `n=${i+1}`);
+  const ctx = document.getElementById('feedChart').getContext('2d');
+  if (feedChartInst) { feedChartInst.destroy(); feedChartInst = null; }
+
+  feedChartInst = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Kümülatif Toplam',
+          data: cumSum,
+          borderColor: '#1a4a1a',
+          backgroundColor: 'rgba(26,74,26,0.13)',
+          pointBackgroundColor: '#1a4a1a',
+          pointBorderColor: '#fdfaf4',
+          pointBorderWidth: 2,
+          pointRadius: 5,
+          pointHoverRadius: 8,
+          tension: .38,
+          fill: true,
+          order: 2,
+          yAxisID: 'y2'
+        },
+        {
+          label: 'Öz-Beslemeli Değer',
+          data: ySeries,
+          borderColor: '#4a9a4a',
+          backgroundColor: 'rgba(74,154,74,0.0)',
+          pointBackgroundColor: '#4a9a4a',
+          pointBorderColor: '#fdfaf4',
+          pointBorderWidth: 2,
+          pointRadius: 6,
+          pointHoverRadius: 9,
+          tension: .38,
+          order: 1,
+          yAxisID: 'y1'
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      animation: { duration: 280 },
+      plugins: {
+        legend: { labels: { font: { family: 'EB Garamond, serif', size: 14 }, color: '#1e2d1e', padding: 20, usePointStyle: true } },
+        tooltip: {
+          backgroundColor: '#1a2d1a',
+          titleFont: { family: 'Cinzel, serif', size: 11 },
+          bodyFont: { family: 'EB Garamond, serif', size: 13 },
+          padding: 12, cornerRadius: 2,
+          callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.y.toFixed(5)}` }
+        }
+      },
+      scales: {
+        x: { ticks: { font: { family: 'Cinzel, serif', size: 10 }, color: '#3a5a3a' }, grid: { color: '#ddeedd' } },
+        y1: { type: 'linear', position: 'left', ticks: { font: { family: 'EB Garamond, serif', size: 12 }, color: '#4a9a4a' }, grid: { color: '#ddeedd' }, title: { display: true, text: 'Öz-Beslemeli Değer', font: { family: 'Cinzel, serif', size: 10 }, color: '#4a9a4a' } },
+        y2: { type: 'linear', position: 'right', ticks: { font: { family: 'EB Garamond, serif', size: 12 }, color: '#1a4a1a' }, grid: { drawOnChartArea: false }, title: { display: true, text: 'Kümülatif Toplam', font: { family: 'Cinzel, serif', size: 10 }, color: '#1a4a1a' } }
+      }
+    }
+  });
+}
+
+/* ══ KOPYALA 2 ══ */
+function copySerial2() {
+  const inp = document.getElementById('copyInput2');
+  if (!inp.value) return;
+  navigator.clipboard.writeText(inp.value).then(() => {
+    const btn = document.getElementById('copyBtn2');
+    btn.textContent = 'Kopyalandı ✓'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Kopyala'; btn.classList.remove('copied'); }, 2000);
+  }).catch(() => { inp.select(); document.execCommand('copy'); });
+}
+
+/* ══ KOPYALA ══ */
+function copySerial() {
+  const inp=document.getElementById('copyInput');
+  if(!inp.value) return;
+  navigator.clipboard.writeText(inp.value).then(()=>{
+    const btn=document.getElementById('copyBtn');
+    btn.textContent='Kopyalandı ✓'; btn.classList.add('copied');
+    setTimeout(()=>{btn.textContent='Kopyala';btn.classList.remove('copied');},2000);
+  }).catch(()=>{inp.select();document.execCommand('copy');});
+}
+
+/* ══ ANA ══ */
+async function runAll(resetY=true) {
+  const raw=document.getElementById('numArray').value;
+  const arr=raw.split(',').map(s=>parseFloat(s.trim())).filter(v=>!isNaN(v));
+  if(!arr.length) return;
+  G_arr=arr;
+
+  if(resetY){
+    // Slider sıfırla ama aralığı koru
+    const sl=document.getElementById('ySlider');
+    sl.min=0;sl.max=1000;sl.step=1;
+    // y=0 nereye düşüyor?
+    const t0=Math.max(0,Math.min(1,(0-G_yMin)/(G_yMax-G_yMin)));
+    sl.value=Math.round(t0*1000);
+    updateYDisplay();
+  } else {
+    updateYDisplay();
+  }
+
+  const formula=document.getElementById('formulaInput').value;
+  await buildCumulative(G_arr,formula,G_y);
+  await buildFeedback(G_arr,formula,G_y);
+  await buildGCumulative(G_arr);
+  await buildGFeedback(G_arr);
+}
+
+/* ══ İLK YÜKLEME ══ */
+window.onload=()=>{
+  // Aralık etiketlerini ilk değerle ayarla
+  document.getElementById('yMinLabel').textContent='-1.50';
+  document.getElementById('yMaxLabel').textContent='+1.00';
+  runAll(true);
+};
+</script>
+</body>
+</html>
