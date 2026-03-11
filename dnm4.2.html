@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Açı Tabloları</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  background: #080810;
+  color: #e0e0f0;
+  font-family: 'Syne', sans-serif;
+  overflow: hidden;
+}
+
+#topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 52px;
+  background: rgba(8,8,16,0.94);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  z-index: 100;
+  gap: 10px;
+}
+
+#topbar h1 {
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  background: linear-gradient(90deg, #a78bff, #ff7aa0, #7affd4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  white-space: nowrap;
+}
+
+.nav-tabs { display: flex; gap: 3px; }
+
+.tab-btn {
+  padding: 5px 13px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.09);
+  background: transparent;
+  color: rgba(255,255,255,0.35);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tab-btn:hover { color: #fff; border-color: rgba(255,255,255,0.28); }
+.tab-btn.active {
+  background: rgba(167,139,255,0.16);
+  border-color: #a78bff;
+  color: #c9b8ff;
+}
+
+.controls { display: flex; align-items: center; gap: 7px; }
+
+.controls label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 0.1em;
+}
+
+.controls input[type="number"] {
+  width: 50px;
+  padding: 4px 7px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(167,139,255,0.38);
+  border-radius: 6px;
+  color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+  outline: none;
+}
+
+.controls button {
+  padding: 5px 13px;
+  background: #a78bff;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-family: 'Syne', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background 0.14s;
+}
+.controls button:hover { background: #bea8ff; }
+
+/* V toggle button */
+#vBtn {
+  padding: 5px 13px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.09);
+  background: transparent;
+  color: rgba(255,255,255,0.35);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+#vBtn:hover { color: #fff; border-color: rgba(255,255,255,0.28); }
+#vBtn.on {
+  background: rgba(122,255,212,0.12);
+  border-color: #7affd4;
+  color: #7affd4;
+}
+
+#viewport {
+  position: fixed;
+  top: 52px; left: 0; right: 0; bottom: 0;
+  overflow: hidden;
+}
+
+.schema-view {
+  display: none;
+  position: absolute;
+  inset: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.schema-view.active { display: flex; }
+
+.schema-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  color: rgba(255,255,255,0.22);
+  text-align: center;
+}
+
+/* canvas wrapper — zoom/pan happens here via transform */
+.canvas-outer {
+  position: relative;
+  overflow: hidden;
+  /* sized by JS to base canvas size */
+  flex-shrink: 0;
+}
+
+.canvas-inner {
+  position: absolute;
+  top: 0; left: 0;
+  transform-origin: 0 0;
+  cursor: grab;
+}
+.canvas-inner.grabbing { cursor: grabbing; }
+
+canvas.grid-canvas {
+  display: block;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.legend-bar {
+  width: 110px; height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, #d62828, #f4a261, #52b788, #1b4332);
+}
+.legend-txt {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.25);
+}
+
+#tooltip {
+  position: fixed;
+  pointer-events: none;
+  background: rgba(6,6,18,0.93);
+  border: 1px solid rgba(167,139,255,0.35);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: #ddd8ff;
+  z-index: 200;
+  display: none;
+  white-space: nowrap;
+}
+
+.hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.56rem;
+  color: rgba(255,255,255,0.13);
+  letter-spacing: 0.1em;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <h1>AÇI TABLOLARI</h1>
+  <div class="nav-tabs">
+    <button class="tab-btn active" data-idx="0">ŞEMA 1</button>
+    <button class="tab-btn" data-idx="1">ŞEMA 2</button>
+    <button class="tab-btn" data-idx="2">ŞEMA 3</button>
+    <button class="tab-btn" data-idx="3">ŞEMA 4</button>
+  </div>
+  <div class="controls">
+    <button id="vBtn" onclick="toggleValues()">DEĞ [V]</button>
+    <label>N =</label>
+    <input type="number" id="nInput" value="6" min="2" max="30">
+    <button onclick="rebuild()">OLUŞTUR</button>
+  </div>
+</div>
+
+<div id="viewport"></div>
+<div id="tooltip"></div>
+
+<script>
+/* ─── COLOR ─── */
+function valueToColor(t) {
+  t = Math.max(0, Math.min(1, t));
+  let r, g, b;
+  if (t < 0.5) {
+    const s = t * 2;
+    r = Math.round(215 - s * 22);
+    g = Math.round(38  + s * 140);
+    b = 26;
+  } else {
+    const s = (t - 0.5) * 2;
+    r = Math.round(193 - s * 158);
+    g = Math.round(178 + s * 40);
+    b = Math.round(26  + s * 26);
+  }
+  return [r, g, b];
+}
+
+/* ─── CALC ─── */
+function calcSchema1(N) {
+  const kGX = (N-1) + 0.625, kGY = N;
+  return Array.from({length:N}, (_,r) =>
+    Array.from({length:N}, (_,c) => {
+      const dx=(c+0.5)-kGX, dy=-((r+0.5)-kGY);
+      const mag=Math.sqrt(dx*dx+dy*dy);
+      if(mag<1e-9) return 90;
+      return 90 - Math.acos(Math.max(-1,Math.min(1,dy/mag)))*180/Math.PI;
+    })
+  );
+}
+function calcSchema2(N) {
+  const kGX=0, kGY=0.625;
+  return Array.from({length:N}, (_,r) =>
+    Array.from({length:N}, (_,c) => {
+      const dx=(c+0.5)-kGX, dy=-((r+0.5)-kGY);
+      const mag=Math.sqrt(dx*dx+dy*dy);
+      if(mag<1e-9) return 90;
+      return 90 - Math.acos(Math.max(-1,Math.min(1,dx/mag)))*180/Math.PI;
+    })
+  );
+}
+function calcSchema3(d1,d2){ return d1.map((row,r)=>row.map((v,c)=>v+d2[r][c])); }
+function calcSchema4(d3){ return d3.map(row=>row.map(v=>Math.max(0,Math.min(100,(v-89)/91*100)))); }
+
+/* ─── DRAW ─── */
+// DOT COLOR: fixed white with low opacity — never changes with cell color
+const DOT_COLOR = 'rgba(255,255,255,0.55)';
+
+function drawGrid(canvas, data, isPercent, aR, aC, showVals) {
+  const N = data.length;
+  const sz = canvas.width;
+  const cell = sz / N;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,sz,sz);
+
+  const flat = data.flat();
+  const mn = Math.min(...flat), mx = Math.max(...flat);
+
+  // font size scales with cell, min 8px
+  const fSize = Math.max(8, Math.min(cell * 0.22, 13));
+  ctx.font = `700 ${fSize}px "JetBrains Mono", monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  for (let r=0; r<N; r++) {
+    for (let c=0; c<N; c++) {
+      const v = data[r][c];
+      const t = isPercent ? v/100 : (mx===mn ? 0.5 : (v-mn)/(mx-mn));
+      const [cr,cg,cb] = valueToColor(t);
+      const x = c*cell, y = r*cell;
+
+      // fill
+      ctx.fillStyle = `rgb(${cr},${cg},${cb})`;
+      ctx.fillRect(x, y, cell, cell);
+
+      // grid line
+      ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+      ctx.lineWidth = 0.7;
+      ctx.strokeRect(x, y, cell, cell);
+
+      // center dot — always same color
+      const dotR = Math.max(1.8, cell * 0.045);
+      ctx.beginPath();
+      ctx.arc(x+cell/2, y+cell/2, dotR, 0, Math.PI*2);
+      ctx.fillStyle = DOT_COLOR;
+      ctx.fill();
+
+      // anchor outline
+      if (r===aR && c===aC) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x+1.5, y+1.5, cell-3, cell-3);
+      }
+
+      // values (toggled)
+      if (showVals && cell >= 20) {
+        const lum = 0.299*cr + 0.587*cg + 0.114*cb;
+        ctx.fillStyle = lum > 135 ? 'rgba(0,0,0,0.82)' : 'rgba(255,255,255,0.9)';
+        const label = isPercent ? v.toFixed(1)+'%' : v.toFixed(1)+'°';
+        ctx.fillText(label, x+cell/2, y+cell/2);
+      }
+    }
+  }
+}
+
+/* ─── ZOOM / PAN STATE per scene ─── */
+// Each scene has { zoom, panX, panY }
+let zoomStates = [];
+
+function clampPan(zs, outerW, outerH, baseSize) {
+  const scaledSize = baseSize * zs.zoom;
+  const minPanX = Math.min(0, outerW - scaledSize);
+  const minPanY = Math.min(0, outerH - scaledSize);
+  zs.panX = Math.max(minPanX, Math.min(0, zs.panX));
+  zs.panY = Math.max(minPanY, Math.min(0, zs.panY));
+}
+
+function applyTransform(inner, zs) {
+  inner.style.transform = `translate(${zs.panX}px, ${zs.panY}px) scale(${zs.zoom})`;
+}
+
+/* ─── STATE ─── */
+let scenes = [];
+let currentIdx = 0;
+let allData = null;
+let currentN = 6;
+let showValues = false;
+
+const LABELS = [
+  'ŞEMA 01  ·  K=(0.625,0) sağ-alt hücre alt kenarı  ·  yön: yukarı  ·  değer: 90°−x',
+  'ŞEMA 02  ·  K=(0,0.375) sol-üst hücre sol kenarı  ·  yön: sağ  ·  değer: 90°−x',
+  'ŞEMA 03  ·  Şema 1 + Şema 2 toplamı',
+  'ŞEMA 04  ·  Yüzdelik dönüşüm  ·  180°=%100  ·  89°=%0',
+];
+
+function getBaseSize(N) {
+  const vpW = window.innerWidth;
+  const vpH = window.innerHeight - 52;
+  const padH = 72;
+  const avail = Math.min(vpW - 32, vpH - padH);
+  const cellPx = Math.floor(avail / N);
+  return Math.max(cellPx, 8) * N;
+}
+
+function rebuild() {
+  currentN = Math.max(2, Math.min(30, parseInt(document.getElementById('nInput').value)||6));
+  const N = currentN;
+  const d1=calcSchema1(N), d2=calcSchema2(N);
+  const d3=calcSchema3(d1,d2), d4=calcSchema4(d3);
+  allData = [
+    {data:d1, isPercent:false, aR:N-1, aC:N-1},
+    {data:d2, isPercent:false, aR:0,   aC:0  },
+    {data:d3, isPercent:false, aR:-1,  aC:-1 },
+    {data:d4, isPercent:true,  aR:-1,  aC:-1 },
+  ];
+  buildDOM();
+  showSchema(currentIdx);
+}
+
+function buildDOM() {
+  const vp = document.getElementById('viewport');
+  vp.innerHTML = '';
+  scenes = [];
+  zoomStates = [];
+  const N = currentN;
+  const baseSize = getBaseSize(N);
+
+  for (let i=0; i<4; i++) {
+    const sc = allData[i];
+
+    const view = document.createElement('div');
+    view.className = 'schema-view';
+
+    const label = document.createElement('div');
+    label.className = 'schema-label';
+    label.textContent = LABELS[i];
+
+    // outer — fixed size, clips overflow
+    const outer = document.createElement('div');
+    outer.className = 'canvas-outer';
+    outer.style.width  = baseSize + 'px';
+    outer.style.height = baseSize + 'px';
+    outer.style.position = 'relative';
+    outer.style.overflow = 'hidden';
+
+    // inner — gets CSS transform for zoom+pan
+    const inner = document.createElement('div');
+    inner.className = 'canvas-inner';
+    inner.style.width  = baseSize + 'px';
+    inner.style.height = baseSize + 'px';
+    inner.style.transformOrigin = '0 0';
+
+    const canvas = document.createElement('canvas');
+    canvas.className = 'grid-canvas';
+    // Render at 2× for crispness, display at baseSize
+    const DSCALE = window.devicePixelRatio || 1;
+    canvas.width  = baseSize * DSCALE;
+    canvas.height = baseSize * DSCALE;
+    canvas.style.width  = baseSize + 'px';
+    canvas.style.height = baseSize + 'px';
+    canvas.getContext('2d').scale(DSCALE, DSCALE);
+
+    inner.appendChild(canvas);
+    outer.appendChild(inner);
+
+    // zoom state
+    const zs = {zoom:1, panX:0, panY:0};
+    zoomStates.push(zs);
+
+    // ── wheel zoom ──
+    outer.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const rect = outer.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const factor = e.deltaY < 0 ? 1.12 : 1/1.12;
+      const newZoom = Math.max(1, Math.min(12, zs.zoom * factor));
+      // zoom toward mouse position
+      zs.panX = mouseX - (mouseX - zs.panX) * (newZoom / zs.zoom);
+      zs.panY = mouseY - (mouseY - zs.panY) * (newZoom / zs.zoom);
+      zs.zoom = newZoom;
+      clampPan(zs, baseSize, baseSize, baseSize);
+      applyTransform(inner, zs);
+    }, {passive:false});
+
+    // ── pinch zoom (touch) ──
+    let lastTouchDist = null;
+    let lastTouchMidX = 0, lastTouchMidY = 0;
+    outer.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        const t0=e.touches[0], t1=e.touches[1];
+        lastTouchDist = Math.hypot(t1.clientX-t0.clientX, t1.clientY-t0.clientY);
+        const rect = outer.getBoundingClientRect();
+        lastTouchMidX = (t0.clientX+t1.clientX)/2 - rect.left;
+        lastTouchMidY = (t0.clientY+t1.clientY)/2 - rect.top;
+      }
+    }, {passive:true});
+    outer.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const t0=e.touches[0], t1=e.touches[1];
+        const dist = Math.hypot(t1.clientX-t0.clientX, t1.clientY-t0.clientY);
+        if (lastTouchDist) {
+          const factor = dist / lastTouchDist;
+          const newZoom = Math.max(1, Math.min(12, zs.zoom * factor));
+          const rect = outer.getBoundingClientRect();
+          const midX = (t0.clientX+t1.clientX)/2 - rect.left;
+          const midY = (t0.clientY+t1.clientY)/2 - rect.top;
+          zs.panX = midX - (midX - zs.panX) * (newZoom / zs.zoom);
+          zs.panY = midY - (midY - zs.panY) * (newZoom / zs.zoom);
+          zs.zoom = newZoom;
+          clampPan(zs, baseSize, baseSize, baseSize);
+          applyTransform(inner, zs);
+          lastTouchDist = dist;
+        }
+      }
+    }, {passive:false});
+    outer.addEventListener('touchend', () => { lastTouchDist = null; }, {passive:true});
+
+    // ── pan (drag) ──
+    let dragging = false, dragStartX=0, dragStartY=0, panStartX=0, panStartY=0;
+    outer.addEventListener('mousedown', (e) => {
+      if (zs.zoom <= 1) return;
+      dragging = true;
+      inner.classList.add('grabbing');
+      dragStartX = e.clientX; dragStartY = e.clientY;
+      panStartX = zs.panX;   panStartY = zs.panY;
+    });
+    document.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      zs.panX = panStartX + (e.clientX - dragStartX);
+      zs.panY = panStartY + (e.clientY - dragStartY);
+      clampPan(zs, baseSize, baseSize, baseSize);
+      applyTransform(inner, zs);
+    });
+    document.addEventListener('mouseup', () => {
+      if (dragging) { dragging=false; inner.classList.remove('grabbing'); }
+    });
+
+    // ── hover tooltip ──
+    outer.addEventListener('mousemove', (e) => {
+      if (dragging) return;
+      const rect = outer.getBoundingClientRect();
+      // convert mouse to canvas coords accounting for zoom+pan
+      const mx = (e.clientX - rect.left - zs.panX) / zs.zoom;
+      const my = (e.clientY - rect.top  - zs.panY) / zs.zoom;
+      const cell = baseSize / N;
+      const c = Math.floor(mx / cell);
+      const r = Math.floor(my / cell);
+      if (c<0||c>=N||r<0||r>=N) { document.getElementById('tooltip').style.display='none'; return; }
+      const v = sc.data[r][c];
+      const tip = document.getElementById('tooltip');
+      tip.style.display = 'block';
+      tip.style.left = (e.clientX+16)+'px';
+      tip.style.top  = (e.clientY-32)+'px';
+      tip.textContent = sc.isPercent
+        ? `satır ${r+1}  sütun ${c+1}  →  ${v.toFixed(2)}%`
+        : `satır ${r+1}  sütun ${c+1}  →  ${v.toFixed(2)}°`;
+    });
+    outer.addEventListener('mouseleave', () => {
+      document.getElementById('tooltip').style.display='none';
+    });
+
+    const flat = sc.data.flat();
+    const mn=Math.min(...flat), mx2=Math.max(...flat);
+    const legRow = document.createElement('div');
+    legRow.className = 'legend-row';
+    legRow.innerHTML = `
+      <span class="legend-txt">${sc.isPercent?'0%':mn.toFixed(1)+'°'}</span>
+      <div class="legend-bar"></div>
+      <span class="legend-txt">${sc.isPercent?'100%':mx2.toFixed(1)+'°'}</span>
+    `;
+
+    const hint = document.createElement('div');
+    hint.className = 'hint';
+    hint.textContent = 'kaydır: tekerlek · sürükle: yakınlaştırınca · değerler: [V] tuşu';
+
+    view.appendChild(label);
+    view.appendChild(outer);
+    view.appendChild(legRow);
+    view.appendChild(hint);
+    vp.appendChild(view);
+    scenes.push({view, canvas, inner, zs, baseSize, sc});
+
+    drawGrid(canvas, sc.data, sc.isPercent, sc.aR, sc.aC, showValues);
+  }
+}
+
+function redrawAll() {
+  scenes.forEach(s => {
+    drawGrid(s.canvas, s.sc.data, s.sc.isPercent, s.sc.aR, s.sc.aC, showValues);
+  });
+}
+
+function toggleValues() {
+  showValues = !showValues;
+  document.getElementById('vBtn').classList.toggle('on', showValues);
+  redrawAll();
+}
+
+function showSchema(idx) {
+  currentIdx = idx;
+  scenes.forEach((s,i) => s.view.classList.toggle('active', i===idx));
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', i===idx));
+  document.getElementById('tooltip').style.display='none';
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => showSchema(+btn.dataset.idx));
+});
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key==='ArrowRight'||e.key==='ArrowDown') showSchema((currentIdx+1)%4);
+  if (e.key==='ArrowLeft' ||e.key==='ArrowUp')   showSchema((currentIdx+3)%4);
+  if (e.key==='v'||e.key==='V') toggleValues();
+});
+
+window.addEventListener('resize', () => rebuild());
+
+rebuild();
+</script>
+</body>
+</html>
