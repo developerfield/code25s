@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Açı Tabloları</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --accent: #7c6aff;
+    --accent2: #ff6a7c;
+    --text: #e0e0f0;
+    --muted: #555570;
+    --cell-size: 56px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    padding: 32px 24px 60px;
+  }
+
+  /* Animated bg grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(124,106,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,106,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  header h1 {
+    font-size: clamp(1.8rem, 4vw, 3rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #7c6aff, #ff6a7c, #6affda);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  header p {
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 48px;
+    flex-wrap: wrap;
+  }
+
+  .controls label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+
+  .controls input[type="number"] {
+    width: 80px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    font-weight: 600;
+    text-align: center;
+    outline: none;
+    transition: box-shadow 0.2s;
+  }
+
+  .controls input[type="number"]:focus {
+    box-shadow: 0 0 0 3px rgba(124,106,255,0.3);
+  }
+
+  .controls button {
+    padding: 10px 28px;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .controls button:hover {
+    background: #9d8fff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(124,106,255,0.4);
+  }
+
+  .schemas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 36px;
+  }
+
+  .schema-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    transition: border-color 0.3s;
+  }
+
+  .schema-card:hover {
+    border-color: var(--accent);
+  }
+
+  .schema-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .schema-num {
+    font-size: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    background: rgba(124,106,255,0.1);
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(124,106,255,0.2);
+  }
+
+  .schema-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .schema-desc {
+    font-size: 0.72rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .table-wrapper {
+    overflow: auto;
+  }
+
+  table {
+    border-collapse: collapse;
+    margin: 0 auto;
+  }
+
+  td {
+    width: var(--cell-size);
+    height: var(--cell-size);
+    text-align: center;
+    vertical-align: middle;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(0.55rem, 1.2vw, 0.78rem);
+    font-weight: 600;
+    border: 1px solid rgba(255,255,255,0.06);
+    position: relative;
+    transition: transform 0.15s, box-shadow 0.15s;
+    cursor: default;
+  }
+
+  td:hover {
+    transform: scale(1.12);
+    z-index: 10;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    border-radius: 4px;
+  }
+
+  td .dot {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.6);
+    pointer-events: none;
+  }
+
+  td .val {
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  }
+
+  td.anchor-cell {
+    outline: 2px solid #fff;
+    outline-offset: -2px;
+    z-index: 5;
+  }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .legend-bar {
+    width: 160px;
+    height: 10px;
+    border-radius: 5px;
+    background: linear-gradient(to right, #e63946, #f4a261, #2a9d8f, #1d8c4a);
+  }
+
+  .legend-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+  }
+
+  .schema4-note {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Açı Tabloları</h1>
+    <p>GEOMETRİK AÇI DEĞERLERİ · YÜZDELİK DÖNÜŞÜM</p>
+  </header>
+
+  <div class="controls">
+    <label for="nInput">N =</label>
+    <input type="number" id="nInput" value="6" min="2" max="20">
+    <button onclick="render()">OLUŞTUR</button>
+  </div>
+
+  <div class="schemas-grid" id="schemasGrid"></div>
+</div>
+
+<script>
+function getColor(value, min, max) {
+  // Normalize 0..1
+  const t = max === min ? 0.5 : (value - min) / (max - min);
+  // Red → Yellow → Green
+  let r, g, b;
+  if (t < 0.5) {
+    const s = t * 2;
+    r = Math.round(220 - s * 30);
+    g = Math.round(60 + s * 150);
+    b = Math.round(40);
+  } else {
+    const s = (t - 0.5) * 2;
+    r = Math.round(190 - s * 140);
+    g = Math.round(210 + s * 30);
+    b = Math.round(40 + s * 30);
+  }
+  return `rgb(${r},${g},${b})`;
+}
+
+function getColorPercent(pct) {
+  // pct: 0..100
+  return getColor(pct, 0, 100);
+}
+
+function buildTable(data, isPercent, anchorRow, anchorCol) {
+  const N = data.length;
+  // Find min/max for color scaling
+  let allVals = data.flat();
+  let mn = Math.min(...allVals), mx = Math.max(...allVals);
+
+  const table = document.createElement('table');
+  for (let r = 0; r < N; r++) {
+    const tr = document.createElement('tr');
+    for (let c = 0; c < N; c++) {
+      const td = document.createElement('td');
+      const v = data[r][c];
+
+      // Color
+      let color, textColor = '#fff';
+      if (isPercent) {
+        color = getColorPercent(v);
+      } else {
+        color = getColor(v, mn, mx);
+      }
+      td.style.background = color;
+
+      // Brightness check for text
+      // Parse rgb
+      const m = color.match(/\d+/g);
+      if (m) {
+        const lum = 0.299*m[0] + 0.587*m[1] + 0.114*m[2];
+        textColor = lum > 140 ? '#1a1a1a' : '#ffffff';
+      }
+      td.style.color = textColor;
+
+      // Dot
+      const dot = document.createElement('span');
+      dot.className = 'dot';
+      dot.style.background = textColor === '#ffffff' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.3)';
+      td.appendChild(dot);
+
+      // Value
+      const val = document.createElement('span');
+      val.className = 'val';
+      if (isPercent) {
+        val.textContent = v.toFixed(1) + '%';
+      } else {
+        val.textContent = v.toFixed(1) + '°';
+      }
+      td.appendChild(val);
+
+      if (r === anchorRow && c === anchorCol) {
+        td.classList.add('anchor-cell');
+        td.title = 'Ana Kutu (K)';
+      }
+
+      tr.appendChild(td);
+    }
+    table.appendChild(tr);
+  }
+  return table;
+}
+
+function calcSchema1(N) {
+  // K noktasi: sag-alt hucrenin (N-1) icinde birim kare koordinati (x=0.625, y=0)
+  // y=0 = alt kenar, y=1 = ust kenar (birim kare icinde)
+  // Screen koordinatlarinda (row artar asagi):
+  //   kGX = (N-1) + 0.625  (soldan 5/8)
+  //   kGY = (N-1) + (1 - 0) = N  (alt kenar = row_idx + 1)
+  // Her hucre merkezinin screen koordinati: cx = c+0.5, cy = r+0.5
+  // Yon: YUKARI -> kcVec = (0, +1) flipped koordinatlarda (y yukari pozitif)
+
+  const kGX = (N - 1) + 0.625;
+  const kGY = N;  // alt kenar
+  const data = [];
+
+  for (let r = 0; r < N; r++) {
+    const row = [];
+    for (let c = 0; c < N; c++) {
+      const cx = c + 0.5;
+      const cy = r + 0.5;
+      const dx = cx - kGX;
+      const dy = -(cy - kGY); // flip: yukari pozitif
+      const mag = Math.sqrt(dx * dx + dy * dy);
+      if (mag < 1e-9) { row.push(90); continue; }
+      // kcVec yukari = (0, 1) flipped koordinatlarda
+      const dotP = 0 * dx + 1 * dy;
+      const cosA = Math.max(-1, Math.min(1, dotP / mag));
+      const x = Math.acos(cosA) * 180 / Math.PI;
+      row.push(90 - x);
+    }
+    data.push(row);
+  }
+  return { data, anchorRow: N - 1, anchorCol: N - 1 };
+}
+
+function calcSchema2(N) {
+  // K noktasi: sol-ust hucrenin (0,0) icinde birim kare koordinati (x=0, y=0.375)
+  // x=0 = sol kenar, y=0.375 = yukaridan 3/8 asagida (birim kare: y=1 ust, y=0 alt)
+  // Screen koordinatlarinda:
+  //   kGX = 0 + 0 = 0  (sol kenar)
+  //   kGY = 0 + (1 - 0.375) = 0.625  (yukaridan 3/8 = row_idx + (1 - y))
+  // Her hucre merkezinin screen koordinati: cx = c+0.5, cy = r+0.5
+  // Yon: SAG -> kcVec = (1, 0)
+
+  const kGX = 0;
+  const kGY = 0.625; // yukaridan 3/8 asagi
+  const data = [];
+
+  for (let r = 0; r < N; r++) {
+    const row = [];
+    for (let c = 0; c < N; c++) {
+      const cx = c + 0.5;
+      const cy = r + 0.5;
+      const dx = cx - kGX;
+      const dy = -(cy - kGY); // flip: yukari pozitif
+      const mag = Math.sqrt(dx * dx + dy * dy);
+      if (mag < 1e-9) { row.push(90); continue; }
+      // kcVec sag = (1, 0)
+      const dotP = 1 * dx + 0 * dy;
+      const cosA = Math.max(-1, Math.min(1, dotP / mag));
+      const x = Math.acos(cosA) * 180 / Math.PI;
+      row.push(90 - x);
+    }
+    data.push(row);
+  }
+  return { data, anchorRow: 0, anchorCol: 0 };
+}
+
+function calcSchema3(s1, s2, N) {
+  const data = [];
+  for (let r = 0; r < N; r++) {
+    const row = [];
+    for (let c = 0; c < N; c++) {
+      row.push(s1[r][c] + s2[r][c]);
+    }
+    data.push(row);
+  }
+  return data;
+}
+
+function calcSchema4(s3, N) {
+  // 180° → 100%, 89° → 0%
+  // Linear mapping: pct = (val - 89) / (180 - 89) * 100
+  const data = [];
+  for (let r = 0; r < N; r++) {
+    const row = [];
+    for (let c = 0; c < N; c++) {
+      const pct = Math.max(0, Math.min(100, (s3[r][c] - 89) / (180 - 89) * 100));
+      row.push(pct);
+    }
+    data.push(row);
+  }
+  return data;
+}
+
+function render() {
+  const N = Math.max(2, Math.min(20, parseInt(document.getElementById('nInput').value) || 6));
+  const grid = document.getElementById('schemasGrid');
+  grid.innerHTML = '';
+
+  const r1 = calcSchema1(N);
+  const r2 = calcSchema2(N);
+  const s3 = calcSchema3(r1.data, r2.data, N);
+  const s4 = calcSchema4(s3, N);
+
+  const schemas = [
+    {
+      num: 'ŞEMA 01',
+      title: 'Birinci Şema',
+      desc: 'Sağ-alt hücre alt kenarı · x=0.625 · Yön: Yukarı · Değer: 90° − x',
+      data: r1.data,
+      anchorRow: r1.anchorRow,
+      anchorCol: r1.anchorCol,
+      isPercent: false
+    },
+    {
+      num: 'ŞEMA 02',
+      title: 'İkinci Şema',
+      desc: 'Sol-üst hücre sol kenarı · y=0.375 · Yön: Sağ · Değer: 90° − x',
+      data: r2.data,
+      anchorRow: r2.anchorRow,
+      anchorCol: r2.anchorCol,
+      isPercent: false
+    },
+    {
+      num: 'ŞEMA 03',
+      title: 'Üçüncü Şema',
+      desc: 'Şema 1 + Şema 2 → Toplam açı değerleri',
+      data: s3,
+      anchorRow: -1,
+      anchorCol: -1,
+      isPercent: false
+    },
+    {
+      num: 'ŞEMA 04',
+      title: 'Dördüncü Şema',
+      desc: '180° = %100 · 89° = %0 · Yüzdelik dönüşüm',
+      data: s4,
+      anchorRow: -1,
+      anchorCol: -1,
+      isPercent: true
+    }
+  ];
+
+  schemas.forEach(sc => {
+    const card = document.createElement('div');
+    card.className = 'schema-card';
+
+    const header = document.createElement('div');
+    header.className = 'schema-header';
+    header.innerHTML = `
+      <div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="schema-num">${sc.num}</span>
+          <span class="schema-title">${sc.title}</span>
+        </div>
+        <div class="schema-desc">${sc.desc}</div>
+      </div>
+    `;
+    card.appendChild(header);
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-wrapper';
+    wrapper.appendChild(buildTable(sc.data, sc.isPercent, sc.anchorRow, sc.anchorCol));
+    card.appendChild(wrapper);
+
+    // Legend
+    const legend = document.createElement('div');
+    legend.className = 'legend';
+    legend.innerHTML = `
+      <span class="legend-label">${sc.isPercent ? '0%' : 'Düşük'}</span>
+      <div class="legend-bar"></div>
+      <span class="legend-label">${sc.isPercent ? '100%' : 'Yüksek'}</span>
+    `;
+    card.appendChild(legend);
+
+    if (sc.anchorRow >= 0) {
+      const note = document.createElement('div');
+      note.className = 'schema4-note';
+      note.innerHTML = '⬜ beyaz çerçeve = Ana Kutu (K)';
+      card.appendChild(note);
+    }
+
+    grid.appendChild(card);
+  });
+}
+
+render();
+</script>
+</body>
+</html>
