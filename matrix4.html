@@ -114,45 +114,45 @@ body{font-family:'EB Garamond',serif;background:var(--cream);color:var(--ink);mi
     <!-- f(x,y) -->
     <div class="formula-inline">
       <span class="fx-label">f (x, y) =</span>
-      <input class="inp" type="text" id="formulaInput" value="((4-2*2^(0.5))*x)^y"
+      <input class="inp" type="text" id="formulaInput" value="(((x^(y))*1)/((0.85355)^(y)))"
         placeholder="x ve y değişkenlerini kullanın…" oninput="scheduleRun()">
       <div class="range-inline">
         <label>min</label>
-        <input class="range-inp" type="number" id="yMin" value="-3" step="0.1" oninput="applyRangeF()">
+        <input class="range-inp" type="number" id="yMin" value="-1.5" step="0.1" oninput="applyRangeF()">
         <label>max</label>
-        <input class="range-inp" type="number" id="yMax" value="-1" step="0.1" oninput="applyRangeF()">
+        <input class="range-inp" type="number" id="yMax" value="1" step="0.1" oninput="applyRangeF()">
       </div>
     </div>
     <p class="hint">x, y, x^n, sqrt(x), log(x), sin(x), cos(x), abs(x), pi, e &nbsp;·&nbsp; <strong>y</strong> kaydırıcıyla değişir</p>
     <div class="y-row">
       <span class="y-badge">y =</span>
-      <input type="range" class="y-slider" id="ySlider" min="0" max="20" step="1" value="10">
-      <span class="y-val-display" id="yValDisplay"-2</span>
+      <input type="range" class="y-slider" id="ySlider" min="0" max="1000" step="1" value="400">
+      <span class="y-val-display" id="yValDisplay">0.00</span>
     </div>
-    <div class="y-range-hint"><span id="yMinLabel">-3</span><span id="yMaxLabel">-1</span></div>
+    <div class="y-range-hint"><span id="yMinLabel">−1.50</span><span id="yMaxLabel">+1.00</span></div>
 
     <!-- S(x,y) — f slider'ının hemen altına bitişik -->
     <hr class="s-divider">
 
     <div class="formula-inline">
       <span class="fx-label" style="color:#7a2a9a">S (x, y) =</span>
-      <input class="inp" type="text" id="sFormulaInput" value="(x/100)^(y(100))"
+      <input class="inp" type="text" id="sFormulaInput" value="(((x^(y))*1)/((0.85355)^(y)))"
         placeholder="x ve y değişkenlerini kullanın…" oninput="scheduleRunS()">
       <div class="range-inline">
         <label>min</label>
-        <input class="range-inp" type="number" id="sYMin" value="1.5" step="0.1" oninput="applyRangeS()">
+        <input class="range-inp" type="number" id="sYMin" value="-1.5" step="0.1" oninput="applyRangeS()">
         <label>max</label>
-        <input class="range-inp" type="number" id="sYMax" value="0.5" step="0.1" oninput="applyRangeS()">
+        <input class="range-inp" type="number" id="sYMax" value="1" step="0.1" oninput="applyRangeS()">
       </div>
     </div>
     <p class="hint" style="color:#9a4aba">6. Tablo (Şema4 açı tabanlı yüzde dönüşümü) kullanılır &nbsp;·&nbsp; <strong style="color:#7a2a9a">y</strong> kaydırıcıyla değişir</p>
     <div class="y-row" style="background:#f8f0ff;border-color:#d4b8e8">
       <span class="y-badge" style="color:#7a2a9a">y =</span>
-      <input type="range" class="y-slider" id="sYSlider" min="0" max="10" step="1" value="5"
+      <input type="range" class="y-slider" id="sYSlider" min="0" max="1000" step="1" value="400"
         style="background:linear-gradient(to right,#8b0000,#b84be8,#2a5a2a)">
       <span class="y-val-display" id="sYValDisplay" style="color:#7a2a9a">0.00</span>
     </div>
-    <div class="y-range-hint"><span id="sYMinLabel">0.5</span><span id="sYMaxLabel">1.5</span></div>
+    <div class="y-range-hint"><span id="sYMinLabel">−1.50</span><span id="sYMaxLabel">+1.00</span></div>
 
     <!-- ilerleme çubuğu -->
     <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
