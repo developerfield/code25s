@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Açı Tabloları</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  background: #080810;
+  color: #e0e0f0;
+  font-family: 'Syne', sans-serif;
+  overflow: hidden;
+}
+
+/* ── TOP BAR ── */
+#topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 52px;
+  background: rgba(8,8,16,0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  z-index: 100;
+  gap: 12px;
+}
+
+#topbar h1 {
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  background: linear-gradient(90deg, #a78bff, #ff7aa0, #7affd4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  white-space: nowrap;
+}
+
+.nav-tabs { display: flex; gap: 4px; }
+
+.tab-btn {
+  padding: 5px 13px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.09);
+  background: transparent;
+  color: rgba(255,255,255,0.35);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tab-btn:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
+.tab-btn.active {
+  background: rgba(167,139,255,0.15);
+  border-color: #a78bff;
+  color: #c9b8ff;
+}
+
+.controls { display: flex; align-items: center; gap: 8px; }
+
+.controls label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.3);
+}
+
+.controls input[type="number"] {
+  width: 52px;
+  padding: 4px 8px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(167,139,255,0.4);
+  border-radius: 6px;
+  color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: center;
+  outline: none;
+}
+
+.ctrl-btn {
+  padding: 5px 13px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.09);
+  background: transparent;
+  color: rgba(255,255,255,0.35);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ctrl-btn:hover { color: #fff; }
+.ctrl-btn.primary { background: #a78bff; border-color: #a78bff; color: #fff; }
+.ctrl-btn.primary:hover { background: #bea8ff; }
+.ctrl-btn.on { background: rgba(122,255,212,0.12); border-color: #7affd4; color: #7affd4; }
+
+/* ── VIEWPORT ── */
+#viewport {
+  position: fixed;
+  top: 52px; left: 0; right: 0; bottom: 0;
+}
+
+.schema-view {
+  display: none;
+  position: absolute;
+  inset: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.schema-view.active { display: flex; }
+
+.schema-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.15em;
+  color: rgba(255,255,255,0.2);
+}
+
+canvas {
+  display: block;
+  cursor: crosshair;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.legend-bar {
+  width: 100px; height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, #d62828, #f4a261, #52b788, #1a7a42);
+}
+.legend-txt {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.58rem;
+  color: rgba(255,255,255,0.22);
+}
+
+.hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.54rem;
+  color: rgba(255,255,255,0.11);
+  letter-spacing: 0.08em;
+}
+
+/* ── TOOLTIP ── */
+#tooltip {
+  position: fixed;
+  pointer-events: none;
+  background: rgba(6,6,20,0.94);
+  border: 1px solid rgba(167,139,255,0.35);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: #ddd8ff;
+  z-index: 200;
+  display: none;
+  white-space: nowrap;
+}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <h1>AÇI TABLOLARI</h1>
+
+  <div class="nav-tabs">
+    <button class="tab-btn active" data-idx="0">ŞEMA 1</button>
+    <button class="tab-btn"        data-idx="1">ŞEMA 2</button>
+    <button class="tab-btn"        data-idx="2">ŞEMA 3</button>
+    <button class="tab-btn"        data-idx="3">ŞEMA 4</button>
+    <button class="tab-btn"        data-idx="4">ŞEMA 5</button>
+    <button class="tab-btn"        data-idx="5">ŞEMA 6</button>
+  </div>
+
+  <div class="controls">
+    <button class="ctrl-btn" id="vBtn" onclick="toggleValues()">DEĞ [V]</button>
+    <label>N =</label>
+    <input type="number" id="nInput" value="6" min="2" max="30">
+    <button class="ctrl-btn primary" onclick="rebuild()">OLUŞTUR</button>
+  </div>
+</div>
+
+<div id="viewport"></div>
+<div id="tooltip"></div>
+
+<script>
+/* ══════════════════════════════════════
+   RENK
+══════════════════════════════════════ */
+function toColor(t) {
+  // t: 0..1  →  kırmızı → sarı → yeşil
+  t = Math.max(0, Math.min(1, t));
+  let r, g, b;
+  if (t < 0.5) {
+    const s = t * 2;
+    r = Math.round(215 - s * 20);
+    g = Math.round(38  + s * 142);
+    b = 26;
+  } else {
+    const s = (t - 0.5) * 2;
+    r = Math.round(195 - s * 160);
+    g = Math.round(180 + s * 38);
+    b = Math.round(26  + s * 24);
+  }
+  return [r, g, b];
+}
+
+/* ══════════════════════════════════════
+   HESAPLAMA
+══════════════════════════════════════ */
+function schema1(N) {
+  // K: sağ-alt hücrenin alt kenarında, soldan 5/8
+  // Grid'de: kx = (N-1)+0.625, ky = N  (alt kenar, row artar aşağı)
+  // Referans yön: yukarı = (0,-1) screen'de = (0,+1) flip'te
+  const kx = (N - 1) + 0.625, ky = N;
+  return Array.from({length: N}, (_, r) =>
+    Array.from({length: N}, (_, c) => {
+      const dx = (c + 0.5) - kx;
+      const dy = -(((r + 0.5) - ky)); // flip: yukarı pozitif
+      const mag = Math.hypot(dx, dy);
+      if (mag < 1e-9) return 90;
+      // açı kc (yukarı=(0,1)) ile vektör arasında
+      const cosA = Math.max(-1, Math.min(1, dy / mag));
+      return 90 - Math.acos(cosA) * 180 / Math.PI;
+    })
+  );
+}
+
+function schema2(N) {
+  // K: sol-üst hücrenin sol kenarında, yukardan 3/8
+  // Grid'de: kx = 0, ky = 0+(1-0.375) = 0.625
+  // Referans yön: sağ = (1,0)
+  const kx = 0, ky = 0.625;
+  return Array.from({length: N}, (_, r) =>
+    Array.from({length: N}, (_, c) => {
+      const dx = (c + 0.5) - kx;
+      const dy = -(((r + 0.5) - ky));
+      const mag = Math.hypot(dx, dy);
+      if (mag < 1e-9) return 90;
+      const cosA = Math.max(-1, Math.min(1, dx / mag));
+      return 90 - Math.acos(cosA) * 180 / Math.PI;
+    })
+  );
+}
+
+function schema3(d1, d2) {
+  return d1.map((row, r) => row.map((v, c) => v + d2[r][c]));
+}
+
+function schema4(d3) {
+  // 180° → %100,  89° → %0
+  return d3.map(row => row.map(v => Math.max(0, Math.min(100, (v - 89) / 91 * 100))));
+}
+
+function schema5(N) {
+  // Referans: sağ-üst köşe (row=0, col=N-1) = merkez kutu, a=0
+  // Her aşağı adımda +1, her sola adımda +1
+  // Yani: a = r + (N-1-c)
+  // Değer: (N - a) / N
+  return Array.from({length: N}, (_, r) =>
+    Array.from({length: N}, (_, c) => {
+      const a = r + (N - 1 - c);
+      return (N - a) / N;
+    })
+  );
+}
+
+function schema6(d4, d5) {
+  return d4.map((row, r) => row.map((v, c) => v * d5[r][c]));
+}
+
+/* ══════════════════════════════════════
+   ÇİZİM
+══════════════════════════════════════ */
+function drawGrid(canvas, cellPx, data, isPercent, anchorR, anchorC, showVals, whiteBelow) {
+  const N    = data.length;
+  const ctx  = canvas.getContext('2d');
+  const flat = data.flat();
+  const mn   = Math.min(...flat);
+  const mx   = Math.max(...flat);
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      const v = data[r][c];
+      const x = c * cellPx;
+      const y = r * cellPx;
+
+      let cr, cg, cb;
+
+      // 0 ve altı → beyaz (sadece whiteBelow modunda)
+      if (whiteBelow && v <= 0) {
+        cr = 255; cg = 255; cb = 255;
+      } else {
+        const t = isPercent
+          ? v / 100
+          : (mx === mn ? 0.5 : (v - mn) / (mx - mn));
+        [cr, cg, cb] = toColor(t);
+      }
+
+      // hücre dolgusu
+      ctx.fillStyle = `rgb(${cr},${cg},${cb})`;
+      ctx.fillRect(x, y, cellPx, cellPx);
+
+      // ince kenar çizgisi
+      ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+      ctx.lineWidth   = 0.8;
+      ctx.strokeRect(x, y, cellPx, cellPx);
+
+      // merkez nokta — sabit renk
+      const dotR = Math.max(1.5, cellPx * 0.04);
+      ctx.beginPath();
+      ctx.arc(x + cellPx / 2, y + cellPx / 2, dotR, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      ctx.fill();
+
+      // ana kutu çerçevesi
+      if (r === anchorR && c === anchorC) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+        ctx.lineWidth   = 2;
+        ctx.strokeRect(x + 1.5, y + 1.5, cellPx - 3, cellPx - 3);
+      }
+
+      // değer yazısı (V tuşu ile açılıyor)
+      if (showVals && cellPx >= 18) {
+        const lum = 0.299 * cr + 0.587 * cg + 0.114 * cb;
+        ctx.fillStyle  = lum > 160 ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.88)';
+        const fs = Math.max(8, Math.min(cellPx * 0.22, 13));
+        ctx.font       = `700 ${fs}px "JetBrains Mono", monospace`;
+        ctx.textAlign  = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(
+          isPercent ? v.toFixed(1) + '%' : v.toFixed(2),
+          x + cellPx / 2,
+          y + cellPx / 2
+        );
+      }
+    }
+  }
+}
+
+/* ══════════════════════════════════════
+   DURUM
+══════════════════════════════════════ */
+let currentIdx  = 0;
+let showValues  = false;
+let scenes      = [];   // [{view, canvas, cellPx, sc}, ...]
+let allData     = null;
+let currentN    = 6;
+
+const LABELS = [
+  'ŞEMA 01  ·  K=(0.625, 0) sağ-alt hücre alt kenarı  ·  yön: yukarı  ·  90°−x',
+  'ŞEMA 02  ·  K=(0, 0.375) sol-üst hücre sol kenarı  ·  yön: sağ  ·  90°−x',
+  'ŞEMA 03  ·  Şema 1 + Şema 2 toplamı',
+  'ŞEMA 04  ·  Yüzdelik dönüşüm  ·  180°=%100  ·  89°=%0',
+  'ŞEMA 05  ·  Referans: sağ-üst köşe  ·  a=satır+(N-1-sütun)  ·  (N−a)/N',
+  'ŞEMA 06  ·  Şema 4 × Şema 5  ·  0 ve altı beyaz',
+];
+
+/* ══════════════════════════════════════
+   KURULUM
+══════════════════════════════════════ */
+function rebuild() {
+  currentN = Math.max(2, Math.min(30, parseInt(document.getElementById('nInput').value) || 6));
+  const N  = currentN;
+
+  const d1 = schema1(N);
+  const d2 = schema2(N);
+  const d3 = schema3(d1, d2);
+  const d4 = schema4(d3);
+  const d5 = schema5(N);
+  const d6 = schema6(d4, d5);
+
+  allData = [
+    { data: d1, isPercent: false, aR: N-1, aC: N-1, whiteBelow: false },
+    { data: d2, isPercent: false, aR: 0,   aC: 0,   whiteBelow: false },
+    { data: d3, isPercent: false, aR: -1,  aC: -1,  whiteBelow: false },
+    { data: d4, isPercent: true,  aR: -1,  aC: -1,  whiteBelow: false },
+    { data: d5, isPercent: false, aR: 0,   aC: N-1, whiteBelow: true  },
+    { data: d6, isPercent: false, aR: -1,  aC: -1,  whiteBelow: true  },
+  ];
+
+  buildScenes();
+  showSchema(currentIdx);
+}
+
+function buildScenes() {
+  const vp = document.getElementById('viewport');
+  vp.innerHTML = '';
+  scenes = [];
+
+  const N  = currentN;
+
+  // Kullanılabilir alan: viewport yüksekliği eksi label+legend+hint (~68px), genişlik eksi padding
+  const vpW    = window.innerWidth;
+  const vpH    = window.innerHeight - 52;
+  const avail  = Math.min(vpW - 32, vpH - 68);
+  const cellPx = Math.max(6, Math.floor(avail / N));
+  const gridPx = cellPx * N;
+
+  for (let i = 0; i < 6; i++) {
+    const sc = allData[i];
+
+    // view
+    const view = document.createElement('div');
+    view.className = 'schema-view';
+
+    // label
+    const lbl = document.createElement('div');
+    lbl.className   = 'schema-label';
+    lbl.textContent = LABELS[i];
+
+    // canvas — boyutu tam gridPx × gridPx, piksel kusursuz
+    const canvas    = document.createElement('canvas');
+    canvas.width    = gridPx;
+    canvas.height   = gridPx;
+    canvas.style.width  = gridPx + 'px';
+    canvas.style.height = gridPx + 'px';
+
+    // hover tooltip
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const col  = Math.floor((e.clientX - rect.left)  / cellPx);
+      const row  = Math.floor((e.clientY - rect.top)   / cellPx);
+      if (col < 0 || col >= N || row < 0 || row >= N) {
+        document.getElementById('tooltip').style.display = 'none';
+        return;
+      }
+      const v   = sc.data[row][col];
+      const tip = document.getElementById('tooltip');
+      tip.style.display = 'block';
+      tip.style.left    = (e.clientX + 16) + 'px';
+      tip.style.top     = (e.clientY - 32) + 'px';
+      tip.textContent   = sc.isPercent
+        ? `satır ${row+1}  sütun ${col+1}  →  ${v.toFixed(2)}%`
+        : `satır ${row+1}  sütun ${col+1}  →  ${v.toFixed(2)}°`;
+    });
+    canvas.addEventListener('mouseleave', () => {
+      document.getElementById('tooltip').style.display = 'none';
+    });
+
+    // legend
+    const flat  = sc.data.flat();
+    const mn    = Math.min(...flat).toFixed(1);
+    const mx    = Math.max(...flat).toFixed(1);
+    const legEl = document.createElement('div');
+    legEl.className   = 'legend-row';
+    legEl.innerHTML   = `
+      <span class="legend-txt">${sc.isPercent ? '0%'   : mn + '°'}</span>
+      <div  class="legend-bar"></div>
+      <span class="legend-txt">${sc.isPercent ? '100%' : mx + '°'}</span>
+    `;
+
+    // hint
+    const hint = document.createElement('div');
+    hint.className   = 'hint';
+    hint.textContent = 'değerler: V tuşu  ·  şema değiştir: ← →';
+
+    view.appendChild(lbl);
+    view.appendChild(canvas);
+    view.appendChild(legEl);
+    view.appendChild(hint);
+    vp.appendChild(view);
+
+    scenes.push({ view, canvas, cellPx, sc });
+    drawGrid(canvas, cellPx, sc.data, sc.isPercent, sc.aR, sc.aC, showValues, sc.whiteBelow);
+  }
+}
+
+function redrawAll() {
+  scenes.forEach(s => {
+    drawGrid(s.canvas, s.cellPx, s.sc.data, s.sc.isPercent, s.sc.aR, s.sc.aC, showValues, s.sc.whiteBelow);
+  });
+}
+
+/* ══════════════════════════════════════
+   KONTROLLER
+══════════════════════════════════════ */
+function showSchema(idx) {
+  currentIdx = idx;
+  scenes.forEach((s, i) => s.view.classList.toggle('active', i === idx));
+  document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+  document.getElementById('tooltip').style.display = 'none';
+}
+
+function toggleValues() {
+  showValues = !showValues;
+  document.getElementById('vBtn').classList.toggle('on', showValues);
+  redrawAll();
+}
+
+// Tab butonları
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => showSchema(+btn.dataset.idx));
+});
+
+// Klavye
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown')
+    showSchema((currentIdx + 1) % 6);
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')
+    showSchema((currentIdx + 5) % 6);
+  if (e.key === 'v' || e.key === 'V')
+    toggleValues();
+});
+
+// Pencere boyutu değişince yeniden çiz
+window.addEventListener('resize', () => rebuild());
+
+// Başlat
+rebuild();
+</script>
+</body>
+</html>
