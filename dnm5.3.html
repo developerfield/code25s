@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Z Değer Tablosu</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: #0a0a12;
+    font-family: 'Courier New', monospace;
+    color: #d0e8ff;
+    padding: 20px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    color: #a0c8ff;
+  }
+
+  .formula-box {
+    background: #0f0f1e;
+    border: 1px solid #2a2a4a;
+    border-radius: 10px;
+    padding: 14px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .formula-box label {
+    font-size: 12px;
+    color: #7af;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+
+  .formula-box input {
+    flex: 1;
+    min-width: 220px;
+    background: #080814;
+    border: 1px solid #3a3a6a;
+    border-radius: 6px;
+    color: #ffe082;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    padding: 7px 12px;
+    outline: none;
+    transition: border 0.2s;
+  }
+
+  .formula-box input:focus { border-color: #7af; }
+
+  .formula-box button {
+    background: linear-gradient(135deg, #1a3a6a, #2a5a9a);
+    border: 1px solid #4a7aca;
+    border-radius: 6px;
+    color: #a0d0ff;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    padding: 7px 16px;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .formula-box button:hover { background: linear-gradient(135deg, #2a4a8a, #3a6aaa); color: #fff; }
+
+  .formula-hint {
+    width: 100%;
+    font-size: 10px;
+    color: #445;
+    letter-spacing: 0.05em;
+  }
+
+  .formula-error {
+    width: 100%;
+    font-size: 11px;
+    color: #f77;
+    letter-spacing: 0.06em;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .tab {
+    padding: 6px 16px;
+    border-radius: 6px;
+    border: 1px solid #2a2a4a;
+    background: #0f0f1e;
+    color: #556;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+  }
+
+  .tab:hover { color: #aac; border-color: #4a4a8a; }
+  .tab.active { background: #1a2a4a; border-color: #5a8aca; color: #a0d0ff; }
+
+  .table-section { display: none; }
+  .table-section.active { display: block; }
+
+  .table-title {
+    font-size: 11px;
+    color: #556;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .grid-wrap { overflow-x: auto; }
+
+  .grid {
+    display: inline-grid;
+    gap: 2px;
+    padding: 4px;
+  }
+
+  .hdr-corner { width: 34px; height: 22px; }
+
+  .hdr-col {
+    width: 42px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #fa7; letter-spacing: 0.03em;
+  }
+
+  .hdr-row {
+    width: 34px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #7af; letter-spacing: 0.03em;
+  }
+
+  .cell {
+    width: 42px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 3px;
+    font-size: 9.5px;
+    font-weight: 500;
+    cursor: default;
+    transition: transform 0.1s, filter 0.1s;
+    letter-spacing: 0.01em;
+    position: relative;
+  }
+
+  .cell:hover {
+    transform: scale(1.2);
+    filter: brightness(1.5);
+    z-index: 10;
+  }
+
+  .tooltip-bar {
+    min-height: 28px;
+    margin-top: 10px;
+    font-size: 11px;
+    color: #acd;
+    letter-spacing: 0.07em;
+    background: rgba(20,40,80,0.7);
+    border: 1px solid rgba(100,160,255,0.2);
+    border-radius: 6px;
+    padding: 5px 14px;
+    display: inline-block;
+  }
+
+  .legend {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    color: #445;
+  }
+
+  .legend-bar {
+    width: 120px; height: 6px; border-radius: 3px;
+    background: linear-gradient(to right, #c0392b, #f39c12, #27ae60);
+    border: 1px solid #223;
+  }
+</style>
+</head>
+<body>
+
+<h1>f(a, b, z) Tablosu</h1>
+
+<div class="formula-box">
+  <label>f(a, b, z) =</label>
+  <input type="text" id="formula-input" value="1 / (1 + Math.pow(a,z) + Math.pow(b,z))" spellcheck="false"/>
+  <button onclick="applyFormula()">▶ Uygula</button>
+  <div class="formula-hint">
+    Değişkenler: <b style="color:#7af">a</b> (satır, 1→10 aşağı) &nbsp;·&nbsp;
+    <b style="color:#fa7">b</b> (sütun, 1→10 soldan) &nbsp;·&nbsp;
+    <b style="color:#6a9">z</b> (sağ üst 0.479, ↓← +0.004)
+    &nbsp;|&nbsp; JS kullanılabilir: Math.pow, Math.exp, Math.log, Math.sin…
+  </div>
+  <div class="formula-error" id="formula-error"></div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab(this,'ab')">A &amp; B Değerleri</div>
+  <div class="tab" onclick="switchTab(this,'z')">Z Değerleri</div>
+  <div class="tab" onclick="switchTab(this,'result')">Sonuç f(a,b,z)</div>
+</div>
+
+<div class="table-section active" id="tab-ab">
+  <div class="table-title">A (satır ↓) ve B (sütun ←) değerleri</div>
+  <div class="grid-wrap"><div class="grid" id="grid-ab" style="grid-template-columns: 34px repeat(10, 42px);"></div></div>
+  <div class="tooltip-bar" id="tip-ab">Hücrenin üzerine gelin</div>
+</div>
+
+<div class="table-section" id="tab-z">
+  <div class="table-title">Z değerleri (sağ üst: 0.479 · her ↓ veya ← +0.004)</div>
+  <div class="grid-wrap"><div class="grid" id="grid-z" style="grid-template-columns: 34px repeat(10, 42px);"></div></div>
+  <div class="tooltip-bar" id="tip-z">Hücrenin üzerine gelin</div>
+</div>
+
+<div class="table-section" id="tab-result">
+  <div class="table-title" id="result-title">Sonuç f(a,b,z)</div>
+  <div class="grid-wrap"><div class="grid" id="grid-result" style="grid-template-columns: 34px repeat(10, 42px);"></div></div>
+  <div class="tooltip-bar" id="tip-result">Hücrenin üzerine gelin</div>
+  <div class="legend">
+    <span>uzak (kırmızı)</span>
+    <div class="legend-bar"></div>
+    <span>1'e yakın (yeşil)</span>
+  </div>
+</div>
+
+<script>
+  const ROWS = 10, COLS = 10;
+
+  function getA(r) { return r; }
+  function getB(c) { return (COLS - 1 - c); }
+  function getZ(r, c) { return 0.479 + (COLS - 1 - c) * 0.004 + r * 0.004; }
+
+  let currentFormula = "1 / (1 + Math.pow(a,z) + Math.pow(b,z))";
+
+  function evalFormula(a, b, z) {
+    try {
+      return Function('a','b','z', `"use strict"; return (${currentFormula});`)(a, b, z);
+    } catch(e) { return NaN; }
+  }
+
+  // Color: distance from 1 → red=far, yellow=mid, green=near
+  function valueToColor(val) {
+    const dist = Math.abs(val - 1);          // 0 = at 1 (green), larger = farther
+    const maxDist = 1;                        // clamp range
+    const t = Math.min(dist / maxDist, 1);   // 0=green,1=red
+    let r, g, b;
+    if (t < 0.5) {
+      // green → yellow
+      const s = t / 0.5;
+      r = Math.round(s * 210);
+      g = Math.round(160 + s * 20);
+      b = 20;
+    } else {
+      // yellow → red
+      const s = (t - 0.5) / 0.5;
+      r = 180 + Math.round(s * 40);
+      g = Math.round(180 - s * 160);
+      b = 20;
+    }
+    return `rgb(${r},${g},${b})`;
+  }
+
+  function makeDiv(cls) {
+    const d = document.createElement('div');
+    d.className = cls;
+    return d;
+  }
+
+  // ── A & B GRID ──────────────────────────────
+  function buildABGrid() {
+    const grid = document.getElementById('grid-ab');
+    grid.innerHTML = '';
+    grid.appendChild(makeDiv('hdr-corner'));
+    for (let c = 0; c < COLS; c++) {
+      const d = makeDiv('hdr-col');
+      d.textContent = `b${getB(c)}`;
+      grid.appendChild(d);
+    }
+    for (let r = 0; r < ROWS; r++) {
+      const rl = makeDiv('hdr-row');
+      rl.textContent = `a${getA(r)}`;
+      grid.appendChild(rl);
+      for (let c = 0; c < COLS; c++) {
+        const a = getA(r), b = getB(c);
+        const cell = makeDiv('cell');
+        cell.textContent = `${a},${b}`;
+        const ta = a / 10, tb = b / 10;
+        cell.style.background = `rgba(${Math.round(20+tb*80)}, ${Math.round(40+ta*60)}, ${Math.round(100+ta*60)}, 0.7)`;
+        cell.style.color = '#c8e8ff';
+        cell.addEventListener('mouseenter', () => {
+          document.getElementById('tip-ab').innerHTML =
+            `a = <b style="color:#7af">${a}</b> &nbsp;·&nbsp; b = <b style="color:#fa7">${b}</b> &nbsp;·&nbsp; z = <b style="color:#6a9">${getZ(r,c).toFixed(3)}</b>`;
+        });
+        grid.appendChild(cell);
+      }
+    }
+  }
+
+  // ── Z GRID ──────────────────────────────────
+  function buildZGrid() {
+    const grid = document.getElementById('grid-z');
+    grid.innerHTML = '';
+    grid.appendChild(makeDiv('hdr-corner'));
+    for (let c = 0; c < COLS; c++) {
+      const d = makeDiv('hdr-col');
+      d.textContent = `c${c+1}`;
+      d.style.color = '#6a9';
+      grid.appendChild(d);
+    }
+    const zMin = getZ(ROWS-1, 0), zMax = getZ(0, COLS-1);
+    for (let r = 0; r < ROWS; r++) {
+      const rl = makeDiv('hdr-row');
+      rl.textContent = `r${r+1}`;
+      rl.style.color = '#6a9';
+      grid.appendChild(rl);
+      for (let c = 0; c < COLS; c++) {
+        const z = getZ(r, c);
+        const t = (z - zMin) / (zMax - zMin + 0.0001);
+        const cell = makeDiv('cell');
+        cell.textContent = z.toFixed(3);
+        cell.style.background = `rgba(${Math.round(15+t*25)}, ${Math.round(70+t*110)}, ${Math.round(130+t*70)}, 0.8)`;
+        cell.style.color = '#c8f0d8';
+        cell.addEventListener('mouseenter', () => {
+          document.getElementById('tip-z').innerHTML =
+            `Satır <b>${r+1}</b> Sütun <b>${c+1}</b> &nbsp;→&nbsp; z = <b style="color:#6a9">${z.toFixed(4)}</b>`;
+        });
+        grid.appendChild(cell);
+      }
+    }
+  }
+
+  // ── RESULT GRID ─────────────────────────────
+  function buildResultGrid() {
+    const grid = document.getElementById('grid-result');
+    grid.innerHTML = '';
+
+    const vals = [];
+    for (let r = 0; r < ROWS; r++)
+      for (let c = 0; c < COLS; c++)
+        vals.push(evalFormula(getA(r), getB(c), getZ(r,c)));
+
+    const validVals = vals.filter(v => isFinite(v));
+    const minV = Math.min(...validVals);
+    const maxV = Math.max(...validVals);
+
+    document.getElementById('result-title').textContent =
+      `Sonuç f(a,b,z)  ·  min: ${minV.toFixed(4)}  max: ${maxV.toFixed(4)}`;
+
+    grid.appendChild(makeDiv('hdr-corner'));
+    for (let c = 0; c < COLS; c++) {
+      const d = makeDiv('hdr-col');
+      d.textContent = `b${getB(c)}`;
+      d.style.color = '#fa7';
+      grid.appendChild(d);
+    }
+
+    for (let r = 0; r < ROWS; r++) {
+      const rl = makeDiv('hdr-row');
+      rl.textContent = `a${getA(r)}`;
+      grid.appendChild(rl);
+      for (let c = 0; c < COLS; c++) {
+        const a = getA(r), b = getB(c), z = getZ(r,c);
+        const val = evalFormula(a, b, z);
+        const cell = makeDiv('cell');
+        if (!isFinite(val)) {
+          cell.textContent = 'ERR';
+          cell.style.background = '#2a0000';
+          cell.style.color = '#f77';
+        } else {
+          cell.textContent = val.toFixed(3);
+          const bg = valueToColor(val);
+          cell.style.background = bg.replace('rgb(','rgba(').replace(')',',0.5)');
+          cell.style.color = '#fff';
+          cell.style.textShadow = '0 1px 3px rgba(0,0,0,0.9)';
+          cell.style.border = `1px solid ${bg.replace('rgb(','rgba(').replace(')',',0.4)')}`;
+        }
+        cell.addEventListener('mouseenter', () => {
+          document.getElementById('tip-result').innerHTML =
+            `a=<b style="color:#7af">${a}</b>  b=<b style="color:#fa7">${b}</b>  z=<b style="color:#6a9">${z.toFixed(3)}</b>  →  f = <b style="color:#fff;font-size:13px">${isFinite(val) ? val.toFixed(6) : 'HATA'}</b>`;
+        });
+        grid.appendChild(cell);
+      }
+    }
+  }
+
+  function applyFormula() {
+    const input = document.getElementById('formula-input').value.trim();
+    const errEl = document.getElementById('formula-error');
+    try {
+      const test = Function('a','b','z', `"use strict"; return (${input});`)(1, 1, 0.5);
+      if (typeof test !== 'number') throw new Error('Sayısal sonuç dönmeli');
+      currentFormula = input;
+      errEl.textContent = '';
+      buildResultGrid();
+      // Auto switch to result tab
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.table-section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.tab')[2].classList.add('active');
+      document.getElementById('tab-result').classList.add('active');
+    } catch(e) {
+      errEl.textContent = `⚠ Formül hatası: ${e.message}`;
+    }
+  }
+
+  function switchTab(el, name) {
+    document.querySelectorAll('.table-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    el.classList.add('active');
+  }
+
+  document.getElementById('formula-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') applyFormula();
+  });
+
+  buildABGrid();
+  buildZGrid();
+  buildResultGrid();
+</script>
+</body>
+</html>
