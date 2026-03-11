@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Z Değer Tablosu</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #060610 0%, #0b0b1a 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Courier New', monospace;
+    padding: 28px 16px;
+    color: #d0e8ff;
+  }
+
+  h1 {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+
+  .legend {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 22px;
+    font-size: 11px;
+    color: #556;
+    letter-spacing: 0.06em;
+  }
+
+  .legend span b { font-weight: 700; }
+
+  .table-wrap { overflow-x: auto; }
+
+  .col-labels, .z-labels, .row {
+    display: flex;
+    align-items: center;
+  }
+
+  .corner { width: 36px; flex-shrink: 0; }
+
+  .col-b-label {
+    width: 82px; flex-shrink: 0;
+    text-align: center;
+    font-size: 11px;
+    color: #fa7;
+    letter-spacing: 0.04em;
+    padding-bottom: 3px;
+  }
+
+  .col-z-label {
+    width: 82px; flex-shrink: 0;
+    text-align: center;
+    font-size: 10px;
+    color: #6a9;
+    letter-spacing: 0.02em;
+    padding-bottom: 3px;
+    border-bottom: 1px solid #1a2a1a;
+    margin-bottom: 4px;
+  }
+
+  .row-a-label {
+    width: 36px; flex-shrink: 0;
+    text-align: right;
+    padding-right: 8px;
+    font-size: 11px;
+    color: #7af;
+  }
+
+  .cell {
+    width: 82px; height: 48px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(255,255,255,0.04);
+    border-radius: 3px;
+    margin: 1px;
+    cursor: default;
+    transition: background 0.12s, border 0.12s;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  .cell:hover {
+    background: rgba(100, 180, 255, 0.28) !important;
+    border: 1px solid rgba(140,200,255,0.7) !important;
+    font-size: 13px;
+    font-weight: 800;
+    color: #fff !important;
+  }
+
+  #info-panel {
+    margin-top: 18px;
+    min-height: 36px;
+    border-radius: 8px;
+    padding: 6px 20px;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: #acd;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+  }
+
+  #info-panel.active {
+    background: rgba(20,40,80,0.8);
+    border: 1px solid rgba(100,160,255,0.3);
+  }
+
+  #info-panel b { font-weight: 700; }
+
+  .scale-bar {
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 10px;
+    color: #445;
+  }
+
+  .scale-gradient {
+    width: 140px; height: 6px; border-radius: 3px;
+    background: linear-gradient(to right, rgba(10,30,60,0.9), rgba(40,150,200,0.9));
+    border: 1px solid #223;
+  }
+</style>
+</head>
+<body>
+
+<h1>f(a, b, z) = 1 / (1 + a<sup>z</sup> + b<sup>z</sup>)</h1>
+
+<div class="legend">
+  <span><b style="color:#7af">a</b>: satır (↓ +1, en üstte 1)</span>
+  <span><b style="color:#fa7">b</b>: sütun (← +1, en sağda 1)</span>
+  <span><b style="color:#6a9">z</b>: sağ üst 0.479 (↓← +0.004)</span>
+</div>
+
+<div class="table-wrap">
+  <div id="table-container"></div>
+</div>
+
+<div id="info-panel">
+  <span style="color:#333">Hücrenin üzerine gelin</span>
+</div>
+
+<div class="scale-bar">
+  <span id="min-label"></span>
+  <div class="scale-gradient"></div>
+  <span id="max-label"></span>
+</div>
+
+<script>
+  const rows = 10, cols = 10;
+
+  function getA(r) { return r + 1; }
+  function getB(c) { return (cols - 1 - c) + 1; }
+  function getZ(r, c) { return 0.479 + (cols - 1 - c) * 0.004 + r * 0.004; }
+
+  function calcValue(r, c) {
+    const a = getA(r), b = getB(c), z = getZ(r, c);
+    return 1 / (1 + Math.pow(a, z) + Math.pow(b, z));
+  }
+
+  // Min/max hesapla
+  let minV = Infinity, maxV = -Infinity;
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++) {
+      const v = calcValue(r, c);
+      if (v < minV) minV = v;
+      if (v > maxV) maxV = v;
+    }
+
+  document.getElementById('min-label').textContent = minV.toFixed(4);
+  document.getElementById('max-label').textContent = maxV.toFixed(4);
+
+  function getColor(val) {
+    const t = (val - minV) / (maxV - minV);
+    const r = Math.round(10 + t * 30);
+    const g = Math.round(30 + t * 120);
+    const b = Math.round(60 + t * 140);
+    return `rgba(${r},${g},${b},0.85)`;
+  }
+
+  function getTextColor(val) {
+    const t = (val - minV) / (maxV - minV);
+    const r = Math.round(140 + t * 115);
+    const g = Math.round(200 + t * 55);
+    return `rgb(${r},${g},255)`;
+  }
+
+  const container = document.getElementById('table-container');
+
+  // B etiket satırı
+  const bRow = document.createElement('div');
+  bRow.className = 'col-labels';
+  bRow.innerHTML = '<div class="corner"></div><div class="corner"></div>';
+  for (let c = 0; c < cols; c++) {
+    const d = document.createElement('div');
+    d.className = 'col-b-label';
+    d.textContent = `b=${getB(c)}`;
+    bRow.appendChild(d);
+  }
+  container.appendChild(bRow);
+
+  // Z etiket satırı
+  const zRow = document.createElement('div');
+  zRow.className = 'z-labels';
+  zRow.innerHTML = '<div class="corner"></div><div class="corner"></div>';
+  for (let c = 0; c < cols; c++) {
+    const d = document.createElement('div');
+    d.className = 'col-z-label';
+    d.textContent = `z=${getZ(0, c).toFixed(3)}`;
+    zRow.appendChild(d);
+  }
+  container.appendChild(zRow);
+
+  // Veri satırları
+  for (let r = 0; r < rows; r++) {
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'row';
+
+    const aLabel = document.createElement('div');
+    aLabel.className = 'row-a-label';
+    aLabel.textContent = `a=${getA(r)}`;
+    rowDiv.appendChild(aLabel);
+
+    // Z etiketi sol taraf
+    const zLabel = document.createElement('div');
+    zLabel.style.cssText = `width:36px;flex-shrink:0;text-align:center;font-size:10px;color:#5a8;`;
+    zLabel.textContent = getZ(r, 0).toFixed(3);
+    rowDiv.appendChild(zLabel);
+
+    for (let c = 0; c < cols; c++) {
+      const val = calcValue(r, c);
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.style.background = getColor(val);
+      cell.style.color = getTextColor(val);
+      cell.textContent = val.toFixed(4);
+
+      cell.addEventListener('mouseenter', () => {
+        const panel = document.getElementById('info-panel');
+        panel.className = 'active';
+        panel.innerHTML = `
+          <span>a=<b style="color:#7af">${getA(r)}</b></span>
+          <span>b=<b style="color:#fa7">${getB(c)}</b></span>
+          <span>z=<b style="color:#6a9">${getZ(r,c).toFixed(3)}</b></span>
+          <span>→ f = <b style="color:#fff;font-size:14px">${val.toFixed(6)}</b></span>
+        `;
+      });
+
+      cell.addEventListener('mouseleave', () => {
+        const panel = document.getElementById('info-panel');
+        panel.className = '';
+        panel.innerHTML = `<span style="color:#333">Hücrenin üzerine gelin</span>`;
+      });
+
+      rowDiv.appendChild(cell);
+    }
+    container.appendChild(rowDiv);
+  }
+</script>
+</body>
+</html>
