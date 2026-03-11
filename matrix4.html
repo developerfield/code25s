@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matris Analiz Sistemi</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Cinzel:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+<style>
+:root{
+  --cream:#f5f0e8;--cream-dark:#ede6d6;--cream-mid:#e8dfc8;--ivory:#fdfaf4;
+  --gold:#a07840;--gold-light:#c9a96e;--gold-dark:#7a5c2e;
+  --ink:#2c2416;--ink-mid:#4a3f2f;--ink-light:#7a6e5a;--rule:#c8b898;
+  --shadow:rgba(44,36,22,0.14);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'EB Garamond',serif;background:var(--cream);color:var(--ink);min-height:100vh;padding:0 0 80px}
+.masthead{background:var(--ink);padding:44px 48px 34px;text-align:center;border-bottom:3px double var(--gold);position:relative}
+.masthead::before,.masthead::after{content:'❧';position:absolute;top:50%;transform:translateY(-50%);color:var(--gold-light);font-size:1.8rem;opacity:.4}
+.masthead::before{left:44px}.masthead::after{right:44px;transform:translateY(-50%) scaleX(-1)}
+.eyebrow{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.4em;color:var(--gold-light);text-transform:uppercase;margin-bottom:12px;opacity:.75}
+.masthead h1{font-family:'Cormorant Garamond',serif;font-weight:300;font-size:clamp(2rem,5vw,3.2rem);color:var(--ivory);letter-spacing:.06em}
+.mhr{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:18px}
+.mhr span{height:1px;width:80px;background:var(--gold);opacity:.45;display:block}
+.mhr em{font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--gold-light);font-size:.9rem}
+.page{max-width:940px;margin:0 auto;padding:0 28px}
+.panel{background:var(--ivory);border:1px solid var(--rule);border-top:3px solid var(--gold);border-radius:3px;padding:26px 30px;margin-top:36px;box-shadow:0 4px 20px var(--shadow)}
+.panel-label{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);margin-bottom:14px;display:flex;align-items:center;gap:12px}
+.panel-label::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--rule),transparent)}
+.data-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.inp{flex:1;min-width:180px;padding:10px 15px;font-family:'EB Garamond',serif;font-size:1rem;color:var(--ink);background:var(--cream);border:1px solid var(--rule);border-radius:2px;outline:none;transition:border-color .2s,box-shadow .2s}
+.inp:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(160,120,64,.1)}
+.btn{padding:10px 26px;font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--ivory);background:var(--ink);border:1px solid var(--gold-dark);border-radius:2px;cursor:pointer;transition:background .2s;white-space:nowrap}
+.btn:hover{background:var(--gold-dark)}
+.btn-clear{background:transparent;color:var(--ink-mid);border-color:var(--rule)}
+.btn-clear:hover{background:var(--cream-dark);color:var(--ink)}
+.btn-use{padding:6px 16px;font-size:.58rem;background:var(--gold-dark);border-color:var(--gold-dark)}
+.btn-use:hover{background:var(--ink)}
+/* formula */
+.formula-inline{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.fx-label{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.12rem;color:var(--ink-mid);white-space:nowrap;min-width:72px}
+.range-inline{display:flex;gap:6px;align-items:center;white-space:nowrap}
+.range-inline label{font-family:'Cinzel',serif;font-size:.54rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-light)}
+.range-inp{width:60px;padding:7px 7px;font-family:'EB Garamond',serif;font-size:.93rem;color:var(--ink);background:var(--cream);border:1px solid var(--rule);border-radius:2px;outline:none;text-align:center}
+.range-inp:focus{border-color:var(--gold)}
+.hint{font-size:.74rem;color:var(--ink-light);font-style:italic;margin-bottom:10px}
+/* slider */
+.y-row{display:flex;align-items:center;gap:14px;background:var(--cream);border:1px solid var(--cream-mid);border-radius:2px;padding:11px 16px;margin-bottom:3px}
+.y-badge{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.05rem;color:var(--ink-mid);white-space:nowrap;min-width:22px}
+.y-slider{flex:1;-webkit-appearance:none;appearance:none;height:5px;background:linear-gradient(to right,#c0392b,#e8b84b,#2a7a2a);border-radius:3px;outline:none;cursor:pointer}
+.y-slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--gold);border:2px solid var(--ivory);box-shadow:0 2px 8px rgba(44,36,22,.3);cursor:grab;transition:transform .1s}
+.y-slider::-webkit-slider-thumb:hover{transform:scale(1.15)}
+.y-slider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--gold);border:2px solid var(--ivory);cursor:grab}
+.y-val-display{font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.08em;color:var(--gold-dark);white-space:nowrap;min-width:56px;text-align:right}
+.y-range-hint{display:flex;justify-content:space-between;font-size:.67rem;color:var(--ink-light);font-style:italic;padding:2px 0 0}
+/* S denklem bölücü */
+.s-divider{border:none;border-top:1px dashed var(--rule);margin:20px 0 18px}
+/* progress */
+.progress-wrap{height:4px;background:var(--cream-mid);border-radius:2px;margin:12px 0 0;overflow:hidden;display:none}
+.progress-bar{height:100%;background:var(--gold);width:0%;transition:width .08s linear}
+/* strip */
+.strip-wrap{margin-top:18px}
+.strip-label-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:7px;flex-wrap:wrap}
+.strip-label{font-family:'Cinzel',serif;font-size:.57rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-mid)}
+.strip-scroll{overflow-x:auto;border:1px solid var(--rule);border-radius:2px;background:var(--ivory)}
+.strip-table{border-collapse:collapse;white-space:nowrap;font-size:.82rem}
+.strip-table td{padding:6px 11px;text-align:center;font-variant-numeric:tabular-nums;font-family:'EB Garamond',serif;border-right:1px solid rgba(200,184,152,.4);min-width:66px}
+.strip-table td:last-child{border-right:none}
+.strip-table .strip-idx{font-family:'Cinzel',serif;font-size:.5rem;letter-spacing:.1em;display:block;opacity:.7;margin-bottom:2px}
+/* chart */
+.chart-panel{background:var(--ivory);border:1px solid var(--rule);border-top:3px solid var(--gold);border-radius:3px;padding:26px 30px;margin-top:36px;box-shadow:0 4px 20px var(--shadow)}
+.chart-label{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.26em;text-transform:uppercase;color:var(--gold);margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.chart-label::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--rule),transparent)}
+.chart-wrap{position:relative;height:380px}
+/* copy */
+.copy-group{background:var(--ivory);border:1px solid var(--rule);border-radius:3px;padding:13px 18px;margin-top:10px;box-shadow:0 2px 10px var(--shadow);display:flex;flex-direction:column;gap:7px}
+.copy-group-item{display:flex;gap:9px;align-items:center}
+.copy-group-label{font-family:'Cinzel',serif;font-size:.55rem;letter-spacing:.11em;text-transform:uppercase;white-space:nowrap;min-width:130px}
+.copy-input{flex:1;padding:7px 11px;font-family:'EB Garamond',serif;font-size:.9rem;color:var(--ink);background:var(--cream);border:1px solid var(--rule);border-radius:2px;outline:none}
+.copy-btn{padding:7px 16px;font-family:'Cinzel',serif;font-size:.57rem;letter-spacing:.13em;text-transform:uppercase;color:var(--ivory);background:var(--gold-dark);border:none;border-radius:2px;cursor:pointer;transition:background .2s;white-space:nowrap}
+.copy-btn:hover{background:var(--ink)}
+.sec-divider{text-align:center;margin:46px 0 0;font-family:'Cinzel',serif;font-size:.55rem;letter-spacing:.5em;color:var(--rule)}
+.ornament{text-align:center;margin:48px 0 0;color:var(--rule);font-size:1rem;letter-spacing:.8em}
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="eyebrow">Sayısal Analiz · Matris Hesaplama</div>
+  <h1>Matris Analiz Sistemi</h1>
+  <div class="mhr"><span></span><em>f · g · S Fonksiyonları — Kümülatif &amp; Öz-Beslemeli Analiz</em><span></span></div>
+</div>
+
+<div class="page">
+
+  <!-- VERİ GİRİŞİ -->
+  <div class="panel">
+    <div class="panel-label">Veri Dizisi</div>
+    <div class="data-row">
+      <input class="inp" type="text" id="numArray" value="1, 2, 3, 2, 1, 2" placeholder="Virgülle ayrılmış sayılar…">
+      <button class="btn" onclick="runAll()">Hesapla</button>
+      <button class="btn" onclick="loadFromFirebase()" id="fbBtn">☁ Firebase'den Yükle</button>
+      <button class="btn btn-clear" onclick="clearInput()">Temizle</button>
+    </div>
+    <div id="fbStatus" style="margin-top:10px;font-size:.8rem;font-style:italic;color:var(--ink-light);display:none"></div>
+  </div>
+
+  <!-- DÖNÜŞÜM PANELİ: f + S denklemleri + slider'lar + ısı haritası -->
+  <div class="panel">
+    <div class="panel-label">Dönüşüm Fonksiyonları</div>
+
+    <!-- f(x,y) -->
+    <div class="formula-inline">
+      <span class="fx-label">f (x, y) =</span>
+      <input class="inp" type="text" id="formulaInput" value="(((x^(y))*1)/((0.85355)^(y)))"
+        placeholder="x ve y değişkenlerini kullanın…" oninput="scheduleRun()">
+      <div class="range-inline">
+        <label>min</label>
+        <input class="range-inp" type="number" id="yMin" value="-1.5" step="0.1" oninput="applyRangeF()">
+        <label>max</label>
+        <input class="range-inp" type="number" id="yMax" value="1" step="0.1" oninput="applyRangeF()">
+      </div>
+    </div>
+    <p class="hint">x, y, x^n, sqrt(x), log(x), sin(x), cos(x), abs(x), pi, e &nbsp;·&nbsp; <strong>y</strong> kaydırıcıyla değişir</p>
+    <div class="y-row">
+      <span class="y-badge">y =</span>
+      <input type="range" class="y-slider" id="ySlider" min="0" max="1000" step="1" value="400">
+      <span class="y-val-display" id="yValDisplay">0.00</span>
+    </div>
+    <div class="y-range-hint"><span id="yMinLabel">−1.50</span><span id="yMaxLabel">+1.00</span></div>
+
+    <!-- S(x,y) — f slider'ının hemen altına bitişik -->
+    <hr class="s-divider">
+
+    <div class="formula-inline">
+      <span class="fx-label" style="color:#7a2a9a">S (x, y) =</span>
+      <input class="inp" type="text" id="sFormulaInput" value="(((x^(y))*1)/((0.85355)^(y)))"
+        placeholder="x ve y değişkenlerini kullanın…" oninput="scheduleRunS()">
+      <div class="range-inline">
+        <label>min</label>
+        <input class="range-inp" type="number" id="sYMin" value="-1.5" step="0.1" oninput="applyRangeS()">
+        <label>max</label>
+        <input class="range-inp" type="number" id="sYMax" value="1" step="0.1" oninput="applyRangeS()">
+      </div>
+    </div>
+    <p class="hint" style="color:#9a4aba">6. Tablo (Şema4 açı tabanlı yüzde dönüşümü) kullanılır &nbsp;·&nbsp; <strong style="color:#7a2a9a">y</strong> kaydırıcıyla değişir</p>
+    <div class="y-row" style="background:#f8f0ff;border-color:#d4b8e8">
+      <span class="y-badge" style="color:#7a2a9a">y =</span>
+      <input type="range" class="y-slider" id="sYSlider" min="0" max="1000" step="1" value="400"
+        style="background:linear-gradient(to right,#8b0000,#b84be8,#2a5a2a)">
+      <span class="y-val-display" id="sYValDisplay" style="color:#7a2a9a">0.00</span>
+    </div>
+    <div class="y-range-hint"><span id="sYMinLabel">−1.50</span><span id="sYMaxLabel">+1.00</span></div>
+
+    <!-- ilerleme çubuğu -->
+    <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+
+    <!-- ISIL ŞERİT: 3 satır (f, g, S-mat3) -->
+    <div class="strip-wrap">
+      <div class="strip-label-row">
+        <span class="strip-label">Isı Haritası — Çapraz Ortalama Serileri</span>
+        <button class="btn btn-use" onclick="useStripAsInput()">↑ Girdi Olarak Kullan</button>
+      </div>
+      <div class="strip-scroll" id="stripScroll">
+        <table class="strip-table" id="stripTable"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- f GRAFİK: 4 çizgi, sol=türetilmiş+öz-b, sağ=kümülatif+öz-b-kümülatif -->
+  <div class="chart-panel" style="border-top-color:#a07840">
+    <div class="chart-label" style="color:#a07840">f(x) Analizi — Sol: Türetilmiş · Öz-Beslemeli &nbsp;|&nbsp; Sağ: Kümülatif · Öz-B. Kümülatif</div>
+    <div class="chart-wrap"><canvas id="fChart"></canvas></div>
+  </div>
+  <div class="copy-group">
+    <div class="copy-group-item">
+      <span class="copy-group-label" style="color:#c8922a">f Türetilmiş (Sol)</span>
+      <input class="copy-input" type="text" id="fCopyDerived" readonly placeholder="—">
+      <button class="copy-btn" onclick="copySingle('fCopyDerived')">Kopyala</button>
+    </div>
+    <div class="copy-group-item">
+      <span class="copy-group-label" style="color:#4aaa4a">f Öz-Beslemeli (Sol)</span>
+      <input class="copy-input" type="text" id="fCopyFeed" readonly placeholder="—">
+      <button class="copy-btn" onclick="copySingle('fCopyFeed')" style="background:#3a8a3a">Kopyala</button>
+    </div>
+    <div class="copy-group-item">
+      <span class="copy-group-label" style="color:#2a6a2a">f Kümülatif (Sağ)</span>
+      <input class="copy-input" type="text" id="fCopyCum" readonly placeholder="—">
+      <button class="copy-btn" onclick="copySingle('fCopyCum')" style="background:#2a6a2a">Kopyala</button>
+    </div>
+    <div class="copy-group-item">
+      <span class="copy-group-label" style="color:#1a4a1a">f Öz-B. Kümülatif (Sağ)</span>
+      <input class="copy-input" type="text" id="fCopyFeedCum" readonly placeholder="—">
+      <button class="copy-btn" onclick="copySingle('fCopyFeedCum')" style="background:#1a4a1a">Kopyala</button>
+    </div>
+  </div>
+
+  <div class="sec-divider">· · · · · · · · · ·</div>
+
+  <!-- g GRAFİK -->
+  <div class="chart-panel" style="border-top-color:#1a4a9a;margin-top:36px">
+    <div class="chart-label" style="color:#1a4a9a">g(x) Analizi — Sol: Türetilmiş · Öz-Beslemeli &nbsp;|&nbsp; Sağ: Kümülatif · Öz-B. Kümülatif</div>
+    <div class="chart-wrap"><canvas id="gChart"></canvas></div>
+  </div>
+  <div class="copy-group">
+    <div class="copy-group-item">
+      <span class="copy-group-label" style="color:#4a7aca">g Türetilmiş (Sol)</span>
+      <input class="copy-input" type="text" id="gCopyDerived" readonly placeholder="—">
+      <button class="copy-btn" onclick="copySingle('gCopyDerived')" style="background:#2a5a9a">Kopyala</button>
+    </div>
+    <div class="copy-group-item">
+      <span class="copy-group-label" style="color:#7a7aee">g Öz-Beslemeli (Sol)</span>
+      <input class="copy-input" type="text" id="gCopyFeed" readonly placeholder="—">
+      <button class="copy-btn" onclick="copySingle('gCopyFeed')" style="background:#4a4aaa">Kopyala</button>
+    </div>
+    <div class="copy-group-item">
+      <span class="copy-group-label" style="color:#1a3a8a">g Kümülatif (Sağ)</span>
+      <input class="copy-input" type="text" id="gCopyCum" readonly placeholder="—">
+      <button class="copy-btn" onclick="copySingle('gCopyCum')" style="background:#1a3a6a">Kopyala</button>
+    </div>
+    <div class="copy-group-item">
+      <span class="copy-group-label" style="color:#2a2a7a">g Öz-B. Kümülatif (Sağ)</span>
+      <input class="copy-input" type="text" id="gCopyFeedCum" readonly placeholder="—">
+      <button class="copy-btn" onclick="copySingle('gCopyFeedCum')" style="background:#2a2a7a">Kopyala</button>
+    </div>
+  </div>
+
+  <div class="sec-divider">· · · · · · · · · ·</div>
+
+  <!-- S GRAFİK -->
+  <div class="chart-panel" style="border-top-color:#7a2a9a;margin-top:36px">
+    <div class="chart-label" style="color:#7a2a9a">S(x) Analizi — Sol: Türetilmiş · Öz-Beslemeli &nbsp;|&nbsp; Sağ: Kümülatif · Öz-B. Kümülatif</div>
+    <div class="chart-wrap"><canvas id="sChart"></canvas></div>
+  </div>
+  <div class="copy-group">
+    <div class="copy-group-item">
+      <span class="copy-group-label" style="color:#aa4aea">S Türetilmiş (Sol)</span>
+      <input class="copy-input" type="text" id="sCopyDerived" readonly placeholder="—">
+      <button class="copy-btn" onclick="copySingle('sCopyDerived')" style="background:#7a2a9a">Kopyala</button>
+    </div>
+    <div class="copy-group-item">
+      <span class="copy-group-label" style="color:#cc88cc">S Öz-Beslemeli (Sol)</span>
+      <input class="copy-input" type="text" id="sCopyFeed" readonly placeholder="—">
+      <button class="copy-btn" onclick="copySingle('sCopyFeed')" style="background:#8a4aaa">Kopyala</button>
+    </div>
+    <div class="copy-group-item">
+      <span class="copy-group-label" style="color:#4a1a7a">S Kümülatif (Sağ)</span>
+      <input class="copy-input" type="text" id="sCopyCum" readonly placeholder="—">
+      <button class="copy-btn" onclick="copySingle('sCopyCum')" style="background:#4a1a7a">Kopyala</button>
+    </div>
+    <div class="copy-group-item">
+      <span class="copy-group-label" style="color:#2a0a5a">S Öz-B. Kümülatif (Sağ)</span>
+      <input class="copy-input" type="text" id="sCopyFeedCum" readonly placeholder="—">
+      <button class="copy-btn" onclick="copySingle('sCopyFeedCum')" style="background:#2a0a5a">Kopyala</button>
+    </div>
+  </div>
+
+  <div class="ornament">❧</div>
+</div>
+
+<script>
+/* ══ GLOBALS ══ */
+let G_arr=[], G_y=0, G_yMin=-1.5, G_yMax=1.0;
+let G_sY=0, G_sYMin=-1.5, G_sYMax=1.0;
+let debounceTimer=null, sDebounceTimer=null;
+let G_lastStrip=[];
+let fChartInst=null, gChartInst=null, sChartInst=null;
+
+/* ══ F RANGE ══ */
+function applyRangeF(){
+  const mn=parseFloat(document.getElementById('yMin').value);
+  const mx=parseFloat(document.getElementById('yMax').value);
+  if(isNaN(mn)||isNaN(mx)||mn>=mx) return;
+  G_yMin=mn; G_yMax=mx;
+  document.getElementById('yMinLabel').textContent=(mn>=0?'+':'')+mn.toFixed(2);
+  document.getElementById('yMaxLabel').textContent=(mx>=0?'+':'')+mx.toFixed(2);
+  const sl=document.getElementById('ySlider');
+  sl.value=Math.round(Math.max(0,Math.min(1,(G_y-G_yMin)/(G_yMax-G_yMin)))*1000);
+  updateYDisplay(); scheduleRun();
+}
+function sliderToY(){ return G_yMin+(document.getElementById('ySlider').value/1000)*(G_yMax-G_yMin); }
+function updateYDisplay(){ G_y=sliderToY(); document.getElementById('yValDisplay').textContent=G_y.toFixed(3); }
+document.getElementById('ySlider').addEventListener('input',()=>{ updateYDisplay(); scheduleRun(); });
+
+/* ══ S RANGE ══ */
+function applyRangeS(){
+  const mn=parseFloat(document.getElementById('sYMin').value);
+  const mx=parseFloat(document.getElementById('sYMax').value);
+  if(isNaN(mn)||isNaN(mx)||mn>=mx) return;
+  G_sYMin=mn; G_sYMax=mx;
+  document.getElementById('sYMinLabel').textContent=(mn>=0?'+':'')+mn.toFixed(2);
+  document.getElementById('sYMaxLabel').textContent=(mx>=0?'+':'')+mx.toFixed(2);
+  const sl=document.getElementById('sYSlider');
+  sl.value=Math.round(Math.max(0,Math.min(1,(G_sY-G_sYMin)/(G_sYMax-G_sYMin)))*1000);
+  updateSYDisplay(); scheduleRunS();
+}
+function sliderToSY(){ return G_sYMin+(document.getElementById('sYSlider').value/1000)*(G_sYMax-G_sYMin); }
+function updateSYDisplay(){ G_sY=sliderToSY(); document.getElementById('sYValDisplay').textContent=G_sY.toFixed(3); }
+document.getElementById('sYSlider').addEventListener('input',()=>{ updateSYDisplay(); scheduleRunS(); });
+
+function scheduleRun(){ clearTimeout(debounceTimer); debounceTimer=setTimeout(()=>runAll(false),200); }
+function scheduleRunS(){ clearTimeout(sDebounceTimer); sDebounceTimer=setTimeout(()=>runSOnly(),200); }
+
+/* ══ FORMÜL DEĞERLENDİRİCİ ══ */
+function applyFormula(x,y,expr){
+  let e=expr.trim()
+    .replace(/\^/g,'**').replace(/sqrt\(/g,'Math.sqrt(').replace(/log\(/g,'Math.log(')
+    .replace(/sin\(/g,'Math.sin(').replace(/cos\(/g,'Math.cos(').replace(/tan\(/g,'Math.tan(')
+    .replace(/abs\(/g,'Math.abs(').replace(/\bpi\b/gi,'Math.PI').replace(/\be\b/g,'Math.E');
+  try{ return Function('x','y',`"use strict";return (${e});`)(x,y); }catch{ return NaN; }
+}
+
+/* ══ MAT1: Dinamik kayan ortalama matrisi ══ */
+function buildMat1(arr){
+  const n=arr.length; const mat=[];
+  for(let i=0;i<n;i++){
+    mat[i]=[];
+    for(let j=0;j<n;j++){
+      if(j<i){ mat[i][j]=0; continue; }
+      let s=0; for(let k=j-i;k<=j;k++) s+=arr[k];
+      mat[i][j]=s/(i+1);
+    }
+  }
+  return mat;
+}
+
+/* ══ ÇAPRAZ ORTALAMA TOPLAM ══ */
+function diagTotal(mat4,n){
+  let total=0;
+  const addDiag=(sr,sc)=>{
+    const d=[];let r=sr,c=sc;
+    while(r<n&&c<n){ if(isFinite(mat4[r][c])) d.push(mat4[r][c]); r++;c++; }
+    if(d.length) total+=d.reduce((a,b)=>a+b,0)/d.length;
+  };
+  for(let sc=0;sc<n;sc++) addDiag(0,sc);
+  for(let sr=1;sr<n;sr++) addDiag(sr,0);
+  return total;
+}
+
+/* ══ f CORE ══ */
+function computeF(arr,formula,y){
+  const n=arr.length; if(!n) return 0;
+  const mat1=buildMat1(arr);
+  // 2.tablo: Öklid (n+1)×(n+1) → kayan 2×2 → n×n
+  const M=n+1; const eu=[];
+  for(let r=0;r<M;r++){ eu[r]=[]; for(let c=0;c<M;c++){ const dr=r,dc=c-(M-1); eu[r][c]=Math.sqrt(dr*dr+dc*dc); } }
+  const sl=[];
+  for(let r=0;r<n;r++){ sl[r]=[]; for(let c=0;c<n;c++){ sl[r][c]=(eu[r][c]+eu[r][c+1]+eu[r+1][c]+eu[r+1][c+1])/4; } }
+  // 3.tablo: formül(2.tablo)
+  const mat3=sl.map(row=>row.map(v=>{ if(v===0) return 0; const r=applyFormula(v,y,formula); return isFinite(r)?r:NaN; }));
+  // 4.tablo: mat1 × mat3
+  const mat4=[];
+  for(let r=0;r<n;r++){ mat4[r]=[]; for(let c=0;c<n;c++){ const a=mat1[r][c],b=mat3[r][c]; mat4[r][c]=(isFinite(a)&&isFinite(b))?a*b:NaN; } }
+  return diagTotal(mat4,n);
+}
+
+/* ══ g CORE ══ */
+function computeG(arr){
+  const n=arr.length; if(!n) return 0;
+  const mat1=buildMat1(arr);
+  const mat5=[];
+  for(let r=0;r<n;r++){ mat5[r]=[]; for(let c=0;c<n;c++){ const a=1+r+((n-1)-c); mat5[r][c]=1/(a*a); } }
+  const mat4=[];
+  for(let r=0;r<n;r++){ mat4[r]=[]; for(let c=0;c<n;c++){ const a=mat1[r][c],b=mat5[r][c]; mat4[r][c]=(isFinite(a)&&isFinite(b))?a*b:NaN; } }
+  return diagTotal(mat4,n);
+}
+
+/* ══ Şema4 (6.Tablo) ══ */
+function buildMat6(n){
+  // şema1: K=(N-1+0.625, N), yön yukarı
+  const kx1=(n-1)+0.625, ky1=n;
+  const d1=Array.from({length:n},(_,r)=>Array.from({length:n},(_,c)=>{
+    const dx=(c+0.5)-kx1, dy=-(((r+0.5)-ky1));
+    const mag=Math.hypot(dx,dy); if(mag<1e-9) return 90;
+    return 90-Math.acos(Math.max(-1,Math.min(1,dy/mag)))*180/Math.PI;
+  }));
+  // şema2: K=(0, 0.625), yön sağ
+  const d2=Array.from({length:n},(_,r)=>Array.from({length:n},(_,c)=>{
+    const dx=(c+0.5), dy=-(((r+0.5)-0.625));
+    const mag=Math.hypot(dx,dy); if(mag<1e-9) return 90;
+    return 90-Math.acos(Math.max(-1,Math.min(1,dx/mag)))*180/Math.PI;
+  }));
+  // şema4: (d1+d2-89)/91*100, clamp 0..100
+  return d1.map((row,r)=>row.map((v,c)=>Math.max(0,Math.min(100,(v+d2[r][c]-89)/91*100))));
+}
+
+/* ══ S CORE ══ */
+function computeS(arr,formula,y){
+  const n=arr.length; if(!n) return 0;
+  const mat1=buildMat1(arr);
+  const mat6=buildMat6(n);
+  // 3.tablo: formül(6.tablo)
+  const mat3=mat6.map(row=>row.map(v=>{ if(v===0) return 0; const r=applyFormula(v,y,formula); return isFinite(r)?r:NaN; }));
+  const mat4=[];
+  for(let r=0;r<n;r++){ mat4[r]=[]; for(let c=0;c<n;c++){ const a=mat1[r][c],b=mat3[r][c]; mat4[r][c]=(isFinite(a)&&isFinite(b))?a*b:NaN; } }
+  return diagTotal(mat4,n);
+}
+
+/* ══ ISIL ŞERİT HESAPLAMA ══ */
+function computeFormulaStrip(n,formula,y){
+  // f'nin 2.tablosunu → formül → çapraz ortalama (n sütun, üst kenar çaprazları)
+  const M=n+1; const eu=[];
+  for(let r=0;r<M;r++){ eu[r]=[]; for(let c=0;c<M;c++){ const dr=r,dc=c-(M-1); eu[r][c]=Math.sqrt(dr*dr+dc*dc); } }
+  const sl=[];
+  for(let r=0;r<n;r++){ sl[r]=[]; for(let c=0;c<n;c++){ sl[r][c]=(eu[r][c]+eu[r][c+1]+eu[r+1][c]+eu[r+1][c+1])/4; } }
+  const mat=sl.map(row=>row.map(v=>{ if(v===0) return 0; const r=applyFormula(v,y,formula); return isFinite(r)?r:NaN; }));
+  const diags=[];
+  for(let sc=0;sc<n;sc++){
+    const d=[]; let r=0,c=sc;
+    while(r<n&&c<n){ if(isFinite(mat[r][c])) d.push(mat[r][c]); r++;c++; }
+    if(d.length) diags.push(d.reduce((a,b)=>a+b,0)/d.length);
+  }
+  return diags;
+}
+
+function computeMat5Strip(n){
+  const mat=[];
+  for(let r=0;r<n;r++){ mat[r]=[]; for(let c=0;c<n;c++){ const a=1+r+((n-1)-c); mat[r][c]=1/(a*a); } }
+  const diags=[];
+  for(let sc=0;sc<n;sc++){
+    const d=[]; let r=0,c=sc;
+    while(r<n&&c<n){ d.push(mat[r][c]); r++;c++; }
+    if(d.length) diags.push(d.reduce((a,b)=>a+b,0)/d.length);
+  }
+  return diags;
+}
+
+function computeSMat3Strip(n,formula,y){
+  // S'nin 6.tablo → formül → mat3 → çapraz ortalama (n sütun)
+  const mat6=buildMat6(n);
+  const mat3=mat6.map(row=>row.map(v=>{ if(v===0) return 0; const r=applyFormula(v,y,formula); return isFinite(r)?r:NaN; }));
+  const diags=[];
+  for(let sc=0;sc<n;sc++){
+    const d=[]; let r=0,c=sc;
+    while(r<n&&c<n){ if(isFinite(mat3[r][c])) d.push(mat3[r][c]); r++;c++; }
+    if(d.length) diags.push(d.reduce((a,b)=>a+b,0)/d.length);
+  }
+  return diags;
+}
+
+/* ══ ISIL ŞERİT ÇİZİCİ ══ */
+function heatColor(t){ const h=Math.round(t*120); const l=88-Math.abs(t-0.5)*12; return `hsl(${h},62%,${l}%)`; }
+
+function makeStripRow(series,prefix){
+  const vals=series.filter(v=>isFinite(v));
+  if(!vals.length) return '<tr></tr>';
+  const mn=Math.min(...vals), mx=Math.max(...vals), rng=mx-mn||1;
+  let html='<tr>';
+  series.forEach((v,i)=>{
+    if(!isFinite(v)) return;
+    const t=(v-mn)/rng; const bg=heatColor(t);
+    const fg=t<0.35?'#7a1010':t<0.65?'#7a6010':'#1a4a1a';
+    html+=`<td style="background:${bg};color:${fg}"><span class="strip-idx">${prefix}${i+1}</span>${v.toFixed(4)}</td>`;
+  });
+  return html+'</tr>';
+}
+
+function renderStrip(fSeries,gSeries,sSeries){
+  const tbl=document.getElementById('stripTable');
+  if(!fSeries||!fSeries.length){ tbl.innerHTML=''; return; }
+  let html=makeStripRow(fSeries,'f·');
+  if(gSeries&&gSeries.length) html+=makeStripRow(gSeries,'g·');
+  if(sSeries&&sSeries.length) html+=makeStripRow(sSeries,'s·');
+  tbl.innerHTML=html;
+  requestAnimationFrame(()=>{ const sc=document.getElementById('stripScroll'); sc.scrollLeft=sc.scrollWidth; });
+}
+
+/* ══ GRAFİK ÇİZİCİ: 4 çizgi, sol+sağ bağımsız eksen ══ */
+function makeDS(label,data,color,axisId){
+  return{ label, data, borderColor:color, backgroundColor:'transparent',
+    borderWidth:2.2, pointRadius:0, pointHoverRadius:5, tension:.38, fill:false, yAxisID:axisId };
+}
+
+function drawFourLineChart(canvasId,instRef,labels,leftA,leftB,rightA,rightB,cLA,cLB,cRA,cRB,lLA,lLB,lRA,lRB){
+  const ctx=document.getElementById(canvasId).getContext('2d');
+  if(instRef) instRef.destroy();
+  return new Chart(ctx,{
+    type:'line',
+    data:{ labels, datasets:[
+      makeDS(lLA,leftA,cLA,'yL'),
+      makeDS(lLB,leftB,cLB,'yL'),
+      makeDS(lRA,rightA,cRA,'yR'),
+      makeDS(lRB,rightB,cRB,'yR')
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
+      animation:{ duration:260 },
+      plugins:{
+        legend:{ labels:{ font:{family:'EB Garamond, serif',size:13}, color:'#4a3f2f', padding:14, usePointStyle:true } },
+        tooltip:{
+          backgroundColor:'#2c2416',
+          titleFont:{ family:'Cinzel, serif', size:11 },
+          bodyFont:{ family:'EB Garamond, serif', size:12 },
+          padding:10, cornerRadius:2,
+          callbacks:{ label: c=>` ${c.dataset.label}: ${c.parsed.y.toFixed(5)}` }
+        }
+      },
+      scales:{
+        x:{ ticks:{ font:{family:'Cinzel, serif',size:9}, color:'#7a6e5a', maxTicksLimit:20 }, grid:{ color:'#e8dfc8' } },
+        yL:{ type:'linear', position:'left',
+          ticks:{ font:{family:'EB Garamond, serif',size:11}, color:'#5a4010' },
+          grid:{ color:'#e8dfc8' },
+          title:{ display:true, text:'Türetilmiş · Öz-Beslemeli', font:{family:'Cinzel, serif',size:8}, color:'#7a6010' }
+        },
+        yR:{ type:'linear', position:'right',
+          ticks:{ font:{family:'EB Garamond, serif',size:11}, color:'#1a4a1a' },
+          grid:{ drawOnChartArea:false },
+          title:{ display:true, text:'Kümülatif · Öz-B. Kümülatif', font:{family:'Cinzel, serif',size:8}, color:'#1a5a1a' }
+        }
+      }
+    }
+  });
+}
+
+/* ══ KÜMÜLATİF HESAPLA ══ */
+function cumulate(arr){ const c=[]; arr.reduce((a,v,i)=>{ c[i]=a+v; return a+v; },0); return c; }
+
+/* ══ f HESAPLA VE ÇİZ ══ */
+async function runF(arr,formula,y){
+  const n=arr.length;
+  const pw=document.getElementById('progressWrap'), pb=document.getElementById('progressBar');
+  pw.style.display='block'; pb.style.width='0%';
+
+  const derived=[];
+  for(let i=1;i<=n;i++){
+    derived.push(computeF(arr.slice(0,i),formula,y));
+    pb.style.width=`${Math.round(i/n*33)}%`;
+    if(i%5===0) await new Promise(r=>setTimeout(r,0));
+  }
+  const cumSum=cumulate(derived);
+
+  const feed=[];
+  for(let i=0;i<n;i++){
+    feed.push(computeF([...feed,arr[i]],formula,y));
+    pb.style.width=`${33+Math.round(i/n*34)}%`;
+    if(i%5===0) await new Promise(r=>setTimeout(r,0));
+  }
+  const feedCum=cumulate(feed);
+
+  document.getElementById('fCopyDerived').value=derived.map(v=>v.toFixed(6)).join(', ');
+  document.getElementById('fCopyFeed').value=feed.map(v=>v.toFixed(6)).join(', ');
+  document.getElementById('fCopyCum').value=cumSum.map(v=>v.toFixed(6)).join(', ');
+  document.getElementById('fCopyFeedCum').value=feedCum.map(v=>v.toFixed(6)).join(', ');
+
+  const labels=arr.map((_,i)=>`n=${i+1}`);
+  fChartInst=drawFourLineChart('fChart',fChartInst,labels,
+    derived,feed,cumSum,feedCum,
+    '#c8922a','#4aaa4a','#2a7a2a','#1a4a1a',
+    'f Türetilmiş','f Öz-Beslemeli','f Kümülatif','f Öz-B. Kümülatif'
+  );
+
+  return {pb, pw};
+}
+
+/* ══ g HESAPLA VE ÇİZ ══ */
+async function runG(arr, pb, startPct){
+  const n=arr.length;
+  const derived=[];
+  for(let i=1;i<=n;i++){
+    derived.push(computeG(arr.slice(0,i)));
+    pb.style.width=`${startPct+Math.round(i/n*17)}%`;
+    if(i%5===0) await new Promise(r=>setTimeout(r,0));
+  }
+  const cumSum=cumulate(derived);
+  const feed=[];
+  for(let i=0;i<n;i++){
+    feed.push(computeG([...feed,arr[i]]));
+    if(i%5===0) await new Promise(r=>setTimeout(r,0));
+  }
+  const feedCum=cumulate(feed);
+
+  document.getElementById('gCopyDerived').value=derived.map(v=>v.toFixed(6)).join(', ');
+  document.getElementById('gCopyFeed').value=feed.map(v=>v.toFixed(6)).join(', ');
+  document.getElementById('gCopyCum').value=cumSum.map(v=>v.toFixed(6)).join(', ');
+  document.getElementById('gCopyFeedCum').value=feedCum.map(v=>v.toFixed(6)).join(', ');
+
+  const labels=arr.map((_,i)=>`n=${i+1}`);
+  gChartInst=drawFourLineChart('gChart',gChartInst,labels,
+    derived,feed,cumSum,feedCum,
+    '#4a7aca','#7a7aee','#1a3a8a','#2a2a7a',
+    'g Türetilmiş','g Öz-Beslemeli','g Kümülatif','g Öz-B. Kümülatif'
+  );
+}
+
+/* ══ S HESAPLA VE ÇİZ ══ */
+async function runS(arr,formula,y, pb, startPct){
+  const n=arr.length;
+  const derived=[];
+  for(let i=1;i<=n;i++){
+    derived.push(computeS(arr.slice(0,i),formula,y));
+    pb.style.width=`${startPct+Math.round(i/n*17)}%`;
+    if(i%5===0) await new Promise(r=>setTimeout(r,0));
+  }
+  const cumSum=cumulate(derived);
+  const feed=[];
+  for(let i=0;i<n;i++){
+    feed.push(computeS([...feed,arr[i]],formula,y));
+    if(i%5===0) await new Promise(r=>setTimeout(r,0));
+  }
+  const feedCum=cumulate(feed);
+
+  document.getElementById('sCopyDerived').value=derived.map(v=>v.toFixed(6)).join(', ');
+  document.getElementById('sCopyFeed').value=feed.map(v=>v.toFixed(6)).join(', ');
+  document.getElementById('sCopyCum').value=cumSum.map(v=>v.toFixed(6)).join(', ');
+  document.getElementById('sCopyFeedCum').value=feedCum.map(v=>v.toFixed(6)).join(', ');
+
+  const labels=arr.map((_,i)=>`n=${i+1}`);
+  sChartInst=drawFourLineChart('sChart',sChartInst,labels,
+    derived,feed,cumSum,feedCum,
+    '#aa4aea','#cc88cc','#4a1a7a','#2a0a5a',
+    'S Türetilmiş','S Öz-Beslemeli','S Kümülatif','S Öz-B. Kümülatif'
+  );
+}
+
+/* ══ Sadece S grafiğini yenile (S slider/denklem değişince) ══ */
+async function runSOnly(){
+  if(!G_arr.length) return;
+  const formula=document.getElementById('sFormulaInput').value;
+  const pw=document.getElementById('progressWrap'), pb=document.getElementById('progressBar');
+  pw.style.display='block'; pb.style.width='0%';
+
+  // Isı haritası 3.satırını güncelle
+  const n=G_arr.length;
+  const fStrip=computeFormulaStrip(n,document.getElementById('formulaInput').value,G_y);
+  const gStrip=computeMat5Strip(n);
+  const sStrip=computeSMat3Strip(n,formula,G_sY);
+  G_lastStrip=fStrip.filter(v=>isFinite(v)&&Math.abs(v)>1e-9);
+  renderStrip(fStrip,gStrip,sStrip);
+
+  const fakePb={style:{width:''}};
+  await runS(G_arr,formula,G_sY,fakePb,0);
+  pw.style.display='none'; pb.style.width='100%';
+}
+
+/* ══ ANA HESAPLAMA ══ */
+async function runAll(resetY=true){
+  const raw=document.getElementById('numArray').value;
+  const arr=raw.split(',').map(s=>parseFloat(s.trim())).filter(v=>!isNaN(v));
+  if(!arr.length) return;
+  G_arr=arr;
+
+  if(resetY){
+    const sl=document.getElementById('ySlider');
+    sl.value=Math.round(Math.max(0,Math.min(1,(0-G_yMin)/(G_yMax-G_yMin)))*1000);
+    updateYDisplay();
+    const sl2=document.getElementById('sYSlider');
+    sl2.value=Math.round(Math.max(0,Math.min(1,(0-G_sYMin)/(G_sYMax-G_sYMin)))*1000);
+    updateSYDisplay();
+  } else {
+    updateYDisplay();
+    updateSYDisplay();
+  }
+
+  const formula=document.getElementById('formulaInput').value;
+  const sFormula=document.getElementById('sFormulaInput').value;
+  const n=arr.length;
+
+  // Isı haritası
+  const fStrip=computeFormulaStrip(n,formula,G_y);
+  const gStrip=computeMat5Strip(n);
+  const sStrip=computeSMat3Strip(n,sFormula,G_sY);
+  G_lastStrip=fStrip.filter(v=>isFinite(v)&&Math.abs(v)>1e-9);
+  renderStrip(fStrip,gStrip,sStrip);
+
+  const {pb,pw}=await runF(arr,formula,G_y);
+  await runG(arr,pb,67);
+  await runS(arr,sFormula,G_sY,pb,84);
+  pw.style.display='none'; pb.style.width='100%';
+}
+
+/* ══ FİREBASE ══ */
+const firebaseConfig={
+  apiKey:"AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",
+  authDomain:"paralayici.firebaseapp.com",
+  projectId:"paralayici",
+  storageBucket:"paralayici.firebasestorage.app",
+  messagingSenderId:"980843550614",
+  appId:"1:980843550614:web:93dd5bda4ddc377b20efb7"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore();
+
+function loadFromFirebase(){
+  const btn=document.getElementById('fbBtn'), status=document.getElementById('fbStatus');
+  btn.textContent='⏳ Yükleniyor…'; btn.disabled=true;
+  status.style.display='block'; status.style.color='var(--ink-light)';
+  status.textContent='Firebase\'den veriler çekiliyor…';
+  db.collection("cumulative_daily_data").orderBy("date","asc").get()
+    .then(snapshot=>{
+      const vals=[]; snapshot.forEach(doc=>vals.push(doc.data().value));
+      btn.textContent='☁ Firebase\'den Yükle'; btn.disabled=false;
+      if(!vals.length){ status.textContent='Veri bulunamadı.'; return; }
+      document.getElementById('numArray').value=vals.join(', ');
+      status.textContent='✓ '+vals.length+' değer yüklendi.'; status.style.color='#2a5a2a';
+      runAll();
+    })
+    .catch(err=>{ btn.textContent='☁ Firebase\'den Yükle'; btn.disabled=false; status.textContent='Hata: '+err.message; status.style.color='#8b2020'; });
+}
+
+/* ══ YARDIMCILAR ══ */
+function copySingle(id){
+  const inp=document.getElementById(id); if(!inp||!inp.value) return;
+  navigator.clipboard.writeText(inp.value).catch(()=>{ inp.select(); document.execCommand('copy'); });
+}
+function useStripAsInput(){
+  if(!G_lastStrip.length) return;
+  document.getElementById('numArray').value=G_lastStrip.map(v=>v.toFixed(6)).join(', ');
+  runAll(false);
+}
+function clearInput(){ document.getElementById('numArray').value=''; document.getElementById('numArray').focus(); }
+
+/* ══ İLK YÜKLEME ══ */
+window.onload=()=>{
+  document.getElementById('yMinLabel').textContent='-1.50';
+  document.getElementById('yMaxLabel').textContent='+1.00';
+  document.getElementById('sYMinLabel').textContent='-1.50';
+  document.getElementById('sYMaxLabel').textContent='+1.00';
+  runAll(true);
+};
+</script>
+</body>
+</html>
