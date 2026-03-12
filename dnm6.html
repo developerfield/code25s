@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>DTW-kNN Sliding Window Tahmin</title>
+  <title>DTW-kNN Tahmin (Sağlam)</title>
 </head>
 <body>
   <h2>Zaman Serisi Tahmini (Sliding Window + DTW-kNN)</h2>
@@ -12,7 +12,6 @@
   <h3 id="result"></h3>
 
   <script>
-    // Basit DTW mesafesi
     function dtw(s1, s2) {
       let n = s1.length, m = s2.length;
       let dp = Array(n+1).fill(0).map(()=>Array(m+1).fill(Infinity));
@@ -28,8 +27,12 @@
 
     function predict(){
       let input = document.getElementById('series').value;
+      if(!input) { alert("Seri boş!"); return; }
+
       let series = input.split(',').map(Number);
       let t = series.length;
+      if(t < 3){ alert("Seri en az 3 elemanlı olmalı"); return; }
+
       let maxL = Math.min(4, t-1); // max pencere boyutu
       let k = 2; // kNN
 
@@ -42,16 +45,24 @@
         for (let i=0;i<=t-L-1;i++){
           windows.push({pattern: series.slice(i,i+L), next: series[i+L]});
         }
+        if(windows.length === 0) continue;
+
         let query = series.slice(t-L,t); // son pencere
         // DTW mesafesi ile k en yakın pencere
         windows.sort((a,b)=> dtw(query,a.pattern) - dtw(query,b.pattern));
         let nearest = windows.slice(0,k);
         // Tahmin: ortalama
-        let pred = nearest.reduce((acc,c)=>acc+c.next,0)/k;
-        // Hata tahmini (basitleştirilmiş: tüm pencere ile)
-        let error = nearest.reduce((acc,c)=>acc+Math.abs(c.next-pred),0)/k;
+        let pred = nearest.reduce((acc,c)=>acc+c.next,0)/nearest.length;
+        // Hata tahmini (basitleştirilmiş)
+        let error = nearest.reduce((acc,c)=>acc+Math.abs(c.next-pred),0)/nearest.length;
+        if(error === 0) error = 1e-6; // hata 0 olursa
         predictions.push(pred);
-        weights.push(1/error); // hata ile ağırlık
+        weights.push(1/error); 
+      }
+
+      if(predictions.length === 0){ 
+        document.getElementById('result').innerText = "Tahmin yapılamadı! Seri çok kısa."; 
+        return;
       }
 
       // Ağırlıklı ortalama ile tüm L’lerin birleşik tahmini
@@ -61,7 +72,7 @@
         denom += weights[i];
       }
       let finalPrediction = numerator/denom;
-      document.getElementById('result').innerText = "Tahmin edilen bir sonraki değer: " + finalPrediction.toFixed(2);
+      document.getElementById('result').innerText = "Tahmin edilen bir sonraki değer: " + finalPrediction.toFixed(4);
     }
   </script>
 </body>
