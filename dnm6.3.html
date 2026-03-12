@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DTW-kNN Tahmin Sistemi</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+  <style>
+    :root {
+      --bg:#0a0a0f; --surface:#12121a; --surface2:#1a1a28; --border:#2a2a40;
+      --accent:#00ffcc; --accent2:#ff4060; --accent3:#7b61ff;
+      --text:#e8e8f0; --text-dim:#6b6b8a; --cell-bg:#0d0d18;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:'Space Mono',monospace;min-height:100vh;overflow-x:hidden;}
+    body::before{content:'';position:fixed;inset:0;
+      background-image:linear-gradient(rgba(0,255,204,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,204,0.03) 1px,transparent 1px);
+      background-size:40px 40px;pointer-events:none;z-index:0;}
+    .container{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:40px 24px 80px;}
+
+    header{text-align:center;margin-bottom:52px;}
+    .logo-line{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:12px;}
+    .logo-icon{width:36px;height:36px;border:2px solid var(--accent);border-radius:8px;
+      display:flex;align-items:center;justify-content:center;font-size:18px;
+      box-shadow:0 0 20px rgba(0,255,204,0.3);animation:pulse 3s ease-in-out infinite;}
+    @keyframes pulse{0%,100%{box-shadow:0 0 20px rgba(0,255,204,0.3);}50%{box-shadow:0 0 40px rgba(0,255,204,0.6);}}
+    h1{font-family:'Syne',sans-serif;font-size:clamp(28px,5vw,48px);font-weight:800;letter-spacing:-1px;
+      background:linear-gradient(135deg,var(--accent) 0%,var(--accent3) 60%,var(--accent2) 100%);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+    .subtitle{color:var(--text-dim);font-size:13px;letter-spacing:2px;text-transform:uppercase;margin-top:6px;}
+    .tags{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:18px;}
+    .tag{padding:4px 12px;border-radius:20px;font-size:11px;letter-spacing:1px;border:1px solid;}
+    .tag-green{border-color:var(--accent);color:var(--accent);}
+    .tag-purple{border-color:var(--accent3);color:var(--accent3);}
+    .tag-red{border-color:var(--accent2);color:var(--accent2);}
+    .tag-dim{border-color:var(--border);color:var(--text-dim);}
+
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;margin-bottom:24px;position:relative;overflow:hidden;}
+    .panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+      background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0.5;}
+    .panel-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:600;letter-spacing:2px;
+      text-transform:uppercase;color:var(--accent);margin-bottom:20px;display:flex;align-items:center;gap:8px;}
+    .panel-title::before{content:'';width:6px;height:6px;background:var(--accent);border-radius:50%;box-shadow:0 0 8px var(--accent);flex-shrink:0;}
+
+    .input-row{display:grid;grid-template-columns:1fr auto auto auto;gap:12px;align-items:start;}
+    .input-group{display:flex;flex-direction:column;gap:8px;}
+    label{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);}
+    input[type="text"],input[type="number"]{background:var(--cell-bg);border:1px solid var(--border);
+      border-radius:10px;padding:12px 16px;color:var(--text);font-family:'Space Mono',monospace;
+      font-size:14px;width:100%;transition:border-color .2s,box-shadow .2s;outline:none;}
+    input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,255,204,0.1);}
+    .btn{padding:12px 24px;border-radius:10px;border:none;font-family:'Space Mono',monospace;
+      font-size:13px;font-weight:700;cursor:pointer;letter-spacing:1px;transition:all .2s;white-space:nowrap;align-self:flex-end;}
+    .btn-primary{background:var(--accent);color:#000;box-shadow:0 4px 20px rgba(0,255,204,0.25);}
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 30px rgba(0,255,204,0.4);}
+    .btn-secondary{background:transparent;color:var(--accent3);border:1px solid var(--accent3);}
+    .btn-secondary:hover{background:rgba(123,97,255,0.1);}
+
+    .firebase-status{display:flex;align-items:center;gap:10px;padding:12px 16px;
+      background:var(--cell-bg);border-radius:10px;border:1px solid var(--border);font-size:12px;color:var(--text-dim);}
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--text-dim);flex-shrink:0;}
+    .dot.connected{background:var(--accent);box-shadow:0 0 8px var(--accent);}
+    .dot.error{background:var(--accent2);box-shadow:0 0 8px var(--accent2);}
+    .dot.loading{background:var(--accent3);animation:blink 1s infinite;}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+
+    .result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:20px;}
+    .result-card{background:var(--cell-bg);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;transition:border-color .3s,box-shadow .3s;}
+    .result-card.highlighted{border-color:var(--accent);box-shadow:0 0 30px rgba(0,255,204,0.15);}
+    .result-card.negative{border-color:var(--accent2);box-shadow:0 0 30px rgba(255,64,96,0.15);}
+    .card-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;}
+    .card-value{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;}
+    .card-value.green{color:var(--accent);}.card-value.purple{color:var(--accent3);}.card-value.red{color:var(--accent2);}
+    .card-sub{font-size:11px;color:var(--text-dim);margin-top:4px;}
+
+    .conf-wrap{margin:4px 0 20px;}
+    .conf-row{display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-bottom:6px;}
+    .conf-track{height:8px;background:var(--border);border-radius:4px;overflow:hidden;}
+    .conf-fill{height:100%;border-radius:4px;transition:width .8s ease;}
+
+    .l-cards{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 12px;}
+    .l-card{background:var(--cell-bg);border:1px solid var(--border);border-radius:10px;padding:12px 16px;min-width:148px;flex:1;}
+    .l-card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+    .l-card-pred{font-size:20px;font-family:'Syne',sans-serif;font-weight:800;color:var(--accent);}
+    .l-card-meta{font-size:10px;color:var(--text-dim);line-height:1.85;margin-top:5px;}
+    .l-bar{height:3px;border-radius:2px;background:var(--accent3);margin-top:8px;}
+
+    .formula-box{font-size:11px;color:var(--text-dim);margin-top:10px;
+      padding:10px 14px;background:var(--cell-bg);border-radius:8px;border:1px solid var(--border);line-height:2;}
+
+    .table-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+    .tab-btn{padding:6px 16px;border-radius:20px;font-size:11px;letter-spacing:1px;border:1px solid var(--border);
+      background:transparent;color:var(--text-dim);cursor:pointer;font-family:'Space Mono',monospace;transition:all .2s;}
+    .tab-btn.active{background:var(--accent3);border-color:var(--accent3);color:#fff;}
+    .tab-btn.active-wf{background:var(--accent2);border-color:var(--accent2);color:#fff;}
+
+    .table-wrapper{overflow-x:auto;border-radius:12px;border:1px solid var(--border);}
+    table{width:100%;border-collapse:collapse;font-size:12px;}
+    th{background:var(--surface2);color:var(--text-dim);padding:10px 14px;text-align:center;
+      font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;}
+    td{padding:9px 14px;text-align:center;border-bottom:1px solid rgba(42,42,64,0.5);white-space:nowrap;}
+    tr:hover td{background:rgba(0,255,204,0.03);}
+    tr:last-child td{border-bottom:none;}
+    .cell-dtw-path{background:rgba(0,255,204,0.1)!important;color:var(--accent);font-weight:700;}
+    .cell-header{color:var(--accent3);font-weight:700;}
+    .cell-rank1{color:var(--accent);}.cell-rank2{color:#88ffee;}
+    .cell-label{color:var(--text-dim);font-size:11px;}
+    .cell-inf{color:var(--text-dim);}
+    .dtw-matrix td,.dtw-matrix th{width:44px;height:36px;padding:4px;}
+
+    .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;}
+    .badge-green{background:rgba(0,255,204,0.15);color:var(--accent);}
+    .badge-purple{background:rgba(123,97,255,0.15);color:var(--accent3);}
+    .badge-red{background:rgba(255,64,96,0.15);color:var(--accent2);}
+
+    .step-log{background:var(--cell-bg);border:1px solid var(--border);border-radius:10px;
+      padding:16px;font-size:12px;line-height:1.8;max-height:220px;overflow-y:auto;}
+    .step-log::-webkit-scrollbar{width:4px;}
+    .step-log::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+    .sep{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin:24px 0;}
+    .series-wrap{overflow-x:auto;padding:20px 0;}
+    .series-viz{display:flex;align-items:flex-end;gap:4px;height:60px;}
+    .bar{flex:1;border-radius:4px 4px 0 0;min-width:8px;position:relative;}
+    .bar-val{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:9px;white-space:nowrap;}
+    .bar-idx{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--text-dim);}
+
+    .info-strip{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--text-dim);margin-top:12px;}
+    .info-chip{padding:3px 10px;border-radius:12px;background:var(--surface2);border:1px solid var(--border);}
+
+    .fade-in{animation:fadeIn .4s ease;}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    @media(max-width:640px){.input-row{grid-template-columns:1fr;}}
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo-line">
+      <div class="logo-icon">⟁</div>
+      <h1>DTW-kNN Predictor</h1>
+    </div>
+    <p class="subtitle">Dinamik Zaman Büküm · k-En Yakın Komşu · Walk-Forward Doğrulama</p>
+    <div class="tags">
+      <span class="tag tag-green">DTW Normalize</span>
+      <span class="tag tag-purple">Sliding Window</span>
+      <span class="tag tag-red">Walk-Forward MAE</span>
+      <span class="tag tag-dim">Komşu Sapması</span>
+    </div>
+  </header>
+
+  <div class="panel">
+    <div class="panel-title">Veri Kaynağı</div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:flex-end;">
+      <div class="firebase-status" id="fb-status">
+        <span class="dot loading" id="fb-dot"></span>
+        <span id="fb-text">Firebase'e bağlanılıyor...</span>
+      </div>
+      <button class="btn btn-secondary" onclick="loadFromFirebase()">↻ Yenile</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Zaman Serisi Girişi</div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>Seri Değerleri (virgülle ayrılmış)</label>
+        <input type="text" id="series" placeholder="Örn: 3, 5, 4, 6, 7, 5, 8, 6, 9, 7">
+      </div>
+      <div class="input-group">
+        <label>k (komşu)</label>
+        <input type="number" id="kval" value="2" min="1" max="10" style="width:80px;">
+      </div>
+      <div class="input-group">
+        <label>Max L (0=oto)</label>
+        <input type="number" id="maxLval" value="0" min="0" max="10" style="width:80px;">
+      </div>
+      <button class="btn btn-primary" onclick="runPrediction()">▶ TAHMİN ET</button>
+    </div>
+    <div class="info-strip">
+      <span class="info-chip">Max L=0 → otomatik: floor(n/3), maks 6</span>
+      <span class="info-chip">DTW mesafesi / (n+m) normalize edilir</span>
+      <span class="info-chip">Walk-forward: min 3 adım, data leakage yok</span>
+    </div>
+    <div id="series-chart" style="display:none;" class="series-wrap"></div>
+  </div>
+
+  <div id="results-panel" style="display:none;" class="panel fade-in">
+    <div class="panel-title">Tahmin Sonuçları</div>
+    <div class="result-grid" id="result-cards"></div>
+    <div id="conf-section"></div>
+    <div id="l-breakdown"></div>
+    <div class="sep"></div>
+    <div class="panel-title" style="margin-bottom:12px;">Hesaplama Adımları</div>
+    <div class="step-log" id="step-log"></div>
+  </div>
+
+  <div id="tables-panel" style="display:none;" class="panel fade-in">
+    <div class="panel-title">2B Hesaplama Tabloları</div>
+    <div class="table-tabs" id="table-tabs"></div>
+    <div id="table-content"></div>
+  </div>
+
+</div>
+<script>
+// ═══════════════════════════════════════
+//  FIREBASE
+// ═══════════════════════════════════════
+const firebaseConfig = {
+  apiKey:"AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",
+  authDomain:"paralayici.firebaseapp.com",
+  projectId:"paralayici",
+  storageBucket:"paralayici.firebasestorage.app",
+  messagingSenderId:"980843550614",
+  appId:"1:980843550614:web:93dd5bda4ddc377b20efb7"
+};
+let db;
+try { firebase.initializeApp(firebaseConfig); db=firebase.firestore(); } catch(e){}
+
+function loadFromFirebase(){
+  const dot=document.getElementById('fb-dot'), txt=document.getElementById('fb-text');
+  dot.className='dot loading'; txt.textContent='Veri çekiliyor...';
+  if(!db){ dot.className='dot error'; txt.textContent='Firebase bağlantısı kurulamadı'; return; }
+  db.collection("cumulative_daily_data").orderBy("date","asc").get()
+    .then(snap=>{
+      const vals=[]; snap.forEach(doc=>vals.push(doc.data().value));
+      if(!vals.length){ dot.className='dot error'; txt.textContent='Veri bulunamadı'; return; }
+      document.getElementById('series').value=vals.join(', ');
+      dot.className='dot connected'; txt.textContent=vals.length+' kayıt yüklendi';
+    })
+    .catch(err=>{ dot.className='dot error'; txt.textContent='Hata: '+err.message; });
+}
+loadFromFirebase();
+
+// ═══════════════════════════════════════
+//  DTW — normalize edilmiş mesafe
+//  dist_norm = ham_mesafe / (n + m)
+//  → farklı uzunluktaki pencereler arasında
+//    adil karşılaştırma sağlar
+// ═══════════════════════════════════════
+function dtw(s1, s2){
+  const n=s1.length, m=s2.length;
+  const dp=Array(n+1).fill(0).map(()=>Array(m+1).fill(Infinity));
+  dp[0][0]=0;
+  for(let i=1;i<=n;i++)
+    for(let j=1;j<=m;j++){
+      const cost=Math.abs(s1[i-1]-s2[j-1]);
+      dp[i][j]=cost+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+    }
+  return { dist: dp[n][m]/(n+m), rawDist: dp[n][m], matrix: dp };
+}
+
+function dtwPath(dp, n, m){
+  const path=[]; let i=n, j=m;
+  while(i>0&&j>0){
+    path.push([i,j]);
+    const opts=[[dp[i-1][j-1],i-1,j-1],[dp[i-1][j],i-1,j],[dp[i][j-1],i,j-1]];
+    opts.sort((a,b)=>a[0]-b[0]); [,i,j]=opts[0];
+  }
+  if(i===0&&j===0) path.push([0,0]);
+  return new Set(path.map(([r,c])=>`${r},${c}`));
+}
+
+// ═══════════════════════════════════════
+//  K-NN TAHMİN
+//  w_i = 1 / (dist_i + ε)
+//  spread = DTW-ağırlıklı ortalama |next_i - pred|
+// ═══════════════════════════════════════
+function knnPredict(query, candidates, k){
+  const computed=candidates.map(c=>{
+    const r=dtw(query, c.pattern);
+    return {...c, dtwDist:r.dist, rawDist:r.rawDist, dtwMatrix:r.matrix};
+  });
+  computed.sort((a,b)=>a.dtwDist-b.dtwDist);
+  const nearest=computed.slice(0,k);
+  const wts=nearest.map(n=>1/(n.dtwDist+1e-9));
+  const wSum=wts.reduce((s,w)=>s+w,0);
+  const pred=nearest.reduce((s,n,i)=>s+n.next*wts[i],0)/wSum;
+  const spread=nearest.reduce((s,n,i)=>s+Math.abs(n.next-pred)*wts[i],0)/wSum||1e-9;
+  return { pred, nearest, spread, allSorted:computed };
+}
+
+// ═══════════════════════════════════════
+//  WALK-FORWARD VALIDATION
+//  Kurallar:
+//  1. t'yi tahmin ederken sadece series[0..t-1] kullanılır
+//  2. Son nokta (index t-1) walk-forward'a dahil edilmez
+//     (o zaten asıl tahmin hedefimiz — data leakage)
+//  3. Minimum MIN_WF_STEPS adım yoksa MAE = null
+//  4. Her adımda en az k+1 aday pencere gerekir
+// ═══════════════════════════════════════
+const MIN_WF_STEPS = 3;
+
+function walkForward(series, L, k){
+  const steps=[];
+  const startT = L + k + 1;
+  const endT   = series.length - 1; // son elemanı dahil etme
+
+  for(let t=startT; t<=endT; t++){
+    const hist=series.slice(0,t);
+    const hLen=hist.length;
+    const query=hist.slice(hLen-L);
+    const cands=[];
+    for(let i=0;i<=hLen-L-1;i++)
+      cands.push({pattern:hist.slice(i,i+L), next:hist[i+L], startIdx:i});
+    if(cands.length<k) continue;
+    const {pred}=knnPredict(query, cands, k);
+    steps.push({t, actual:series[t], pred, err:Math.abs(series[t]-pred)});
+  }
+
+  if(steps.length < MIN_WF_STEPS) return {mae:null, steps};
+  const mae=steps.reduce((s,st)=>s+st.err,0)/steps.length;
+  return {mae, steps};
+}
+
+// ═══════════════════════════════════════
+//  ANA TAHMİN MOTORU
+// ═══════════════════════════════════════
+let computationData=null;
+
+function runPrediction(){
+  const input=document.getElementById('series').value;
+  if(!input.trim()){alert('Seri boş!');return;}
+  const series=input.split(',').map(s=>Number(s.trim())).filter(v=>!isNaN(v));
+  if(series.length<5){alert('Seri en az 5 elemanlı olmalı!');return;}
+
+  const k=Math.max(1,parseInt(document.getElementById('kval').value)||2);
+  const t=series.length;
+  const userMaxL=parseInt(document.getElementById('maxLval').value)||0;
+  const autoMaxL=Math.max(2,Math.min(6,Math.floor(t/3)));
+  const maxL=userMaxL>0?Math.min(userMaxL,t-2):autoMaxL;
+
+  renderSeriesChart(series);
+
+  const log=[], allWindows={}, details=[];
+
+  log.push({type:'info', text:`Seri: ${t} değer | k=${k} | L: 2..${maxL} | DTW normalize: dist/(n+m)`});
+  log.push({type:'info', text:`w_L = (1/WF-MAE_L) × (1/Spread_L) | kNN içi: w_i = 1/(DTW_i+ε)`});
+
+  for(let L=2;L<=maxL;L++){
+    const allCands=[];
+    for(let i=0;i<=t-L-1;i++)
+      allCands.push({pattern:series.slice(i,i+L), next:series[i+L], startIdx:i});
+
+    if(allCands.length<k){
+      log.push({type:'warn', text:`L=${L}: aday (${allCands.length}) < k (${k}), atlandı`});
+      continue;
+    }
+
+    const query=series.slice(t-L,t);
+    log.push({type:'step', text:`━━ L=${L} ━━ Sorgu: [${query.join(', ')}] | ${allCands.length} aday`});
+
+    // Walk-forward
+    const {mae:wfMAE, steps:wfSteps}=walkForward(series,L,k);
+    if(wfMAE!==null)
+      log.push({type:'match', text:`  [1] Walk-Forward MAE=${wfMAE.toFixed(4)} (${wfSteps.length} adım)`});
+    else
+      log.push({type:'warn', text:`  [1] Walk-Forward: yetersiz geçmiş (<${MIN_WF_STEPS} adım) → L atlandı`});
+
+    // Asıl tahmin
+    const {pred, nearest, spread, allSorted}=knnPredict(query,allCands,k);
+    log.push({type:'match', text:`  [2] Spread=${spread.toFixed(4)}`});
+    nearest.forEach((nb,ri)=>
+      log.push({type:'match', text:`     #${ri+1}: [${nb.pattern.join(', ')}]→${nb.next} | DTW=${nb.dtwDist.toFixed(5)}`})
+    );
+
+    const wfW   = wfMAE!==null ? 1/(wfMAE+1e-9) : 0;
+    const sprW  = 1/(spread+1e-9);
+    const combW = wfW*sprW;
+
+    if(combW===0){
+      log.push({type:'warn', text:`  L=${L}: w=0, atlandı`});
+      continue;
+    }
+
+    log.push({type:'pred',
+      text:`  L=${L} → pred=${pred.toFixed(4)} | w_MAE=${wfW.toExponential(2)} | w_Spr=${sprW.toExponential(2)} | w_L=${combW.toExponential(2)}`});
+
+    allWindows[L]={query, candidates:allSorted};
+    details.push({L,query,nearest,allSorted,pred,spread,wfMAE,wfW,sprW,combinedW:combW,wfSteps});
+  }
+
+  if(!details.length){alert('Tahmin yapılamadı — seri çok kısa veya k çok büyük.');return;}
+
+  let num=0,den=0;
+  details.forEach(d=>{num+=d.pred*d.combinedW; den+=d.combinedW;});
+  const final=num/den;
+  const diff=final-series[t-1];
+  const pct=(diff/Math.abs(series[t-1]))*100;
+
+  // Güven skoru: baskın L varsa entropy düşük → yüksek güven
+  const totalW=details.reduce((s,d)=>s+d.combinedW,0);
+  const shares=details.map(d=>d.combinedW/totalW);
+  const entropy=-shares.reduce((s,p)=>s+(p>0?p*Math.log(p):0),0);
+  const maxEnt=Math.log(details.length||1);
+  const confidence=details.length===1?0.7:Math.max(0,1-entropy/maxEnt);
+
+  log.push({type:'final', text:`★ Birleşik Tahmin = ${final.toFixed(4)}`});
+  log.push({type:'final', text:`★ Δ = ${diff>=0?'+':''}${diff.toFixed(4)} (${pct.toFixed(2)}%) | Güven: ${(confidence*100).toFixed(0)}%`});
+
+  computationData={series,details,allWindows,final,diff,pct,k,log,confidence};
+  renderResults(final,diff,pct,series,details,log,confidence);
+  renderTables(details,allWindows);
+}
+
+// ═══════════════════════════════════════
+//  SERİ GRAFİĞİ
+// ═══════════════════════════════════════
+function renderSeriesChart(series){
+  const wrap=document.getElementById('series-chart');
+  wrap.style.display='block';
+  const mn=Math.min(...series),mx=Math.max(...series),rng=mx-mn||1;
+  const bars=series.map((v,i)=>{
+    const h=Math.max(8,((v-mn)/rng)*48+4);
+    const last=i===series.length-1;
+    return `<div class="bar" style="height:${h}px;background:${last?'var(--accent2)':'var(--accent3)'};opacity:${last?1:0.5};">
+      <span class="bar-val" style="color:${last?'var(--accent2)':'var(--text-dim)'}">${v}</span>
+      <span class="bar-idx">${i}</span>
+    </div>`;
+  }).join('');
+  wrap.innerHTML=`<div style="font-size:10px;color:var(--text-dim);margin-bottom:4px;letter-spacing:1px;">SERİ <span style="color:var(--accent2)">■</span> son değer</div>
+    <div class="series-viz">${bars}</div>`;
+}
+
+// ═══════════════════════════════════════
+//  RESULTS
+// ═══════════════════════════════════════
+function renderResults(final,diff,pct,series,details,log,confidence){
+  document.getElementById('results-panel').style.display='block';
+  const isUp=diff>=0;
+  const totalW=details.reduce((s,d)=>s+d.combinedW,0);
+
+  document.getElementById('result-cards').innerHTML=`
+    <div class="result-card highlighted" style="grid-column:span 2">
+      <div class="card-label">Nihai Tahmin</div>
+      <div class="card-value green" style="font-size:36px">${final.toFixed(4)}</div>
+      <div class="card-sub">WF-MAE × Spread ağırlıklı birleşim</div>
+    </div>
+    <div class="result-card ${isUp?'':'negative'}">
+      <div class="card-label">Δ Fark</div>
+      <div class="card-value ${isUp?'green':'red'}">${isUp?'+':''}${diff.toFixed(4)}</div>
+      <div class="card-sub">${isUp?'↑':'↓'} ${Math.abs(pct).toFixed(1)}%</div>
+    </div>
+    <div class="result-card">
+      <div class="card-label">Son Değer</div>
+      <div class="card-value purple">${series[series.length-1]}</div>
+      <div class="card-sub">t = ${series.length-1}</div>
+    </div>
+    <div class="result-card">
+      <div class="card-label">Aktif L</div>
+      <div class="card-value" style="color:var(--text)">${details.length}</div>
+      <div class="card-sub">Katkı sağlayan pencere</div>
+    </div>`;
+
+  // Güven skoru
+  const cCol=confidence>0.65?'var(--accent)':confidence>0.35?'#f0c040':'var(--accent2)';
+  const cLbl=confidence>0.65?'Yüksek':confidence>0.35?'Orta':'Düşük';
+  document.getElementById('conf-section').innerHTML=`
+    <div class="conf-wrap">
+      <div class="conf-row">
+        <span>Tahmin Güven Skoru <span style="color:var(--text-dim);font-size:10px">(entropy tabanlı — baskın L = yüksek güven)</span></span>
+        <span style="color:${cCol};font-weight:700">${(confidence*100).toFixed(0)}% · ${cLbl}</span>
+      </div>
+      <div class="conf-track"><div class="conf-fill" style="width:${(confidence*100).toFixed(0)}%;background:${cCol}"></div></div>
+    </div>`;
+
+  // L kartları
+  const lCards=details.map(d=>{
+    const sh=((d.combinedW/totalW)*100).toFixed(1);
+    return `<div class="l-card">
+      <div class="l-card-top"><span class="badge badge-purple">L=${d.L}</span><span style="font-size:10px;color:var(--text-dim)">${sh}% katkı</span></div>
+      <div class="l-card-pred">${d.pred.toFixed(4)}</div>
+      <div class="l-card-meta">
+        WF-MAE: <span style="color:var(--accent2)">${d.wfMAE!==null?d.wfMAE.toFixed(4):'—'}</span><br>
+        Spread: <span style="color:var(--accent3)">${d.spread.toFixed(4)}</span><br>
+        w_L: <span style="color:var(--text)">${d.combinedW.toExponential(2)}</span>
+      </div>
+      <div class="l-bar" style="width:${sh}%"></div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('l-breakdown').innerHTML=`
+    <div>
+      <div class="panel-title" style="font-size:11px;margin-bottom:10px;">Her L Penceresi Katkısı</div>
+      <div class="l-cards">${lCards}</div>
+      <div class="formula-box">
+        <span style="color:var(--accent)">w_L</span> = (1/WF-MAE_L) × (1/Spread_L)
+        &ensp;|&ensp;
+        <span style="color:var(--accent)">Nihai</span> = Σ(pred_L · w_L) / Σ(w_L)
+        &ensp;|&ensp;
+        <span style="color:var(--accent)">kNN içi</span>: w_i = 1/(DTW_i + ε)
+        &ensp;|&ensp;
+        <span style="color:var(--accent)">DTW norm</span> = ham / (n+m)
+      </div>
+    </div>`;
+
+  document.getElementById('step-log').innerHTML=log.map(l=>{
+    if(l.type==='info')  return `<div style="padding:2px 0"><span style="color:var(--accent);margin-right:6px">◆</span>${l.text}</div>`;
+    if(l.type==='warn')  return `<div style="padding:2px 0;color:var(--accent3)"><span style="margin-right:6px">!</span>${l.text}</div>`;
+    if(l.type==='step')  return `<div style="padding:2px 0"><span style="color:var(--accent3);margin-right:6px">▸</span><b>${l.text}</b></div>`;
+    if(l.type==='match') return `<div style="padding:2px 0;color:var(--text-dim)">${l.text}</div>`;
+    if(l.type==='pred')  return `<div style="padding:2px 0;color:var(--accent3)">${l.text}</div>`;
+    if(l.type==='final') return `<div style="padding:2px 0"><span style="color:var(--accent2);margin-right:6px">★</span><span style="color:var(--accent2);font-weight:700">${l.text}</span></div>`;
+    return `<div style="padding:2px 0">${l.text}</div>`;
+  }).join('');
+  document.getElementById('step-log').scrollTop=9999;
+}
+
+// ═══════════════════════════════════════
+//  TABLES
+// ═══════════════════════════════════════
+function renderTables(details,allWindows){
+  document.getElementById('tables-panel').style.display='block';
+  const tabsEl=document.getElementById('table-tabs');
+  tabsEl.innerHTML='';
+  const tabs=[];
+
+  details.forEach(d=>{
+    tabs.push({label:`L=${d.L} Pencereler`,type:'windows',data:d});
+    if(d.wfSteps&&d.wfSteps.length>=1)
+      tabs.push({label:`L=${d.L} Walk-Forward`,type:'wf',data:d});
+  });
+  details.forEach(d=>d.nearest.forEach((nb,ri)=>
+    tabs.push({label:`DTW L=${d.L} #${ri+1}`,type:'dtw',data:d,nb,ri})
+  ));
+
+  tabs.forEach((t,idx)=>{
+    const btn=document.createElement('button');
+    btn.className='tab-btn'+(idx===0?' active':'');
+    btn.textContent=t.label;
+    btn.onclick=()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active','active-wf'));
+      btn.classList.add(t.type==='wf'?'active-wf':'active');
+      renderTabContent(t);
+    };
+    tabsEl.appendChild(btn);
+  });
+  if(tabs.length) renderTabContent(tabs[0]);
+}
+
+function renderTabContent(tab){
+  const el=document.getElementById('table-content');
+  if(tab.type==='windows') el.innerHTML=renderWindowsTable(tab.data);
+  if(tab.type==='dtw')     el.innerHTML=renderDTWTable(tab.data,tab.nb,tab.ri);
+  if(tab.type==='wf')      el.innerHTML=renderWFTable(tab.data);
+}
+
+function chip(label,val,color){
+  return `<div style="background:var(--cell-bg);border:1px solid var(--border);border-radius:8px;padding:10px 16px;">
+    <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:3px">${label}</div>
+    <div style="color:${color};font-weight:700;font-size:13px">${val}</div>
+  </div>`;
+}
+
+// ── Pencere tablosu ──────────────────────
+function renderWindowsTable(d){
+  const {query,nearest,pred,spread,wfMAE,combinedW,L,allSorted}=d;
+  const wts=nearest.map(n=>1/(n.dtwDist+1e-9));
+  const wSum=wts.reduce((s,w)=>s+w,0);
+  const nearestIds=new Set(nearest.map(n=>n.startIdx));
+
+  const rows=allSorted.map((c,i)=>{
+    const rank=nearest.findIndex(n=>n.startIdx===c.startIdx);
+    const isN=rank!==-1;
+    const dtwWt=isN?(wts[rank]/wSum*100).toFixed(1)+'%':'—';
+    const rc=rank===0?'cell-rank1':rank===1?'cell-rank2':'';
+    return `<tr>
+      <td>${isN?`<span class="badge ${rank===0?'badge-green':'badge-purple'}">#${rank+1}</span>`:`<span style="color:var(--text-dim)">${i+1}</span>`}</td>
+      <td style="color:var(--text-dim)">t=${c.startIdx}</td>
+      <td style="color:var(--accent3)">[${c.pattern.join(', ')}]</td>
+      <td class="${rc}">${c.next}</td>
+      <td class="${rc} cell-rank1">${c.dtwDist.toFixed(5)}</td>
+      <td style="color:var(--accent2)">${dtwWt}</td>
+      <td>${isN?`<span class="badge badge-green">✓</span>`:'—'}</td>
+    </tr>`;
+  }).join('');
+
+  return `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+    ${chip('Sorgu [L='+L+']','['+query.join(', ')+']','var(--accent)')}
+    ${chip('Tahmin',pred.toFixed(4),'var(--accent)')}
+    ${chip('WF-MAE',wfMAE!==null?wfMAE.toFixed(4):'—','var(--accent2)')}
+    ${chip('Spread',spread.toFixed(4),'var(--accent3)')}
+    ${chip('w_L',combinedW.toExponential(3),'var(--text)')}
+  </div>
+  <div class="table-wrapper"><table>
+    <thead><tr><th>Sıra</th><th>Başlangıç</th><th>Desen</th><th>Sonraki</th><th>DTW (norm)</th><th>DTW Ağırlık%</th><th>Seçim</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+// ── Walk-forward tablosu ─────────────────
+function renderWFTable(d){
+  const {wfSteps,wfMAE,L}=d;
+  const rows=wfSteps.map(s=>{
+    const good=s.err<=wfMAE*1.05;
+    return `<tr>
+      <td style="color:var(--text-dim)">t=${s.t}</td>
+      <td style="color:var(--accent3)">${s.actual.toFixed(4)}</td>
+      <td style="color:var(--accent)">${s.pred.toFixed(4)}</td>
+      <td class="${good?'cell-rank1':'cell-rank2'}">${s.err.toFixed(4)}</td>
+      <td>${good?`<span class="badge badge-green">≤ MAE</span>`:`<span class="badge badge-red">&gt; MAE</span>`}</td>
+    </tr>`;
+  }).join('');
+
+  // Mini SVG chart
+  const allV=wfSteps.flatMap(s=>[s.actual,s.pred]);
+  const vMin=Math.min(...allV),vMax=Math.max(...allV),vRng=vMax-vMin||1;
+  const W=420,H=80,pad=12;
+  const xs=i=>((i/(wfSteps.length-1||1))*(W-2*pad)+pad).toFixed(1);
+  const ys=v=>(H-pad-((v-vMin)/vRng)*(H-2*pad)).toFixed(1);
+  const aPath=wfSteps.map((s,i)=>`${i===0?'M':'L'}${xs(i)},${ys(s.actual)}`).join(' ');
+  const pPath=wfSteps.map((s,i)=>`${i===0?'M':'L'}${xs(i)},${ys(s.pred)}`).join(' ');
+
+  return `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+    ${chip('L',L,'var(--accent3)')}
+    ${chip('Walk-Forward MAE',wfMAE!==null?wfMAE.toFixed(4):'—','var(--accent2)')}
+    ${chip('Adım',wfSteps.length,'var(--text)')}
+  </div>
+  <div style="background:var(--cell-bg);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;">
+    <div style="font-size:10px;color:var(--text-dim);margin-bottom:8px;letter-spacing:1px;">
+      GERÇEK vs TAHMİN
+      <span style="color:var(--accent);margin-left:10px">— Gerçek</span>
+      <span style="color:var(--accent2);margin-left:10px">-- Tahmin</span>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-height:90px;overflow:visible">
+      <path d="${aPath}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+      <path d="${pPath}" fill="none" stroke="var(--accent2)" stroke-width="1.5" stroke-dasharray="4,3"/>
+    </svg>
+  </div>
+  <div class="table-wrapper"><table>
+    <thead><tr><th>Zaman t</th><th>Gerçek</th><th>Tahmin</th><th>Mutlak Hata</th><th>Değerlendirme</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+// ── DTW Matris tablosu ────────────────────
+function renderDTWTable(d,nb,ri){
+  const query=d.query,pattern=nb.pattern;
+  const n=query.length,m=pattern.length;
+  const {dist,rawDist,matrix}=dtw(query,pattern);
+  const pathSet=dtwPath(matrix,n,m);
+
+  let hCols=`<th style="background:var(--bg)"></th><th style="background:var(--bg)">ε</th>`;
+  pattern.forEach((v,j)=>{hCols+=`<th>${v}<br><span class="cell-label">j=${j+1}</span></th>`;});
+
+  let body='';
+  for(let i=0;i<=n;i++){
+    let row=i===0
+      ?`<td class="cell-header" style="color:var(--text-dim)">ε</td>`
+      :`<td class="cell-header">${query[i-1]}<br><span class="cell-label">i=${i}</span></td>`;
+    for(let j=0;j<=m;j++){
+      const v=matrix[i][j];
+      const onPath=pathSet.has(`${i},${j}`);
+      const cls=onPath?'cell-dtw-path':(v===Infinity?'cell-inf':'');
+      row+=`<td class="${cls}">${v===Infinity?'∞':v.toFixed(1)}${onPath?'<span style="font-size:8px;display:block;color:var(--accent)">●</span>':''}</td>`;
+    }
+    body+=`<tr>${row}</tr>`;
+  }
+
+  return `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+    ${chip('Sorgu','['+query.join(', ')+']','var(--accent)')}
+    ${chip('#'+(ri+1)+'. Komşu','['+pattern.join(', ')+'] → '+nb.next,'var(--accent3)')}
+    ${chip('Ham DTW',rawDist.toFixed(3),'var(--text-dim)')}
+    ${chip('Norm DTW (÷'+(n+m)+')',dist.toFixed(5),'var(--accent2)')}
+  </div>
+  <p style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">
+    <span style="color:var(--accent)">●</span> Optimal hizalama yolu &ensp;|&ensp;
+    Hücre = |s1[i]−s2[j]| + min(sol, üst, çapraz) &ensp;|&ensp;
+    Normalize = ham ÷ (${n}+${m})
+  </p>
+  <div class="table-wrapper"><table class="dtw-matrix">
+    <thead><tr>${hCols}</tr></thead>
+    <tbody>${body}</tbody>
+  </table></div>`;
+}
+</script>
+</body>
+</html>
