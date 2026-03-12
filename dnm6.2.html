@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DTW-kNN Tahmin Sistemi</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --surface2: #1a1a28;
+      --border: #2a2a40;
+      --accent: #00ffcc;
+      --accent2: #ff4060;
+      --accent3: #7b61ff;
+      --text: #e8e8f0;
+      --text-dim: #6b6b8a;
+      --cell-bg: #0d0d18;
+      --highlight: rgba(0,255,204,0.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,255,204,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,204,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .logo-line {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+
+    .logo-icon {
+      width: 36px; height: 36px;
+      border: 2px solid var(--accent);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 0 20px rgba(0,255,204,0.3);
+      animation: pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 20px rgba(0,255,204,0.3); }
+      50% { box-shadow: 0 0 40px rgba(0,255,204,0.6); }
+    }
+
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(28px, 5vw, 48px);
+      font-weight: 800;
+      letter-spacing: -1px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent3) 60%, var(--accent2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: var(--text-dim);
+      font-size: 13px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-top: 6px;
+    }
+
+    /* Tag strip */
+    .tags {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    .tag {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      letter-spacing: 1px;
+      border: 1px solid;
+    }
+    .tag-green { border-color: var(--accent); color: var(--accent); }
+    .tag-purple { border-color: var(--accent3); color: var(--accent3); }
+    .tag-red { border-color: var(--accent2); color: var(--accent2); }
+
+    /* Panels */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.6;
+    }
+
+    .panel-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-title::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    /* Input row */
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    input[type="text"], input[type="number"] {
+      background: var(--cell-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      font-size: 14px;
+      width: 100%;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+
+    input[type="text"]:focus, input[type="number"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,255,204,0.1);
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border-radius: 10px;
+      border: none;
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+      white-space: nowrap;
+      align-self: flex-end;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #000;
+      box-shadow: 0 4px 20px rgba(0,255,204,0.25);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 30px rgba(0,255,204,0.4); }
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--accent3);
+      border: 1px solid var(--accent3);
+    }
+    .btn-secondary:hover { background: rgba(123,97,255,0.1); }
+
+    /* Firebase status */
+    .firebase-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      background: var(--cell-bg);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      flex-shrink: 0;
+    }
+    .dot.connected { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .dot.error { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); }
+    .dot.loading { background: var(--accent3); animation: blink 1s infinite; }
+    @keyframes blink { 0%,100%{ opacity:1 } 50%{ opacity:0.3 } }
+
+    /* Result cards */
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .result-card {
+      background: var(--cell-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .result-card.highlighted {
+      border-color: var(--accent);
+      box-shadow: 0 0 30px rgba(0,255,204,0.15);
+    }
+
+    .result-card.negative { border-color: var(--accent2); box-shadow: 0 0 30px rgba(255,64,96,0.15); }
+
+    .card-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+
+    .card-value {
+      font-family: 'Syne', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+    }
+    .card-value.green { color: var(--accent); }
+    .card-value.purple { color: var(--accent3); }
+    .card-value.red { color: var(--accent2); }
+
+    .card-sub {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    /* 2D Computation Table */
+    .table-section { margin-top: 8px; }
+
+    .table-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 11px;
+      letter-spacing: 1px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-family: 'Space Mono', monospace;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: var(--accent3);
+      border-color: var(--accent3);
+      color: #fff;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    th {
+      background: var(--surface2);
+      color: var(--text-dim);
+      padding: 10px 14px;
+      text-align: center;
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 9px 14px;
+      text-align: center;
+      border-bottom: 1px solid rgba(42,42,64,0.5);
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+
+    tr:hover td { background: rgba(0,255,204,0.04); }
+    tr:last-child td { border-bottom: none; }
+
+    .cell-dtw-path {
+      background: rgba(0,255,204,0.1) !important;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .cell-header {
+      color: var(--accent3);
+      font-weight: 700;
+    }
+
+    .cell-match { color: var(--accent); font-weight: 700; }
+    .cell-rank1 { color: var(--accent); }
+    .cell-rank2 { color: #88ffee; }
+    .cell-label { color: var(--text-dim); font-size: 11px; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 10px;
+    }
+    .badge-green { background: rgba(0,255,204,0.15); color: var(--accent); }
+    .badge-purple { background: rgba(123,97,255,0.15); color: var(--accent3); }
+    .badge-red { background: rgba(255,64,96,0.15); color: var(--accent2); }
+
+    /* DTW matrix */
+    .dtw-matrix td {
+      width: 44px; height: 36px;
+      padding: 4px;
+    }
+    .dtw-matrix th {
+      width: 44px; height: 36px;
+      padding: 4px;
+    }
+    .cell-inf { color: var(--text-dim); }
+
+    /* Empty/loading states */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-dim);
+    }
+    .empty-icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-text { font-size: 13px; }
+
+    /* Series visualization */
+    .series-viz {
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      height: 60px;
+      margin: 16px 0;
+      padding: 8px 0;
+    }
+    .bar {
+      flex: 1;
+      border-radius: 4px 4px 0 0;
+      transition: height 0.4s ease;
+      min-width: 8px;
+      position: relative;
+    }
+    .bar-val {
+      position: absolute;
+      top: -18px;
+      left: 50%; transform: translateX(-50%);
+      font-size: 9px;
+      white-space: nowrap;
+    }
+    .bar-idx {
+      position: absolute;
+      bottom: -18px;
+      left: 50%; transform: translateX(-50%);
+      font-size: 9px;
+      color: var(--text-dim);
+    }
+    .series-wrap { overflow-x: auto; padding: 20px 0; }
+
+    /* Separators */
+    .sep {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 24px 0;
+    }
+
+    /* Step log */
+    .step-log {
+      background: var(--cell-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      font-size: 12px;
+      line-height: 1.8;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .step-log::-webkit-scrollbar { width: 4px; }
+    .step-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .log-line { padding: 2px 0; }
+    .log-arrow { color: var(--accent); margin-right: 6px; }
+    .log-warn { color: var(--accent3); }
+    .log-num { color: var(--accent2); font-weight: 700; }
+
+    /* Animations */
+    .fade-in { animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 600px) {
+      .input-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <header>
+    <div class="logo-line">
+      <div class="logo-icon">⟁</div>
+      <h1>DTW-kNN Predictor</h1>
+    </div>
+    <p class="subtitle">Dinamik Zaman Büküm · k-En Yakın Komşu · Zaman Serisi Tahmini</p>
+    <div class="tags">
+      <span class="tag tag-green">DTW Distance</span>
+      <span class="tag tag-purple">Sliding Window</span>
+      <span class="tag tag-red">Weighted kNN</span>
+    </div>
+  </header>
+
+  <!-- Data Source Panel -->
+  <div class="panel">
+    <div class="panel-title">Veri Kaynağı</div>
+    <div style="display:grid; grid-template-columns:1fr auto; gap:12px; align-items:flex-end;">
+      <div class="firebase-status" id="fb-status">
+        <span class="dot loading" id="fb-dot"></span>
+        <span id="fb-text">Firebase'e bağlanılıyor...</span>
+      </div>
+      <button class="btn btn-secondary" onclick="loadFromFirebase()">↻ Yenile</button>
+    </div>
+  </div>
+
+  <!-- Input Panel -->
+  <div class="panel">
+    <div class="panel-title">Zaman Serisi Girişi</div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>Seri Değerleri (virgülle)</label>
+        <input type="text" id="series" placeholder="3, 5, 4, 6, 7, 5, 8, 6, 9...">
+      </div>
+      <div class="input-group">
+        <label>k (komşu)</label>
+        <input type="number" id="kval" value="2" min="1" max="10" style="width:80px;">
+      </div>
+      <button class="btn btn-primary" onclick="runPrediction()">▶ TAHMİN ET</button>
+    </div>
+    <div id="series-chart" style="display:none;" class="series-wrap"></div>
+  </div>
+
+  <!-- Results Panel -->
+  <div id="results-panel" style="display:none;" class="panel fade-in">
+    <div class="panel-title">Tahmin Sonuçları</div>
+    <div class="result-grid" id="result-cards"></div>
+    <div class="sep"></div>
+    <div class="panel-title" style="margin-bottom:12px;">Hesaplama Adımları</div>
+    <div class="step-log" id="step-log"></div>
+  </div>
+
+  <!-- Computation Tables Panel -->
+  <div id="tables-panel" style="display:none;" class="panel fade-in">
+    <div class="panel-title">2B Hesaplama Tabloları</div>
+    <div class="table-tabs" id="table-tabs"></div>
+    <div id="table-content"></div>
+  </div>
+
+</div>
+
+<script>
+  // ─── Firebase ──────────────────────────────────────────────
+  const firebaseConfig = {
+    apiKey: "AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",
+    authDomain: "paralayici.firebaseapp.com",
+    projectId: "paralayici",
+    storageBucket: "paralayici.firebasestorage.app",
+    messagingSenderId: "980843550614",
+    appId: "1:980843550614:web:93dd5bda4ddc377b20efb7"
+  };
+
+  let db;
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+  } catch(e) {}
+
+  function loadFromFirebase() {
+    const dot = document.getElementById('fb-dot');
+    const txt = document.getElementById('fb-text');
+    dot.className = 'dot loading';
+    txt.textContent = 'Firebase\'den veri çekiliyor...';
+    if(!db){ dot.className='dot error'; txt.textContent='Firebase bağlantısı kurulamadı'; return; }
+    db.collection("cumulative_daily_data").orderBy("date","asc").get()
+      .then(snap => {
+        const vals = [];
+        snap.forEach(doc => vals.push(doc.data().value));
+        if(vals.length === 0){ dot.className='dot error'; txt.textContent='Veri bulunamadı'; return; }
+        document.getElementById('series').value = vals.join(', ');
+        dot.className='dot connected';
+        txt.textContent = `${vals.length} kayıt yüklendi (cumulative_daily_data)`;
+      })
+      .catch(err => {
+        dot.className='dot error';
+        txt.textContent='Hata: ' + err.message;
+      });
+  }
+
+  loadFromFirebase();
+
+  // ─── DTW ───────────────────────────────────────────────────
+  function dtw(s1, s2) {
+    const n = s1.length, m = s2.length;
+    const dp = Array(n+1).fill(0).map(()=>Array(m+1).fill(Infinity));
+    dp[0][0] = 0;
+    for(let i=1;i<=n;i++)
+      for(let j=1;j<=m;j++){
+        const cost = Math.abs(s1[i-1]-s2[j-1]);
+        dp[i][j] = cost + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+      }
+    return { dist: dp[n][m], matrix: dp };
+  }
+
+  // Trace back path in DTW matrix
+  function dtwPath(dp, n, m) {
+    const path = [];
+    let i=n, j=m;
+    while(i>0 && j>0){
+      path.push([i,j]);
+      const opts = [[dp[i-1][j-1],i-1,j-1],[dp[i-1][j],i-1,j],[dp[i][j-1],i,j-1]];
+      opts.sort((a,b)=>a[0]-b[0]);
+      [,i,j] = opts[0];
+    }
+    if(i===0 && j===0) path.push([0,0]);
+    return new Set(path.map(([r,c])=>`${r},${c}`));
+  }
+
+  // ─── Prediction Engine ─────────────────────────────────────
+  let computationData = null;
+
+  function runPrediction(){
+    const input = document.getElementById('series').value;
+    if(!input.trim()){ alert('Seri boş!'); return; }
+    const series = input.split(',').map(s=>Number(s.trim())).filter(v=>!isNaN(v));
+    if(series.length < 3){ alert('Seri en az 3 elemanlı olmalı!'); return; }
+    const k = Math.max(1, parseInt(document.getElementById('kval').value)||2);
+    const t = series.length;
+    const maxL = Math.min(4, t-1);
+
+    // Show series chart
+    renderSeriesChart(series);
+
+    const log = [];
+    const allWindows = {};
+    const predictions = [];
+    const weights = [];
+    const details = [];
+
+    log.push({ type:'info', text:`Seri uzunluğu: ${t} | k=${k} | max pencere: L=2..${maxL}` });
+
+    for(let L=2; L<=maxL; L++){
+      const windows = [];
+      for(let i=0;i<=t-L-1;i++){
+        windows.push({ pattern: series.slice(i,i+L), next: series[i+L], startIdx:i });
+      }
+      if(windows.length===0){ log.push({type:'warn',text:`L=${L}: yeterli pencere yok, atlandı`}); continue; }
+
+      const query = series.slice(t-L,t);
+      log.push({type:'step',text:`L=${L} | Sorgu penceresi: [${query.join(', ')}] | ${windows.length} aday pencere`});
+
+      // Calculate DTW for each window
+      const dtwResults = windows.map(w=>{
+        const r = dtw(query, w.pattern);
+        return { ...w, dtwDist: r.dist, dtwMatrix: r.matrix };
+      });
+      dtwResults.sort((a,b)=>a.dtwDist-b.dtwDist);
+      allWindows[L] = { query, candidates: dtwResults };
+
+      const nearest = dtwResults.slice(0,k);
+      const pred = nearest.reduce((s,c)=>s+c.next,0)/nearest.length;
+      const error = nearest.reduce((s,c)=>s+Math.abs(c.next-pred),0)/nearest.length || 1e-6;
+      const w = 1/error;
+
+      nearest.forEach((nb,ri)=>{
+        log.push({type:'match',text:`  #${ri+1} Komşu L=${L}: [${nb.pattern.join(', ')}] → sonraki=${nb.next} | DTW=${nb.dtwDist.toFixed(3)}`});
+      });
+      log.push({type:'pred',text:`  L=${L} Tahmin: ${pred.toFixed(4)} | Hata: ${error.toFixed(4)} | Ağırlık: ${w.toFixed(4)}`});
+
+      predictions.push(pred);
+      weights.push(w);
+      details.push({ L, query, nearest, pred, error, w });
+    }
+
+    if(predictions.length===0){
+      alert('Tahmin yapılamadı, seri çok kısa!'); return;
+    }
+
+    let num=0, den=0;
+    for(let i=0;i<predictions.length;i++){ num+=predictions[i]*weights[i]; den+=weights[i]; }
+    const final = num/den;
+    const diff = final - series[t-1];
+    const pct = ((diff/Math.abs(series[t-1]))*100);
+
+    log.push({type:'final',text:`► Ağırlıklı Birleşik Tahmin: ${final.toFixed(4)}`});
+    log.push({type:'final',text:`► Son Elemandan Fark: ${diff.toFixed(4)} (${pct.toFixed(2)}%)`});
+
+    computationData = { series, details, allWindows, final, diff, pct, k, log };
+    renderResults(final, diff, pct, series, details, log);
+    renderTables(details, allWindows);
+  }
+
+  // ─── Render Series Chart ───────────────────────────────────
+  function renderSeriesChart(series){
+    const wrap = document.getElementById('series-chart');
+    wrap.style.display='block';
+    const min = Math.min(...series), max = Math.max(...series);
+    const range = max-min || 1;
+    const bars = series.map((v,i)=>{
+      const h = Math.max(8, ((v-min)/range)*48+4);
+      const isLast = i===series.length-1;
+      return `<div class="bar" style="height:${h}px;background:${isLast?'var(--accent2)':'var(--accent3)'};opacity:${isLast?1:0.55};">
+        <span class="bar-val" style="color:${isLast?'var(--accent2)':'var(--text-dim)'}">${v}</span>
+        <span class="bar-idx">${i}</span>
+      </div>`;
+    }).join('');
+    wrap.innerHTML = `<div style="font-size:10px;color:var(--text-dim);margin-bottom:4px;letter-spacing:1px;">SERİ GÖRSELİ</div><div class="series-viz">${bars}</div>`;
+  }
+
+  // ─── Render Results ────────────────────────────────────────
+  function renderResults(final, diff, pct, series, details, log){
+    document.getElementById('results-panel').style.display='block';
+
+    const isUp = diff >= 0;
+    const cards = `
+      <div class="result-card highlighted">
+        <div class="card-label">Tahmin Edilen Değer</div>
+        <div class="card-value green">${final.toFixed(4)}</div>
+        <div class="card-sub">Ağırlıklı kNN Ortalaması</div>
+      </div>
+      <div class="result-card ${isUp?'':'negative'}">
+        <div class="card-label">Son Elemandan Fark</div>
+        <div class="card-value ${isUp?'green':'red'}">${isUp?'+':''}${diff.toFixed(4)}</div>
+        <div class="card-sub">${isUp?'↑ Artış':'↓ Azalış'} (${Math.abs(pct).toFixed(1)}%)</div>
+      </div>
+      <div class="result-card">
+        <div class="card-label">Son Değer</div>
+        <div class="card-value purple">${series[series.length-1]}</div>
+        <div class="card-sub">t = ${series.length-1} (son indeks)</div>
+      </div>
+      <div class="result-card">
+        <div class="card-label">Pencere Sayısı</div>
+        <div class="card-value" style="color:var(--text)">${details.length}</div>
+        <div class="card-sub">Birleşik L boyutları</div>
+      </div>
+    `;
+    document.getElementById('result-cards').innerHTML = cards;
+
+    // Step log
+    const logEl = document.getElementById('step-log');
+    logEl.innerHTML = log.map(l=>{
+      if(l.type==='info') return `<div class="log-line"><span class="log-arrow">◆</span>${l.text}</div>`;
+      if(l.type==='warn') return `<div class="log-line log-warn"><span class="log-arrow">!</span>${l.text}</div>`;
+      if(l.type==='step') return `<div class="log-line"><span class="log-arrow">▸</span>${l.text}</div>`;
+      if(l.type==='match') return `<div class="log-line" style="color:var(--text-dim);">${l.text}</div>`;
+      if(l.type==='pred') return `<div class="log-line" style="color:var(--accent3);">${l.text}</div>`;
+      if(l.type==='final') return `<div class="log-line"><span class="log-arrow" style="color:var(--accent2);">★</span><span class="log-num">${l.text}</span></div>`;
+      return `<div class="log-line">${l.text}</div>`;
+    }).join('');
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // ─── Render Tables ─────────────────────────────────────────
+  let activeTab = null;
+
+  function renderTables(details, allWindows){
+    const panel = document.getElementById('tables-panel');
+    panel.style.display='block';
+    const tabsEl = document.getElementById('table-tabs');
+    tabsEl.innerHTML='';
+
+    // Tabs: Windows table + DTW matrix for each L + each nearest neighbor
+    const tabs = [];
+    details.forEach(d=>{
+      tabs.push({ id:`windows_L${d.L}`, label:`L=${d.L} Pencereler`, type:'windows', data:d });
+    });
+    details.forEach(d=>{
+      d.nearest.forEach((nb,ri)=>{
+        tabs.push({ id:`dtw_L${d.L}_k${ri}`, label:`DTW L=${d.L} #${ri+1}`, type:'dtw', data:d, nb, ri });
+      });
+    });
+
+    tabs.forEach((t,idx)=>{
+      const btn = document.createElement('button');
+      btn.className='tab-btn'+(idx===0?' active':'');
+      btn.textContent = t.label;
+      btn.onclick=()=>{
+        document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        renderTabContent(t);
+      };
+      tabsEl.appendChild(btn);
+    });
+
+    if(tabs.length>0) renderTabContent(tabs[0]);
+  }
+
+  function renderTabContent(tab){
+    const el = document.getElementById('table-content');
+    if(tab.type==='windows') el.innerHTML = renderWindowsTable(tab.data);
+    if(tab.type==='dtw') el.innerHTML = renderDTWTable(tab.data, tab.nb, tab.ri);
+  }
+
+  function renderWindowsTable(d){
+    const { query, nearest, pred, error, w, L } = d;
+    let rows = '';
+    const nearestIds = new Set(nearest.map(n=>n.startIdx));
+
+    d.nearest.concat([]).sort((a,b)=>a.dtwDist-b.dtwDist);
+    // All candidates
+    const all = [...computationData.allWindows[L].candidates];
+
+    all.forEach((c,i)=>{
+      const isNearest = nearestIds.has(c.startIdx);
+      const rank = nearest.findIndex(n=>n.startIdx===c.startIdx);
+      const rowClass = rank===0?'cell-rank1':rank===1?'cell-rank2':'';
+      rows+=`<tr>
+        <td>${isNearest?`<span class="badge ${rank===0?'badge-green':'badge-purple'}">#${rank+1}</span>`:`<span style="color:var(--text-dim)">${i+1}</span>`}</td>
+        <td style="color:var(--accent3)">[${c.pattern.join(', ')}]</td>
+        <td class="${rowClass}">${c.next}</td>
+        <td class="${rowClass} cell-match">${c.dtwDist.toFixed(4)}</td>
+        <td>${isNearest?`<span class="badge badge-green">✓ Seçildi</span>`:'—'}</td>
+      </tr>`;
+    });
+
+    return `
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+        <div style="background:var(--cell-bg);border:1px solid var(--border);border-radius:8px;padding:12px 20px;">
+          <div class="card-label" style="margin-bottom:4px">Sorgu Penceresi (L=${L})</div>
+          <div style="color:var(--accent);font-weight:700">[${query.join(', ')}]</div>
+        </div>
+        <div style="background:var(--cell-bg);border:1px solid var(--border);border-radius:8px;padding:12px 20px;">
+          <div class="card-label" style="margin-bottom:4px">Tahmin</div>
+          <div style="color:var(--accent3);font-weight:700">${pred.toFixed(4)}</div>
+        </div>
+        <div style="background:var(--cell-bg);border:1px solid var(--border);border-radius:8px;padding:12px 20px;">
+          <div class="card-label" style="margin-bottom:4px">Ağırlık</div>
+          <div style="color:var(--accent2);font-weight:700">${w.toFixed(4)}</div>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr>
+            <th>Sıra</th>
+            <th>Pencere Deseni</th>
+            <th>Sonraki Değer</th>
+            <th>DTW Mesafesi</th>
+            <th>Durum</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderDTWTable(d, nb, ri){
+    const query = d.query;
+    const pattern = nb.pattern;
+    const n = query.length, m = pattern.length;
+    const { matrix } = dtw(query, pattern);
+    const pathSet = dtwPath(matrix, n, m);
+
+    let headerCols = `<th style="background:var(--bg)"></th><th style="background:var(--bg)">ε</th>`;
+    pattern.forEach((v,j)=>{ headerCols+=`<th>${v}<br><span class="cell-label">j=${j+1}</span></th>`; });
+
+    let bodyRows = '';
+    for(let i=0;i<=n;i++){
+      let row = '';
+      if(i===0){
+        row+=`<td class="cell-header" style="color:var(--text-dim)">ε</td>`;
+      } else {
+        row+=`<td class="cell-header">${query[i-1]}<br><span class="cell-label">i=${i}</span></td>`;
+      }
+      for(let j=0;j<=m;j++){
+        const v = matrix[i][j];
+        const onPath = pathSet.has(`${i},${j}`);
+        const display = v===Infinity?'∞':v.toFixed(1);
+        const cls = onPath?'cell-dtw-path':(v===Infinity?'cell-inf':'');
+        row+=`<td class="${cls}">${display}${onPath?'<span style="font-size:8px;display:block;color:var(--accent)">●</span>':''}</td>`;
+      }
+      bodyRows+=`<tr>${row}</tr>`;
+    }
+
+    return `
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+        <div style="background:var(--cell-bg);border:1px solid var(--border);border-radius:8px;padding:12px 20px;">
+          <div class="card-label" style="margin-bottom:4px">Sorgu</div>
+          <div style="color:var(--accent)">[${query.join(', ')}]</div>
+        </div>
+        <div style="background:var(--cell-bg);border:1px solid var(--border);border-radius:8px;padding:12px 20px;">
+          <div class="card-label" style="margin-bottom:4px">${ri+1}. Komşu (DTW #${ri+1})</div>
+          <div style="color:var(--accent3)">[${pattern.join(', ')}] → <span style="color:var(--accent2)">${nb.next}</span></div>
+        </div>
+        <div style="background:var(--cell-bg);border:1px solid var(--border);border-radius:8px;padding:12px 20px;">
+          <div class="card-label" style="margin-bottom:4px">DTW Mesafesi</div>
+          <div style="color:var(--accent2)">${nb.dtwDist.toFixed(4)}</div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">
+        Yeşil hücreler (●) optimal hizalama yolunu gösterir. DP tablosundaki her hücre: <span style="color:var(--accent)">maliyet + min(sol, üst, çapraz)</span>
+      </p>
+      <div class="table-wrapper">
+        <table class="dtw-matrix">
+          <thead><tr>${headerCols}</tr></thead>
+          <tbody>${bodyRows}</tbody>
+        </table>
+      </div>
+    `;
+  }
+</script>
+</body>
+</html>
