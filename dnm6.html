@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>DTW-kNN Sliding Window Tahmin</title>
+</head>
+<body>
+  <h2>Zaman Serisi Tahmini (Sliding Window + DTW-kNN)</h2>
+  <p>Seriyi virgülle girin (örnek: 3,5,4,6,7,5)</p>
+  <input type="text" id="series" size="50">
+  <button onclick="predict()">Tahmin Et</button>
+
+  <h3 id="result"></h3>
+
+  <script>
+    // Basit DTW mesafesi
+    function dtw(s1, s2) {
+      let n = s1.length, m = s2.length;
+      let dp = Array(n+1).fill(0).map(()=>Array(m+1).fill(Infinity));
+      dp[0][0] = 0;
+      for (let i=1;i<=n;i++){
+        for (let j=1;j<=m;j++){
+          let cost = Math.abs(s1[i-1]-s2[j-1]);
+          dp[i][j] = cost + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+        }
+      }
+      return dp[n][m];
+    }
+
+    function predict(){
+      let input = document.getElementById('series').value;
+      let series = input.split(',').map(Number);
+      let t = series.length;
+      let maxL = Math.min(4, t-1); // max pencere boyutu
+      let k = 2; // kNN
+
+      let predictions = [];
+      let weights = [];
+
+      for (let L=2; L<=maxL; L++){
+        // sliding window
+        let windows = [];
+        for (let i=0;i<=t-L-1;i++){
+          windows.push({pattern: series.slice(i,i+L), next: series[i+L]});
+        }
+        let query = series.slice(t-L,t); // son pencere
+        // DTW mesafesi ile k en yakın pencere
+        windows.sort((a,b)=> dtw(query,a.pattern) - dtw(query,b.pattern));
+        let nearest = windows.slice(0,k);
+        // Tahmin: ortalama
+        let pred = nearest.reduce((acc,c)=>acc+c.next,0)/k;
+        // Hata tahmini (basitleştirilmiş: tüm pencere ile)
+        let error = nearest.reduce((acc,c)=>acc+Math.abs(c.next-pred),0)/k;
+        predictions.push(pred);
+        weights.push(1/error); // hata ile ağırlık
+      }
+
+      // Ağırlıklı ortalama ile tüm L’lerin birleşik tahmini
+      let numerator = 0, denom = 0;
+      for (let i=0;i<predictions.length;i++){
+        numerator += predictions[i]*weights[i];
+        denom += weights[i];
+      }
+      let finalPrediction = numerator/denom;
+      document.getElementById('result').innerText = "Tahmin edilen bir sonraki değer: " + finalPrediction.toFixed(2);
+    }
+  </script>
+</body>
+</html>
