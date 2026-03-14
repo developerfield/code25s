@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dinamik Çoklu Ortalama Matrisi</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f4f4f9; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .input-group { margin-bottom: 20px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
+        input[type="text"] { width: 250px; padding: 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 4px; }
+        select { padding: 10px; font-size: 15px; border-radius: 4px; border: 1px solid #ccc; background: white; cursor: pointer; }
+        button { padding: 10px 20px; background-color: #28a745; color: white; border: none; cursor: pointer; border-radius: 4px; font-size: 15px; font-weight: bold; }
+        button:hover { background-color: #218838; }
+        .table-container { overflow-x: auto; max-width: 95vw; margin-top: 20px; }
+        table { border-collapse: collapse; background-color: white; box-shadow: 0 0 15px rgba(0,0,0,0.05); }
+        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: center; min-width: 60px; }
+        th { background-color: #343a40; color: white; }
+        td.zero { color: #ccc; background-color: #fafafa; }
+        td.highlight { font-weight: bold; background-color: #e2f3ff; color: #004085; }
+        .method-info { margin-top: 10px; font-size: 0.9em; color: #666; }
+    </style>
+</head>
+<body>
+
+    <h2>N x N Dinamik Ortalama Matrisi</h2>
+
+    <div class="input-group">
+        <div>
+            <label>Sayılar: </label>
+            <input type="text" id="numArray" value="1, 10, 20, 30, 50">
+        </div>
+        <div>
+            <label>Yöntem: </label>
+            <select id="methodSelect">
+                <option value="aritmetik">Aritmetik</option>
+                <option value="geometrik">Geometrik</option>
+                <option value="harmonik">Harmonik</option>
+                <option value="rms">RMS (Karesel)</option>
+                <option value="kubik">Kübik</option>
+            </select>
+        </div>
+        <button onclick="generateMatrix()">Hesapla</button>
+    </div>
+
+    <div class="table-container">
+        <table id="matrixTable"></table>
+    </div>
+
+    <script>
+        function calculateAverage(subset, method) {
+            const n = subset.length;
+            if (n === 0) return 0;
+
+            switch (method) {
+                case 'aritmetik':
+                    return subset.reduce((a, b) => a + b, 0) / n;
+
+                case 'geometrik':
+                    // Geometrik ortalama için çarpım (Sadece pozitif sayılar için anlamlıdır)
+                    const product = subset.reduce((a, b) => a * b, 1);
+                    return Math.pow(product, 1 / n);
+
+                case 'harmonik':
+                    // Harmonik ortalama için terslerin toplamı (Sıfır varsa hata payı bırakır)
+                    const sumInv = subset.reduce((a, b) => a + (b === 0 ? 0 : 1 / b), 0);
+                    return sumInv === 0 ? 0 : n / sumInv;
+
+                case 'rms':
+                    // Karesel ortalama
+                    const sumSq = subset.reduce((a, b) => a + Math.pow(b, 2), 0);
+                    return Math.sqrt(sumSq / n);
+
+                case 'kubik':
+                    // Kübik ortalama
+                    const sumCb = subset.reduce((a, b) => a + Math.pow(b, 3), 0);
+                    return Math.pow(sumCb / n, 1 / 3);
+
+                default:
+                    return 0;
+            }
+        }
+
+        function generateMatrix() {
+            const rawInput = document.getElementById('numArray').value;
+            const method = document.getElementById('methodSelect').value;
+            
+            const arr = rawInput.split(',')
+                                .map(item => parseFloat(item.trim()))
+                                .filter(item => !isNaN(item));
+
+            const n = arr.length;
+            const table = document.getElementById('matrixTable');
+            table.innerHTML = '';
+
+            if (n === 0) {
+                table.innerHTML = '<tr><td>Geçerli sayı giriniz.</td></tr>';
+                return;
+            }
+
+            // Başlık
+            let thead = '<tr>';
+            for (let i = 0; i < n; i++) thead += `<th>Sütun ${i + 1}</th>`;
+            thead += '</tr>';
+            table.innerHTML += thead;
+
+            // Matris Gövdesi
+            for (let i = 0; i < n; i++) {
+                let rowHtml = '<tr>';
+                for (let j = 0; j < n; j++) {
+                    if (j < i) {
+                        rowHtml += '<td class="zero">0</td>';
+                    } else {
+                        // Seçilen aralığı kesip al (j-i'den başla, j dahil)
+                        const subset = arr.slice(j - i, j + 1);
+                        const avg = calculateAverage(subset, method);
+
+                        let cellClass = (i === 0 && j === n - 1) ? 'highlight' : '';
+                        let formattedAvg = (avg % 1 === 0) ? avg : avg.toFixed(2);
+
+                        rowHtml += `<td class="${cellClass}">${formattedAvg}</td>`;
+                    }
+                }
+                rowHtml += '</tr>';
+                table.innerHTML += rowHtml;
+            }
+        }
+
+        window.onload = generateMatrix;
+    </script>
+</body>
+</html>
