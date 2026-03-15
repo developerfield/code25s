@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 YKS Soru Dağılımı Tahmini</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --accent: #f59e0b;
+    --accent2: #ef4444;
+    --accent3: #10b981;
+    --accent4: #3b82f6;
+    --text: #f1f5f9;
+    --muted: #64748b;
+    --border: #1e2d40;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    padding: 8px 20px 32px;
+    background-image: 
+      radial-gradient(ellipse at 10% 20%, rgba(245,158,11,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 90% 80%, rgba(59,130,246,0.06) 0%, transparent 50%);
+  }
+
+  .container { max-width: 900px; margin: 0 auto; }
+
+  header {
+    text-align: center;
+    margin-bottom: 0;
+    position: relative;
+  }
+
+  .year-badge {
+    display: inline-block;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 120px;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--accent) 0%, #f97316 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 4px;
+    opacity: 0.15;
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  .header-content { position: relative; z-index: 1; }
+
+  h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    letter-spacing: 3px;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    font-size: 14px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 1px;
+  }
+
+  /* ── SUBJECT TOGGLE BUTTONS ── */
+  .navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 5px 16px 6px;
+    gap: 0;
+    background: rgba(10, 14, 26, 0.55);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .navbar-row {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: nowrap;
+    width: 100%;
+    max-width: 800px;
+    padding: 4px 0;
+  }
+
+  .navbar-row + .navbar-row {
+    border-top: 1px solid rgba(255,255,255,0.07);
+  }
+
+  @media (min-width: 640px) {
+    .navbar-row { gap: 7px; }
+    .row-divider { margin: 0 4px; }
+    .toggle-btn[data-exam="ayt"] { padding: 5px 14px; }
+    .toggle-btn[data-exam="tyt"] { padding: 4px 10px; min-width: 30px; }
+    .master-btn { padding: 4px 14px; }
+  }
+
+  .subject-toggles {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+
+  .navbar-spacer {
+    height: 78px;
+    margin-bottom: 4px;
+  }
+
+  .toggle-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 4px 8px;
+    border-radius: 5px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.18s;
+    background: rgba(255,255,255,0.04);
+    opacity: 0.38;
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+    min-width: 28px;
+    text-align: center;
+  }
+
+  /* AYT subject buttons slightly larger */
+  .toggle-btn[data-exam="ayt"] {
+    font-size: 11px;
+    padding: 4px 11px;
+    letter-spacing: 1.2px;
+  }
+
+  .toggle-btn::after {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+  }
+
+  .toggle-btn.active { opacity: 1; }
+  .toggle-btn:hover { opacity: 0.85; }
+
+  /* ── AYT/TYT master buttons ── */
+  .master-btn {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 2px;
+    padding: 3px 12px;
+    border-radius: 5px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.18s;
+    position: relative;
+    flex-shrink: 0;
+    min-width: 46px;
+    text-align: center;
+  }
+
+  .master-btn.ayt-master {
+    color: #ffffff;
+    border-color: rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.06);
+  }
+  .master-btn.ayt-master.active {
+    background: rgba(255,255,255,0.14);
+    border-color: rgba(255,255,255,0.6);
+  }
+  .master-btn.ayt-master:hover { background: rgba(255,255,255,0.11); }
+
+  .master-btn.tyt-master {
+    color: #ffffff;
+    border-color: rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.06);
+  }
+  .master-btn.tyt-master.active {
+    background: rgba(255,255,255,0.14);
+    border-color: rgba(255,255,255,0.6);
+  }
+  .master-btn.tyt-master:hover { background: rgba(255,255,255,0.11); }
+
+  /* thin divider between master and subject btns */
+  .row-divider {
+    width: 1px;
+    height: 18px;
+    background: rgba(255,255,255,0.1);
+    flex-shrink: 0;
+  }
+
+  /* ── AYT subject colors ── */
+  /* mat → mavi */
+  .toggle-btn[data-subject="mat"][data-exam="ayt"] { color: #60a5fa; border-color: rgba(96,165,250,0.25); }
+  .toggle-btn[data-subject="mat"][data-exam="ayt"]::after { background: #60a5fa; }
+  .toggle-btn[data-subject="mat"][data-exam="ayt"].active { border-color: rgba(96,165,250,0.55); background: rgba(96,165,250,0.08); }
+
+  /* geo → mor */
+  .toggle-btn[data-subject="geo"][data-exam="ayt"] { color: #a78bfa; border-color: rgba(167,139,250,0.25); }
+  .toggle-btn[data-subject="geo"][data-exam="ayt"]::after { background: #a78bfa; }
+  .toggle-btn[data-subject="geo"][data-exam="ayt"].active { border-color: rgba(167,139,250,0.55); background: rgba(167,139,250,0.08); }
+
+  /* fiz → sarı */
+  .toggle-btn[data-subject="fiz"][data-exam="ayt"] { color: #fbbf24; border-color: rgba(251,191,36,0.25); }
+  .toggle-btn[data-subject="fiz"][data-exam="ayt"]::after { background: #fbbf24; }
+  .toggle-btn[data-subject="fiz"][data-exam="ayt"].active { border-color: rgba(251,191,36,0.55); background: rgba(251,191,36,0.08); }
+
+  /* kim → kırmızı */
+  .toggle-btn[data-subject="kim"][data-exam="ayt"] { color: #f87171; border-color: rgba(248,113,113,0.25); }
+  .toggle-btn[data-subject="kim"][data-exam="ayt"]::after { background: #f87171; }
+  .toggle-btn[data-subject="kim"][data-exam="ayt"].active { border-color: rgba(248,113,113,0.55); background: rgba(248,113,113,0.08); }
+
+  /* biy → yeşil */
+  .toggle-btn[data-subject="biy"][data-exam="ayt"] { color: #34d399; border-color: rgba(52,211,153,0.25); }
+  .toggle-btn[data-subject="biy"][data-exam="ayt"]::after { background: #34d399; }
+  .toggle-btn[data-subject="biy"][data-exam="ayt"].active { border-color: rgba(52,211,153,0.55); background: rgba(52,211,153,0.08); }
+
+  /* ── TYT subject colors ── */
+  /* tyt-mat → mat mavi */
+  .toggle-btn[data-subject="mat"][data-exam="tyt"] { color: #60a5fa; border-color: rgba(96,165,250,0.25); }
+  .toggle-btn[data-subject="mat"][data-exam="tyt"]::after { background: #60a5fa; }
+  .toggle-btn[data-subject="mat"][data-exam="tyt"].active { border-color: rgba(96,165,250,0.55); background: rgba(96,165,250,0.08); }
+
+  /* tyt-geo → mor */
+  .toggle-btn[data-subject="geo"][data-exam="tyt"] { color: #a78bfa; border-color: rgba(167,139,250,0.25); }
+  .toggle-btn[data-subject="geo"][data-exam="tyt"]::after { background: #a78bfa; }
+  .toggle-btn[data-subject="geo"][data-exam="tyt"].active { border-color: rgba(167,139,250,0.55); background: rgba(167,139,250,0.08); }
+
+  /* tyt-fiz/kim/biy → yeşil */
+  .toggle-btn[data-subject="fiz"][data-exam="tyt"],
+  .toggle-btn[data-subject="kim"][data-exam="tyt"],
+  .toggle-btn[data-subject="biy"][data-exam="tyt"] { color: #34d399; border-color: rgba(52,211,153,0.25); }
+  .toggle-btn[data-subject="fiz"][data-exam="tyt"]::after,
+  .toggle-btn[data-subject="kim"][data-exam="tyt"]::after,
+  .toggle-btn[data-subject="biy"][data-exam="tyt"]::after { background: #34d399; }
+  .toggle-btn[data-subject="fiz"][data-exam="tyt"].active,
+  .toggle-btn[data-subject="kim"][data-exam="tyt"].active,
+  .toggle-btn[data-subject="biy"][data-exam="tyt"].active { border-color: rgba(52,211,153,0.55); background: rgba(52,211,153,0.08); }
+
+  /* tyt-turkce → kırmızı */
+  .toggle-btn[data-subject="turkce"][data-exam="tyt"] { color: #f87171; border-color: rgba(248,113,113,0.25); }
+  .toggle-btn[data-subject="turkce"][data-exam="tyt"]::after { background: #f87171; }
+  .toggle-btn[data-subject="turkce"][data-exam="tyt"].active { border-color: rgba(248,113,113,0.55); background: rgba(248,113,113,0.08); }
+
+  /* tyt-tarih/cografya → turuncu */
+  .toggle-btn[data-subject="tarih"][data-exam="tyt"],
+  .toggle-btn[data-subject="cografya"][data-exam="tyt"] { color: #fb923c; border-color: rgba(251,146,60,0.25); }
+  .toggle-btn[data-subject="tarih"][data-exam="tyt"]::after,
+  .toggle-btn[data-subject="cografya"][data-exam="tyt"]::after { background: #fb923c; }
+  .toggle-btn[data-subject="tarih"][data-exam="tyt"].active,
+  .toggle-btn[data-subject="cografya"][data-exam="tyt"].active { border-color: rgba(251,146,60,0.55); background: rgba(251,146,60,0.08); }
+
+  /* tyt-felsefe → sarı */
+  .toggle-btn[data-subject="felsefe"][data-exam="tyt"] { color: #fbbf24; border-color: rgba(251,191,36,0.25); }
+  .toggle-btn[data-subject="felsefe"][data-exam="tyt"]::after { background: #fbbf24; }
+  .toggle-btn[data-subject="felsefe"][data-exam="tyt"].active { border-color: rgba(251,191,36,0.55); background: rgba(251,191,36,0.08); }
+
+  /* TYT tag colors */
+  .tag-turkce { background: rgba(248,113,113,0.15); color: #f87171; }
+  .tag-tarih { background: rgba(251,146,60,0.15); color: #fb923c; }
+  .tag-cografya { background: rgba(251,146,60,0.15); color: #fb923c; }
+  .tag-felsefe { background: rgba(251,191,36,0.15); color: #fbbf24; }
+
+  .subject-dot { display: none; }
+
+  /* ── METHOD BOX ── */
+  .method-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 32px;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  .method-box strong { color: var(--accent); }
+
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin: 36px 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin-bottom: 10px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 16px;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    border-radius: 3px 0 0 3px;
+  }
+
+  .card.tier-S::before { background: var(--accent); }
+  .card.tier-A::before { background: var(--accent3); }
+  .card.tier-B::before { background: var(--accent4); }
+  .card.tier-C::before { background: #f87171; }
+  .card.tier-D::before { background: #92400e; }
+  .card.tier-E::before { background: #374151; }
+
+  .card:hover {
+    border-color: #2a3a50;
+    background: var(--surface2);
+  }
+
+  .card-left { display: flex; flex-direction: column; gap: 8px; }
+
+  .topic-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .subject-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .tag-mat { background: rgba(96,165,250,0.15); color: #60a5fa; }
+  .tag-fiz { background: rgba(251,191,36,0.15); color: #fbbf24; }
+  .tag-kim { background: rgba(248,113,113,0.15); color: #f87171; }
+  .tag-biy { background: rgba(52,211,153,0.15); color: #34d399; }
+  .tag-geo { background: rgba(167,139,250,0.15); color: #a78bfa; }
+
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .bar-track {
+    flex: 1;
+    height: 6px;
+    background: #1e2d40;
+    border-radius: 99px;
+    overflow: hidden;
+    max-width: 420px;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    width: 0;
+    transition: width 1s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .tier-S .bar-fill { background: linear-gradient(90deg, #f59e0b, #f97316); }
+  .tier-A .bar-fill { background: linear-gradient(90deg, #10b981, #06b6d4); }
+  .tier-B .bar-fill { background: linear-gradient(90deg, #3b82f6, #8b5cf6); }
+  .tier-C .bar-fill { background: linear-gradient(90deg, #f87171, #fb923c); }
+  .tier-D .bar-fill { background: linear-gradient(90deg, #92400e, #78350f); }
+  .tier-E .bar-fill { background: #2d3748; }
+
+  .year-dots {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    max-width: 420px;
+  }
+
+  .dot {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #1e2d40;
+    color: var(--muted);
+  }
+
+  .dot.has-data { background: #1a2e1a; color: #6ee7b7; }
+  .dot.high-data { background: #2a1a0a; color: #fbbf24; }
+
+  .card-right {
+    text-align: right;
+    min-width: 110px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .prob-number {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900;
+    font-size: 30px;
+    line-height: 1;
+    letter-spacing: -0.5px;
+  }
+
+  .tier-S .prob-number { color: var(--accent); }
+  .tier-A .prob-number { color: var(--accent3); }
+  .tier-B .prob-number { color: var(--accent4); }
+  .tier-C .prob-number { color: #f87171; }
+  .tier-D .prob-number { color: #92400e; }
+  .tier-E .prob-number { color: #374151; }
+
+  .prob-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .expected-big {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0;
+    color: rgba(241,245,249,0.82) !important;
+  }
+
+  .tier-S .expected-big,
+  .tier-A .expected-big,
+  .tier-B .expected-big,
+  .tier-C .expected-big,
+  .tier-D .expected-big,
+  .tier-E .expected-big { color: rgba(241,245,249,0.82); }
+
+  .expected-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .expected {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .expected span { color: var(--text); font-weight: 700; }
+
+  .puan-info {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .tier-label {
+    display: inline-block;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+    margin-top: 6px;
+  }
+
+  .tier-S .tier-label { background: rgba(245,158,11,0.15); color: var(--accent); }
+  .tier-A .tier-label { background: rgba(16,185,129,0.15); color: var(--accent3); }
+  .tier-B .tier-label { background: rgba(59,130,246,0.15); color: var(--accent4); }
+  .tier-C .tier-label { background: rgba(248,113,113,0.12); color: #f87171; }
+  .tier-D .tier-label { background: rgba(146,64,14,0.2); color: #92400e; }
+  .tier-E .tier-label { background: rgba(55,65,81,0.3); color: #4b5563; }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin: 24px 0 36px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .stat-desc { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  footer {
+    text-align: center;
+    margin-top: 40px;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+  }
+
+  #no-selection {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 2px;
+    display: none;
+  }
+
+  .footer-warning {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .footer-warning.footer-warning-info {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 12.5px;
+    color: #94a3b8;
+    line-height: 1.6;
+    border-left: 3px solid rgba(251,191,36,0.4);
+    padding-left: 10px;
+    background: rgba(251,191,36,0.04);
+    border-radius: 0 6px 6px 0;
+    padding: 8px 12px 8px 10px;
+  }
+
+  .footer-warning.footer-warning-info strong { color: #fbbf24; }
+
+  footer .method-box {
+    margin-bottom: 0;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="year-badge">2026</div>
+    <div class="header-content">
+      <h1>2026 <span>YKS</span> TAHMİN</h1>
+      <p class="subtitle">// AĞIRLIKLI OLASILIK ANALİZİ — TÜM YILLAR BAZA ALINMIŞTIR</p>
+    </div>
+  </header>
+
+<div class="navbar">
+  <!-- AYT ROW -->
+  <div class="navbar-row">
+    <button class="master-btn ayt-master active" onclick="toggleExam('ayt')">AYT</button>
+    <div class="row-divider"></div>
+    <button class="toggle-btn active" data-subject="mat" data-exam="ayt" onclick="toggleSubject('mat','ayt')">MAT</button>
+    <button class="toggle-btn active" data-subject="geo" data-exam="ayt" onclick="toggleSubject('geo','ayt')">GEO</button>
+    <button class="toggle-btn active" data-subject="fiz" data-exam="ayt" onclick="toggleSubject('fiz','ayt')">FİZ</button>
+    <button class="toggle-btn active" data-subject="kim" data-exam="ayt" onclick="toggleSubject('kim','ayt')">KİM</button>
+    <button class="toggle-btn active" data-subject="biy" data-exam="ayt" onclick="toggleSubject('biy','ayt')">BİY</button>
+  </div>
+  <!-- TYT ROW -->
+  <div class="navbar-row">
+    <button class="master-btn tyt-master active" onclick="toggleExam('tyt')">TYT</button>
+    <div class="row-divider"></div>
+    <button class="toggle-btn active" data-subject="mat" data-exam="tyt" onclick="toggleSubject('mat','tyt')">MT</button>
+    <button class="toggle-btn active" data-subject="geo" data-exam="tyt" onclick="toggleSubject('geo','tyt')">GE</button>
+    <button class="toggle-btn active" data-subject="fiz" data-exam="tyt" onclick="toggleSubject('fiz','tyt')">F</button>
+    <button class="toggle-btn active" data-subject="kim" data-exam="tyt" onclick="toggleSubject('kim','tyt')">K</button>
+    <button class="toggle-btn active" data-subject="biy" data-exam="tyt" onclick="toggleSubject('biy','tyt')">B</button>
+    <button class="toggle-btn active" data-subject="turkce" data-exam="tyt" onclick="toggleSubject('turkce','tyt')">TR</button>
+    <button class="toggle-btn active" data-subject="tarih" data-exam="tyt" onclick="toggleSubject('tarih','tyt')">TA</button>
+    <button class="toggle-btn active" data-subject="cografya" data-exam="tyt" onclick="toggleSubject('cografya','tyt')">CĞ</button>
+    <button class="toggle-btn active" data-subject="felsefe" data-exam="tyt" onclick="toggleSubject('felsefe','tyt')">FL</button>
+  </div>
+</div>
+<div class="navbar-spacer"></div>
+
+  <div class="summary-grid" id="summary-grid"></div>
+
+  <div id="no-selection">⚠ EN AZ BİR DERS SEÇİNİZ</div>
+  <div id="cards-container"></div>
+
+  <footer>
+    <div class="footer-warning">⚠️ Bu analiz istatistiksel tahmindir — kesin sonuç garanti edilemez</div>
+    <div class="footer-warning footer-warning-info">📌 Bu hesaplama şu an için yalnızca <strong>sayısal</strong> tipinden sınava girmiş kişiler için yapılmıştır. Yıllara göre çıkmış soru sayıları ve dağılımları tüm adaylar için geçerlidir.</div>
+    <div class="method-box" style="margin-top:20px;text-align:left;">
+      <strong>Hesaplama Yöntemi:</strong> Tüm mevcut sınav verileri kullanılmıştır.
+      2020 ve sonrası <strong>×2.5 ağırlık</strong>, 2023 ve sonrası <strong>ek ×1.5 ağırlık</strong> almıştır.
+      <br>
+      <strong>AYT Katsayıları:</strong> Mat 3.00 pt · Geo 3.00 pt · Fiz 2.85 pt · Kim 3.07 pt · Biy 3.07 pt &nbsp;|&nbsp;
+      <strong>TYT Katsayıları:</strong> Mat &amp; Türkçe 1.32 pt · Fen 1.36 pt · Sosyal 1.36 pt
+      <br>
+      <strong>YKS Puanı = TYT × %40 + AYT × %60</strong>
+      <br>
+      <strong>Soru sayısı tahminleri — AYT:</strong> Mat ~29 · Geo ~11 · Fiz 14 · Kim 13 · Biy 13 &nbsp;|&nbsp;
+      <strong>TYT:</strong> Mat 30 · Geo 10 · Fiz 7 · Kim 7 · Biy 6 · Türkçe 40 · Tarih 5 · Coğ 5 · Fel 5
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// ─── RAW DATA ───────────────────────────────────────────────
+const DATA = {
+  ayt: {
+    mat: {
+      yillar: [2025,2024,2023,2022,2021,2020,2019,2018,2017,2016,2015],
+      konular: {
+        "Temel Kavramlar":[3,2,4,2,3,2,2,1,3,3,6],
+        "Sayı Basamakları":[0,1,0,0,0,3,0,0,1,0,0],
+        "Bölme ve Bölünebilme":[0,0,1,0,0,0,1,0,1,1,0],
+        "EBOB-EKOK":[0,0,0,1,1,0,0,0,1,1,1],
+        "Rasyonel Sayılar":[0,0,0,0,0,0,0,0,1,1,1],
+        "Basit Eşitsizlikler":[0,1,1,0,1,1,1,0,2,1,1],
+        "Mutlak Değer":[0,0,1,0,0,1,1,0,1,1,1],
+        "Üslü Sayılar":[0,0,1,0,1,1,0,0,1,2,1],
+        "Köklü Sayılar":[0,0,0,0,0,0,0,0,2,1,1],
+        "Çarpanlara Ayırma":[0,1,0,1,0,0,0,0,1,1,1],
+        "Oran Orantı":[0,0,0,0,0,0,0,0,0,1,1],
+        "Kümeler ve Kartezyen Çarpım":[1,1,1,1,1,2,1,0,2,2,2],
+        "Mantık":[1,1,1,1,1,0,1,4,1,1,0],
+        "Fonksiyonlar":[2,2,2,2,2,2,2,2,2,2,0],
+        "Polinomlar":[0,0,2,1,1,2,2,1,3,1,2],
+        "2.Dereceden Denklemler ve Eşitsizlikler":[1,1,2,2,1,1,0,1,1,0,1],
+        "Parabol":[0,1,1,0,1,1,1,1,0,1,0],
+        "Permütasyon-Kombinasyon-Olasılık-Binom":[3,3,3,3,2,3,2,2,2,3,2],
+        "Trigonometri":[5,5,5,4,5,4,3,3,2,4,2],
+        "Karmaşık Sayılar":[0,0,0,0,0,2,1,1,2,3,3],
+        "Logaritma":[2,1,3,2,1,3,3,2,3,1,2],
+        "Diziler":[2,1,2,1,1,2,1,1,2,2,2],
+        "Limit":[1,2,0,2,2,0,2,2,2,2,1],
+        "Türev":[5,3,0,4,3,0,4,4,5,5,7],
+        "İntegral":[3,5,0,4,4,0,4,4,5,6,7]
+      },
+      soru_sayisi: [29,32,32,32,32,30,32,29,50,50,50],
+      puan: 3.00,
+      tahmini_soru: 29
+    },
+    biy: {
+      yillar: [2024,2023,2022,2021,2020,2019,2018],
+      konular: {
+        "Sinir Sistemi":[1,1,0,0,0,0,1],
+        "Endokrin Sistem":[1,2,0,1,1,1,0],
+        "Duyu Organları":[0,0,1,0,1,0,0],
+        "Destek ve Hareket Sistemi":[0,0,1,1,0,0,1],
+        "Sindirim Sistemi":[1,1,0,0,1,1,0],
+        "Dolaşım ve Bağışıklık Sistemi":[1,1,1,1,1,1,1],
+        "Solunum Sistemi":[1,1,1,1,1,1,0],
+        "Üriner Sistem":[0,1,0,0,1,1,1],
+        "Üreme Sistemi ve Embriyonik Gelişim":[0,0,1,0,0,0,0],
+        "Komünite ve Popülasyon Ekolojisi":[2,2,2,2,2,0,2],
+        "Nükleik Asitler":[0,0,0,0,1,1,0],
+        "Genetik Şifre ve Protein Sentezi":[2,1,2,2,2,1,3],
+        "Canlılık ve Enerji":[1,1,1,0,0,0,0],
+        "Fotosentez ve Kemosentez":[1,0,1,1,1,1,1],
+        "Hücresel Solunum":[0,1,0,1,1,1,0],
+        "Bitki Biyolojisi":[2,0,2,2,0,3,2],
+        "Canlılar ve Çevre":[0,1,0,1,0,1,1]
+      },
+      soru_sayisi: [13,13,13,13,13,13,13],
+      puan: 3.07,
+      tahmini_soru: 13
+    },
+    kim: {
+      yillar: [2024,2023,2022,2021,2020,2019,2018,2017,2016,2015],
+      konular: {
+        "Kimya Bilimi":[0,0,0,0,0,0,0,4,2,0],
+        "Atom ve Yapısı":[0,0,0,0,0,1,0,1,2,2],
+        "Periyodik Sistem":[0,0,0,1,0,0,1,1,2,2],
+        "Kimyasal Türler Arası Etkileşim":[0,0,0,0,0,0,0,2,3,2],
+        "Kimyasal Hesaplamalar":[0,0,0,0,0,1,1,2,1,1],
+        "Modern Atom Teorisi":[1,1,1,0,2,0,0,0,0,0],
+        "Gazlar":[1,2,1,1,1,1,1,2,1,1],
+        "Sıvı Çözeltiler":[2,2,2,2,2,1,1,3,1,1],
+        "Kimyasal Tepkimelerde Enerji":[1,1,1,1,1,1,1,3,2,3],
+        "Kimyasal Tepkimelerde Hız":[1,1,1,1,1,1,1,0,0,1],
+        "Kimyasal Tepkimelerde Denge":[1,2,1,1,1,0,0,1,2,1],
+        "Asit-Baz Dengesi":[1,0,0,1,1,2,1,1,0,1],
+        "Çözünürlük Dengesi":[0,0,1,0,0,0,0,1,1,1],
+        "Kimya ve Elektrik":[2,3,2,2,3,2,2,3,2,2],
+        "Organik Kimya":[3,1,3,3,1,3,4,6,11,12]
+      },
+      soru_sayisi: [13,13,13,13,13,13,13,30,30,30],
+      puan: 3.07,
+      tahmini_soru: 13
+    },
+    fiz: {
+      yillar: [2024,2023,2022,2021,2020,2019,2018],
+      konular: {
+        "Vektörler":[0,1,1,0,0,0,0],
+        "Bağıl Hareket":[1,1,0,0,1,1,0],
+        "Newton'un Hareket Yasaları":[1,1,1,0,1,0,1],
+        "Bir Boyutta Sabit İvmeli Hareket":[0,0,0,0,0,0,0],
+        "Atışlar":[1,0,0,1,1,1,1],
+        "İş, Güç ve Enerji":[1,1,0,1,1,0,0],
+        "İtme ve Momentum":[1,1,1,0,1,1,1],
+        "Kuvvet, Tork ve Denge":[0,0,0,1,1,1,1],
+        "Kütle Merkezi":[0,0,0,0,0,0,0],
+        "Basit Makineler":[0,0,1,0,0,0,0],
+        "Elektrik Alan ve Potansiyel":[1,1,0,2,1,1,1],
+        "Paralel Levhalar ve Sığa":[0,0,0,0,0,0,0],
+        "Manyetik Alan ve Manyetik Kuvvet":[1,1,1,1,0,0,0],
+        "Akım, Direnç ve Ohm Yasası":[1,0,1,1,1,1,1],
+        "Elektrik Devre Analizi":[0,1,0,1,0,0,1],
+        "İndüksiyon, Alternatif Akım ve Transformatörler":[1,1,1,1,2,2,2],
+        "Çembersel Hareket":[1,1,1,1,2,1,1],
+        "Dönme, Yuvarlanma ve Açısal Momentum":[0,1,1,0,1,1,0],
+        "Kütle Çekim ve Kepler Yasaları":[0,1,0,1,0,0,1],
+        "Basit Harmonik Hareket":[1,1,1,1,1,1,1],
+        "Dalga Mekaniği ve Elektromanyetik Dalgalar":[1,1,1,1,1,1,1],
+        "Atom Modelleri":[1,0,0,0,0,0,0],
+        "Büyük Patlama ve Parçacık Fiziği":[0,0,1,0,0,0,0],
+        "Atom Fiziğine Giriş ve Radyoaktivite":[1,1,0,1,0,1,1],
+        "Özel Görelilik":[0,0,1,0,0,0,0],
+        "Kara Cisim Işıması":[0,0,0,0,0,0,0],
+        "Fotoelektrik Olay ve Compton Olayı":[0,0,1,1,0,1,1],
+        "Modern Fiziğin Teknolojideki Uygulamaları":[1,0,1,1,0,1,1]
+      },
+      soru_sayisi: [14,14,14,14,14,14,14],
+      puan: 2.85,
+      tahmini_soru: 14
+    },
+    geo: {
+      yillar: [2024,2023,2022,2021,2020,2019,2018,2017,2016,2015],
+      konular: {
+        "Doğruda ve Üçgende Açı":[1,2,1,0,1,0,1,2,2,1],
+        "Özel Üçgenler":[0,0,0,0,2,0,2,2,6,0],
+        "Açıortay – Kenarortay":[0,0,0,0,0,0,0,0,0,0],
+        "Üçgende Alan Benzerlik":[0,1,0,0,0,0,0,3,1,2],
+        "Açı Kenar Bağıntıları":[0,0,0,0,0,1,0,0,0,0],
+        "Çokgenler":[0,0,0,0,1,2,1,0,1,3],
+        "Özel Dörtgenler":[0,1,0,0,0,0,1,4,6,5],
+        "Çember ve Daire":[2,2,2,3,2,2,1,3,3,5],
+        "Noktanın Analitiği":[1,1,1,2,1,0,0,0,1,2],
+        "Doğrunun Analitiği":[3,0,1,2,1,1,2,2,4,1],
+        "Dönüşüm Geometrisi":[0,0,1,0,1,1,1,0,0,0],
+        "Katı Cisimler":[1,1,2,1,1,1,1,2,2,4],
+        "Çemberin Analitiği":[1,0,1,1,0,0,1,1,2,1]
+      },
+      soru_sayisi: [9,9,9,9,10,8,11,30,30,30],
+      puan: 3.00,
+      tahmini_soru: 11
+    }
+  },
+  tyt: {
+    mat: {
+      yillar: [2025,2024,2023,2022,2021,2020,2019,2018,2017,2016,2015],
+      konular: {
+        "Temel Kavramlar":[3,1,2,3,3,1,4,4,4,3,0],
+        "Sayı Basamakları":[1,2,1,1,2,1,2,1,2,2,1],
+        "Bölünebilme Kuralları":[1,1,1,1,1,1,1,0,0,0,1],
+        "OBEB-OKEK":[0,1,0,0,0,0,0,0,0,0,2],
+        "Rasyonel Sayılar":[1,2,2,2,0,3,1,0,1,1,1],
+        "Basit Eşitsizlikler":[1,0,3,1,1,1,0,1,1,1,2],
+        "Mutlak Değer":[1,2,1,1,1,1,1,1,1,1,1],
+        "Üslü Sayılar":[1,1,1,1,1,1,1,0,2,2,2],
+        "Köklü Sayılar":[1,1,1,1,1,1,1,1,2,3,1],
+        "Çarpanlara Ayırma":[0,0,0,0,0,0,0,1,1,1,0],
+        "Oran – Orantı":[1,0,1,1,1,1,0,0,0,2,0],
+        "Denklem Çözme":[1,0,1,0,2,0,1,2,1,0,2],
+        "Problemler":[12,11,10,13,11,13,12,11,11,13,10],
+        "Kümeler – Kartezyen Çarpım":[1,1,1,1,1,1,1,2,2,1,2],
+        "Mantık":[1,1,1,1,1,0,0,0,1,0,1],
+        "Fonksiyonlar":[1,1,1,1,1,2,2,1,1,1,2],
+        "Polinomlar":[0,0,0,0,1,0,0,1,0,0,0],
+        "Permütasyon – Kombinasyon":[1,3,1,0,0,2,1,1,1,0,1],
+        "Olasılık":[1,1,1,1,1,1,1,2,1,1,1],
+        "Veri – İstatistik":[1,1,1,1,1,0,1,0,0,1,1]
+      },
+      soru_sayisi: [30,30,30,30,30,30,30,29,32,33,32],
+      puan: 1.32,
+      tahmini_soru: 30
+    },
+    geo: {
+      yillar: [2025,2024,2023,2022,2021,2020,2019,2018,2017,2016,2015],
+      konular: {
+        "Açılar ve Üçgenler":[4,5,5,4,4,2,2,3,2,1,1],
+        "Çokgenler":[1,1,1,1,1,1,1,1,2,0,1],
+        "Yamuk":[1,1,1,0,0,2,0,1,1,0,0],
+        "Eşkenar Dörtgen":[0,0,0,1,0,0,0,0,0,0,0],
+        "Deltoid":[0,0,0,0,1,0,0,0,0,0,0],
+        "Kare":[1,0,0,0,0,1,1,1,1,0,1],
+        "Dikdörtgen":[1,1,1,1,1,2,1,1,0,1,0],
+        "Çember ve Daire":[0,0,0,0,0,0,2,1,2,1,1],
+        "Analitik Geometri":[0,0,0,1,1,0,1,1,1,1,2],
+        "Katı Cisimler":[2,2,2,2,2,2,2,2,2,2,2]
+      },
+      soru_sayisi: [10,10,10,10,10,10,10,11,11,6,8],
+      puan: 1.36,
+      tahmini_soru: 10
+    },
+    fiz: {
+      yillar: [2025,2024,2023,2022,2021,2020,2019,2018,2017,2016,2015],
+      konular: {
+        "Fizik Bilimine Giriş":[0,0,0,0,0,1,0,1,1,1,1],
+        "Madde ve Özellikleri":[1,1,1,1,1,0,1,0,2,1,1],
+        "Sıvıların Kaldırma Kuvveti":[0,1,0,0,0,1,0,1,1,0,0],
+        "Basınç":[0,0,0,1,1,0,0,0,0,1,1],
+        "Isı, Sıcaklık ve Genleşme":[1,1,1,1,1,1,1,1,1,2,2],
+        "Hareket ve Kuvvet":[1,1,1,1,1,1,1,1,1,1,1],
+        "Dinamik":[0,0,0,0,0,0,0,0,1,0,1],
+        "İş, Güç ve Enerji":[0,0,0,0,0,0,1,0,1,3,1],
+        "Elektrostatik":[1,0,0,0,0,0,0,0,1,1,1],
+        "Elektrik Akımı ve Devreler":[0,0,2,0,0,1,1,0,1,1,1],
+        "Elektriksel Enerji ve Güç":[0,0,0,1,1,0,0,0,0,0,0],
+        "Optik":[1,1,2,1,1,1,2,2,3,1,1],
+        "Manyetizma":[1,1,0,0,0,0,0,1,1,1,1],
+        "Dalgalar":[1,1,0,1,1,1,0,0,0,1,1]
+      },
+      soru_sayisi: [7,7,7,7,7,7,7,7,14,14,14],
+      puan: 1.36,
+      tahmini_soru: 7
+    },
+    kim: {
+      yillar: [2025,2024,2023,2022,2021,2020,2019,2018,2017,2016,2015],
+      konular: {
+        "Kimya Bilimi":[1,1,1,1,1,1,0,2,3,3,3],
+        "Atomun Yapısı":[1,1,0,0,0,1,1,0,2,0,0],
+        "Periyodik Tablo":[0,0,1,1,1,0,1,1,1,2,1],
+        "Maddenin Halleri":[1,1,1,1,1,1,1,1,2,1,1],
+        "Kimyasal Türler Arası Etkileşimler":[1,1,1,1,1,1,1,1,1,3,5],
+        "Kimyasal Hesaplamalar":[1,1,0,0,1,1,0,0,0,1,0],
+        "Kimyanın Temel Kanunları":[0,0,1,1,0,0,0,1,1,0,0],
+        "Asit, Baz ve Tuz":[1,1,1,1,1,1,1,0,0,0,0],
+        "Karışımlar":[1,1,1,1,1,1,1,0,1,2,2],
+        "Kimya Her Yerde":[0,0,0,0,0,0,1,1,2,1,1]
+      },
+      soru_sayisi: [7,7,7,7,7,7,7,7,13,13,13],
+      puan: 1.36,
+      tahmini_soru: 7
+    },
+    biy: {
+      yillar: [2025,2024,2023,2022,2021,2020,2019,2018,2017,2016,2015],
+      konular: {
+        "Canlıların Ortak Özellikleri":[1,0,0,1,0,0,1,0,0,1,0],
+        "Canlıların Temel Bileşenleri":[0,1,1,0,1,1,1,1,3,3,1],
+        "Hücre ve Organelleri":[0,1,1,1,1,1,0,0,2,1,2],
+        "Madde Geçişleri":[1,0,0,0,0,0,0,1,2,1,1],
+        "Canlıların Sınıflandırılması":[1,1,1,1,1,1,1,1,1,1,2],
+        "Hücre Bölünmeleri ve Üreme":[1,1,1,1,1,1,1,1,0,1,1],
+        "Kalıtım":[1,1,1,1,1,1,1,0,2,2,1],
+        "Ekosistem Ekoloji":[0,1,1,1,1,1,1,1,0,1,2],
+        "Bitkiler Biyolojisi":[1,0,0,0,0,0,0,1,1,1,2]
+      },
+      soru_sayisi: [6,6,6,6,6,6,6,6,13,13,13],
+      puan: 1.36,
+      tahmini_soru: 6
+    },
+    tarih: {
+      yillar: [2025,2024,2023,2022,2021,2020,2019,2018,2017,2016,2015],
+      konular: {
+        "Tarih ve Zaman":[0,0,0,0,0,0,0,0,1,1,1],
+        "İlk ve Orta Çağlarda Türk Dünyası":[1,1,1,1,1,1,1,1,1,1,1],
+        "İslam Medeniyetinin Doğuşu":[0,0,0,0,0,0,0,1,1,1,1],
+        "Türklerin İslamiyet'i Kabulü ve İlk Türk İslam Devletleri":[1,1,1,1,1,1,1,1,1,1,1],
+        "Beylikten Devlete Osmanlı":[1,0,0,1,0,0,1,1,2,1,1],
+        "Dünya Gücü Osmanlı":[0,1,0,0,0,0,0,0,1,1,1],
+        "Değişim Çağında Avrupa ve Osmanlı":[0,0,0,0,0,0,0,0,1,0,0],
+        "Uluslararası İlişkilerde Denge Stratejisi (1774-1914)":[0,0,1,0,1,1,0,1,1,1,2],
+        "XX. Yüzyıl Başlarında Osmanlı Devleti ve Dünya":[0,0,0,0,0,1,0,1,2,2,2],
+        "Milli Mücadele":[1,1,2,1,1,1,1,0,1,2,0],
+        "Atatürkçülük ve Türk İnkılabı":[1,1,0,1,1,0,1,0,4,3,5]
+      },
+      soru_sayisi: [5,5,5,5,5,5,5,5,15,15,15],
+      puan: 1.36,
+      tahmini_soru: 5
+    },
+    cografya: {
+      yillar: [2025,2024,2023,2022,2021,2020,2019,2018,2017,2016,2015],
+      konular: {
+        "Doğa ve İnsan":[0,0,0,0,0,0,1,1,1,0,1],
+        "Dünya'nın Şekli ve Hareketleri":[0,0,0,0,1,0,0,0,0,0,1],
+        "Coğrafi Konum":[0,0,0,0,0,0,0,0,0,1,1],
+        "Harita Bilgisi":[1,1,0,1,0,1,0,1,1,1,0],
+        "Atmosfer ve Sıcaklık":[0,0,1,0,0,1,0,0,0,0,0],
+        "İklim Bilgisi":[1,1,1,1,1,0,1,1,3,2,1],
+        "İç ve Dış Kuvvetler":[0,0,0,1,1,1,0,0,1,1,2],
+        "Nüfus ve Yerleşme":[1,1,2,0,1,1,2,1,2,3,2],
+        "Türkiye'nin Yer Şekilleri":[0,0,0,0,0,0,0,0,1,0,0],
+        "Ekonomik Faaliyetler":[0,0,0,1,0,0,0,0,1,0,1],
+        "Bölgeler":[1,1,0,0,1,1,0,0,1,2,1],
+        "Uluslararası Ulaşım Hatları":[0,0,0,0,0,0,0,0,0,1,1],
+        "Doğal Afetler":[1,1,1,1,0,0,1,1,1,1,1]
+      },
+      soru_sayisi: [5,5,5,5,5,5,5,5,12,12,12],
+      puan: 1.36,
+      tahmini_soru: 5
+    },
+    felsefe: {
+      yillar: [2025,2024,2023,2022,2021,2020,2019,2018,2017,2016,2015],
+      konular: {
+        "Felsefenin Alanı":[0,1,2,1,2,0,1,0,1,0,1],
+        "Bilgi Felsefesi":[3,1,2,2,0,1,1,2,2,2,1],
+        "Bilim Felsefesi":[1,0,0,0,0,0,1,0,1,0,1],
+        "Varlık Felsefesi":[0,1,0,1,1,1,0,1,1,3,1],
+        "Ahlak Felsefesi":[1,1,1,1,0,2,1,1,1,1,1],
+        "Siyaset Felsefesi":[0,0,0,0,1,0,1,0,0,1,1],
+        "Din Felsefesi":[0,1,0,0,0,1,0,1,1,1,1],
+        "Sanat Felsefesi":[0,0,0,0,1,0,0,0,1,0,1]
+      },
+      soru_sayisi: [5,5,5,5,5,5,5,5,8,8,8],
+      puan: 1.36,
+      tahmini_soru: 5
+    },
+    turkce: {
+      yillar: [2025,2024,2023,2022,2021,2020,2019,2018,2017,2016,2015],
+      konular: {
+        "Ses Bilgisi":[0,0,1,0,1,0,1,3,3,1,1],
+        "Dil Bilgisi":[3,0,2,3,2,3,8,1,1,3,2],
+        "Noktalama İşaretleri":[2,2,2,2,2,2,1,1,1,1,1],
+        "Yazım Kuralları":[2,2,2,2,2,2,2,2,2,1,1],
+        "Anlatım Bozukluğu":[0,0,0,0,0,0,0,1,1,2,0],
+        "Paragraf":[26,26,26,26,25,26,22,22,22,22,26],
+        "Cümlede Anlam":[3,5,4,3,3,6,3,7,7,7,6],
+        "Sözcükte Anlam":[4,5,3,4,5,1,3,3,3,3,3]
+      },
+      soru_sayisi: [40,40,40,40,40,40,40,40,40,40,40],
+      puan: 1.32,
+      tahmini_soru: 40
+    }
+  }
+};
+
+// ─── STATE ──────────────────────────────────────────────────
+const activeSubjects = {
+  ayt: { mat: true, fiz: true, kim: true, biy: true, geo: true },
+  tyt: { mat: true, fiz: true, kim: true, biy: true, geo: true, tarih: true, cografya: true, felsefe: true, turkce: true }
+};
+const examVisible = { ayt: true, tyt: true };
+
+// ─── WEIGHT FUNCTION ────────────────────────────────────────
+function getWeight(year) {
+  if (year >= 2023) return 3.75;
+  if (year >= 2020) return 2.5;
+  return 1.0;
+}
+
+// ─── COMPUTE SCORE FOR A TOPIC ──────────────────────────────
+function computeTopicScore(exam, subject, topicName) {
+  const d = DATA[exam][subject];
+  const vals = d.konular[topicName];
+  const yillar = d.yillar;
+  const tahmini = d.tahmini_soru;
+  const puan = d.puan;
+
+  let weightedSum = 0;
+  let totalWeight = 0;
+  const dotData = [];
+
+  for (let i = 0; i < yillar.length; i++) {
+    const yr = yillar[i];
+    const v = vals[i];
+    const w = getWeight(yr);
+    weightedSum += v * w;
+    totalWeight += w;
+    dotData.push({ year: yr, val: v });
+  }
+
+  const avgQ = weightedSum / totalWeight;
+  let nonZeroWeight = 0;
+  for (let i = 0; i < yillar.length; i++) {
+    if (vals[i] > 0) nonZeroWeight += getWeight(yillar[i]);
+  }
+  const prob = nonZeroWeight / totalWeight;
+  const score = avgQ * puan * (0.4 + 0.6 * prob);
+
+  return { avgQ, prob, score, dotData, tahmini, puan };
+}
+
+// ─── COLLECT ALL ACTIVE TOPICS ──────────────────────────────
+function collectActiveTopics() {
+  const topics = [];
+  for (const exam of ['ayt', 'tyt']) {
+    if (!examVisible[exam]) continue;
+    for (const subj of Object.keys(activeSubjects[exam])) {
+      if (!activeSubjects[exam][subj]) continue;
+      const d = DATA[exam][subj];
+      for (const topicName of Object.keys(d.konular)) {
+        const r = computeTopicScore(exam, subj, topicName);
+        if (r.avgQ === 0 && r.prob === 0) continue;
+        topics.push({ exam, subj, topicName, ...r });
+      }
+    }
+  }
+  topics.sort((a, b) => b.score - a.score);
+  return topics;
+}
+
+// ─── TIER ASSIGNMENT ─────────────────────────────────────────
+function getTier(prob, avgQ) {
+  if (avgQ >= 3.0) return 'S';
+  if (avgQ >= 2.0) return 'A';
+  if (avgQ >= 1.3) return 'B';
+  if (avgQ >= 0.8) return 'C';
+  if (avgQ >= 0.5) return 'D';
+  return 'E';
+}
+
+const TIER_META = {
+  S: { label: '🔥 EN YÜKSEK — ~3 SORU VE ÜZERİ' },
+  A: { label: '🟢 YÜKSEK — ~2 SORU VE ÜZERİ' },
+  B: { label: '🔵 ORTA — ~1.3 SORU VE ÜZERİ' },
+  C: { label: '🔴 AZ — ~0.8 SORU VE ÜZERİ' },
+  D: { label: '🟤 DÜŞÜK — ~0.8 SORUNUN ALTINDA' },
+  E: { label: '⚪ DAHA DÜŞÜK — ~0.5 VE ALTI' }
+};
+
+const SUBJ_LABELS = {
+  mat: 'MAT', fiz: 'FİZ', kim: 'KİM', biy: 'BİY', geo: 'GEO',
+  turkce: 'TR', tarih: 'TAR', cografya: 'COĞ', felsefe: 'FEL'
+};
+
+// ─── RENDER DOTS ────────────────────────────────────────────
+function renderDots(dotData) {
+  return dotData.map(d => {
+    const cls = d.val >= 3 ? 'high-data' : d.val > 0 ? 'has-data' : '';
+    const label = d.val === 0 ? '—' : d.val;
+    return `<span class="dot ${cls}">${d.year}:${label}</span>`;
+  }).join('');
+}
+
+// ─── RENDER CARDS ───────────────────────────────────────────
+function render() {
+  const topics = collectActiveTopics();
+  const container = document.getElementById('cards-container');
+  const noSel = document.getElementById('no-selection');
+  const summaryGrid = document.getElementById('summary-grid');
+
+  const anyActive = topics.length > 0;
+  if (!anyActive) {
+    container.innerHTML = '';
+    noSel.style.display = 'block';
+    summaryGrid.innerHTML = '';
+    return;
+  }
+  noSel.style.display = 'none';
+
+  // Summary stats
+  let activeCount = 0, totalTahmini = 0;
+  const allYears = new Set();
+  for (const exam of ['ayt','tyt']) {
+    if (!examVisible[exam]) continue;
+    for (const subj of Object.keys(activeSubjects[exam])) {
+      if (!activeSubjects[exam][subj]) continue;
+      activeCount++;
+      totalTahmini += DATA[exam][subj].tahmini_soru;
+      DATA[exam][subj].yillar.forEach(y => allYears.add(y));
+    }
+  }
+
+  summaryGrid.innerHTML = `
+    <div class="stat-card"><div class="stat-num">${totalTahmini}</div><div class="stat-desc">Tahmini Toplam Soru</div></div>
+    <div class="stat-card"><div class="stat-num">${activeCount}</div><div class="stat-desc">Seçili Ders</div></div>
+    <div class="stat-card"><div class="stat-num">${topics.length}</div><div class="stat-desc">Analiz Edilen Konu</div></div>
+    <div class="stat-card"><div class="stat-num">${allYears.size}</div><div class="stat-desc">Farklı Yıl Verisi</div></div>
+  `;
+
+  const tierGroups = { S: [], A: [], B: [], C: [], D: [], E: [] };
+  for (const t of topics) {
+    const tier = getTier(t.prob, t.avgQ);
+    tierGroups[tier].push({ ...t, tier });
+  }
+
+  let html = '';
+  for (const tier of ['S', 'A', 'B', 'C', 'D', 'E']) {
+    const items = tierGroups[tier];
+    if (items.length === 0) continue;
+    html += `<div class="section-title">${TIER_META[tier].label}</div>`;
+    for (const t of items) {
+      const pct = Math.round(t.prob * 100);
+      const barW = Math.min(Math.round(t.prob * 100), 100);
+      const avgRounded = t.avgQ.toFixed(1);
+      const puanPerQ = (t.puan).toFixed(2);
+      const tagClass = `tag-${t.subj}`;
+      const subjLabel = SUBJ_LABELS[t.subj];
+      const examBadge = t.exam === 'tyt'
+        ? `<span style="font-family:'JetBrains Mono',monospace;font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(125,211,252,0.12);color:#7dd3fc;letter-spacing:1px;font-weight:700">TYT</span>`
+        : `<span style="font-family:'JetBrains Mono',monospace;font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(255,255,255,0.07);color:#cbd5e1;letter-spacing:1px;font-weight:700">AYT</span>`;
+      html += `
+        <div class="card tier-${tier}">
+          <div class="card-left">
+            <div class="topic-name">
+              ${t.topicName}
+              ${examBadge}
+              <span class="subject-tag ${tagClass}">${subjLabel}</span>
+            </div>
+            <div class="bar-row">
+              <div class="bar-track"><div class="bar-fill" style="width:0" data-w="${barW}"></div></div>
+            </div>
+            <div class="year-dots">${renderDots(t.dotData)}</div>
+            <div class="puan-info">Katsayı: ${puanPerQ} pt/soru → tahmini puan: ~${(t.avgQ * t.puan).toFixed(2)} pt</div>
+            <span class="tier-label">${tier} TİER</span>
+          </div>
+          <div class="card-right">
+            <div class="prob-number">${pct}%</div>
+            <div class="prob-label">Olasılık</div>
+            <div class="expected-big">~${avgRounded}</div>
+            <div class="expected-label">Beklenen Soru</div>
+          </div>
+        </div>`;
+    }
+  }
+
+  container.innerHTML = html;
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.bar-fill').forEach(el => {
+        const w = el.getAttribute('data-w');
+        el.style.width = w + '%';
+      });
+    });
+  });
+}
+
+// ─── TOGGLE SINGLE SUBJECT ──────────────────────────────────
+function toggleSubject(subj, exam) {
+  activeSubjects[exam][subj] = !activeSubjects[exam][subj];
+  const btn = document.querySelector(`.toggle-btn[data-subject="${subj}"][data-exam="${exam}"]`);
+  btn.classList.toggle('active', activeSubjects[exam][subj]);
+  render();
+}
+
+// ─── TOGGLE ENTIRE EXAM ROW ──────────────────────────────────
+function toggleExam(exam) {
+  examVisible[exam] = !examVisible[exam];
+  const masterBtn = document.querySelector(`.master-btn.${exam}-master`);
+  masterBtn.classList.toggle('active', examVisible[exam]);
+  const btns = document.querySelectorAll(`.toggle-btn[data-exam="${exam}"]`);
+  btns.forEach(b => {
+    b.style.opacity = examVisible[exam] ? '' : '0.18';
+    b.style.pointerEvents = examVisible[exam] ? '' : 'none';
+  });
+  render();
+}
+
+// ─── INIT ────────────────────────────────────────────────────
+render();
+setTimeout(() => {
+  document.querySelectorAll('.bar-fill').forEach(el => {
+    const w = el.getAttribute('data-w');
+    if (w) el.style.width = w + '%';
+  });
+}, 100);
+</script>
+</body>
+</html>
