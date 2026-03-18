@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gradient Kutu</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a1a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    flex-direction: column;
+    gap: 48px;
+    padding: 60px 20px;
+    font-family: 'Courier New', monospace;
+  }
+
+  .section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .label {
+    color: #555;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .box-wrapper {
+    position: relative;
+    width: 500px;
+    height: 500px;
+  }
+
+  canvas {
+    display: block;
+    border: 1px solid #2e2e2e;
+  }
+
+  .corner {
+    position: absolute;
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    opacity: 0.6;
+  }
+  .tl  { top: -17px; left: 0;   color: #88ff88; }
+  .tr  { top: -17px; right: 0;  color: #ffffff; text-align: right; }
+  .bl  { bottom: -17px; left: 0;  color: #999; }
+  .br  { bottom: -17px; right: 0; color: #ff7777; text-align: right; }
+
+  .tl2 { top: -17px; left: 0;   color: #ffe566; }
+  .tr2 { top: -17px; right: 0;  color: #88ee99; text-align: right; }
+  .bl2 { bottom: -17px; left: 0;  color: #777; }
+  .br2 { bottom: -17px; right: 0; color: #ff9999; text-align: right; }
+
+  .tl3 { top: -17px; left: 0;   color: #66ff88; }
+  .tr3 { top: -17px; right: 0;  color: #6699ff; text-align: right; }
+  .bl3 { bottom: -17px; left: 0;  color: #777; }
+  .br3 { bottom: -17px; right: 0; color: #ff7777; text-align: right; }
+</style>
+</head>
+<body>
+
+<!-- KUTU 1 -->
+<div class="section">
+  <div class="label">I — Diyagonal Eksen · Parlaklık Skalası</div>
+  <div class="box-wrapper">
+    <canvas id="c1" width="500" height="500"></canvas>
+    <span class="corner tl">Yeşil ✦</span>
+    <span class="corner tr">✦ Beyaz</span>
+    <span class="corner bl">✦ Siyah / Puslu</span>
+    <span class="corner br">Kırmızı ✦</span>
+  </div>
+</div>
+
+<!-- KUTU 2 -->
+<div class="section">
+  <div class="label">II — Köşe Renk Merkezleri · Pastel Geçiş</div>
+  <div class="box-wrapper">
+    <canvas id="c2" width="500" height="500"></canvas>
+    <span class="corner tl2">Sarı ✦</span>
+    <span class="corner tr2">✦ Yeşil</span>
+    <span class="corner bl2">✦ Siyah</span>
+    <span class="corner br2">Kırmızı ✦</span>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// KUTU 1 — tüm çizgiler görünmez
+// ─────────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('c1');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const imageData = ctx.createImageData(W, H);
+  const data = imageData.data;
+
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const idx = (y * W + x) * 4;
+      const nx = x / (W - 1);
+      const ny = y / (H - 1);
+
+      const diagMain = (nx + (1 - ny)) / 2; // 0=sol-alt, 1=sağ-üst
+      const c = nx + ny - 1; // -1=sol-üst(yeşil), 0=orta(sarı), +1=sağ-alt(kırmızı)
+
+      let cr, cg, cb;
+      if (c >= 0) {
+        cr = 1.0; cg = 1.0 - c; cb = 0.0;
+      } else {
+        cr = 1.0 + c; cg = 1.0; cb = 0.0;
+      }
+
+      let finalR, finalG, finalB, finalA;
+
+      if (diagMain < 0.5) {
+        const dark = 1 - diagMain * 2;
+        finalR = cr * (1 - dark);
+        finalG = cg * (1 - dark);
+        finalB = cb * (1 - dark);
+        const fog = dark;
+        finalA = 1.0 - fog * 0.3;
+        const fogColor = 0.15;
+        finalR = finalR * (1 - fog * 0.5) + fogColor * fog * 0.5;
+        finalG = finalG * (1 - fog * 0.5) + fogColor * fog * 0.5;
+        finalB = finalB * (1 - fog * 0.5) + fogColor * fog * 0.5;
+      } else {
+        const light = (diagMain - 0.5) * 2;
+        finalR = cr + (1 - cr) * light;
+        finalG = cg + (1 - cg) * light;
+        finalB = cb + (1 - cb) * light;
+        finalA = 1.0;
+      }
+
+      data[idx]     = Math.round(finalR * 255);
+      data[idx + 1] = Math.round(finalG * 255);
+      data[idx + 2] = Math.round(finalB * 255);
+      data[idx + 3] = Math.round(finalA * 255);
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+
+  // Köşe nokta işaretleri (çizgi yok)
+  [
+    { x: W-10, y: 10,    color: 'rgba(255,255,255,0.85)' },
+    { x: 10,   y: H-10,  color: 'rgba(35,35,35,0.95)', stroke: '#666' },
+    { x: W-10, y: H-10,  color: 'rgba(255,70,70,0.8)' },
+    { x: 10,   y: 10,    color: 'rgba(80,255,100,0.8)' },
+  ].forEach(({ x, y, color, stroke }) => {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke(); }
+    ctx.fill();
+    ctx.restore();
+  });
+})();
+
+
+// ─────────────────────────────────────────────
+// KUTU 2 — köşe renk merkezleri, pastel, kontrast
+// Sol-üst: Sarı | Sağ-üst: Yeşil
+// Sol-alt: Siyah/koyu-gri | Sağ-alt: Kırmızı
+// ─────────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('c2');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const imageData = ctx.createImageData(W, H);
+  const data = imageData.data;
+
+  const TL = [255, 238, 80];   // sol-üst: sarı
+  const TR = [95,  225, 130];  // sağ-üst: yeşil
+  const BL = [22,  22,  30];   // sol-alt: siyah/koyu gri
+  const BR = [238, 72,  72];   // sağ-alt: kırmızı
+
+  function sCurve(v) {
+    v = v / 255;
+    v = v < 0.5 ? 2 * v * v : 1 - 2 * (1 - v) * (1 - v);
+    return v * 255;
+  }
+
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const idx = (y * W + x) * 4;
+      const nx = x / (W - 1);
+      const ny = y / (H - 1);
+
+      // Bilineer interpolasyon
+      const topR = TL[0] * (1 - nx) + TR[0] * nx;
+      const topG = TL[1] * (1 - nx) + TR[1] * nx;
+      const topB = TL[2] * (1 - nx) + TR[2] * nx;
+
+      const botR = BL[0] * (1 - nx) + BR[0] * nx;
+      const botG = BL[1] * (1 - nx) + BR[1] * nx;
+      const botB = BL[2] * (1 - nx) + BR[2] * nx;
+
+      let r = topR * (1 - ny) + botR * ny;
+      let g = topG * (1 - ny) + botG * ny;
+      let b = topB * (1 - ny) + botB * ny;
+
+      // S-curve kontrast
+      r = sCurve(r);
+      g = sCurve(g);
+      b = sCurve(b);
+
+      // Hafif pastel beyazlık
+      const pw = 0.07;
+      r = r * (1 - pw) + 255 * pw;
+      g = g * (1 - pw) + 255 * pw;
+      b = b * (1 - pw) + 255 * pw;
+
+      data[idx]     = Math.round(Math.min(255, r));
+      data[idx + 1] = Math.round(Math.min(255, g));
+      data[idx + 2] = Math.round(Math.min(255, b));
+      data[idx + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+
+  // Köşe nokta işaretleri
+  [
+    { x: 10,     y: 10,    color: 'rgba(255,235,60,0.95)'  },
+    { x: W - 10, y: 10,    color: 'rgba(80,220,110,0.95)'  },
+    { x: 10,     y: H - 10,color: 'rgba(45,45,55,0.95)', stroke: '#666' },
+    { x: W - 10, y: H - 10,color: 'rgba(240,70,70,0.95)'  },
+  ].forEach(({ x, y, color, stroke }) => {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, 6, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1.5; ctx.stroke(); }
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 12;
+    ctx.fill();
+    ctx.restore();
+  });
+})();
+</script>
+
+<!-- KUTU 3 -->
+<div class="section">
+  <div class="label">III — Çapraz Karışım · Ayarlanabilir</div>
+  <div class="box-wrapper">
+    <canvas id="c3" width="500" height="500"></canvas>
+    <span class="corner tl3">Yeşil ✦</span>
+    <span class="corner tr3">✦ Mavi</span>
+    <span class="corner bl3">✦ Siyah</span>
+    <span class="corner br3">Kırmızı ✦</span>
+  </div>
+</div>
+
+<!-- KONTROL PANELİ -->
+<div id="controls" style="
+  width: 500px;
+  background: #111;
+  border: 1px solid #2a2a2a;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 40px;
+">
+  <div style="color:#444;font-size:9px;letter-spacing:3px;text-transform:uppercase;margin-bottom:2px;">Renk Ayarları</div>
+
+  <!-- SARI (çapraz eksen) -->
+  <div class="ctrl-row">
+    <div class="ctrl-label" style="color:#e8d44d;">● Sarı Eksen</div>
+    <div class="ctrl-group">
+      <span class="ctrl-sub">Uzaklık Azalma</span>
+      <input type="range" id="yellow_falloff" min="0.5" max="4" step="0.05" value="1.0">
+      <span class="ctrl-val" id="yellow_falloff_val">1.0</span>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-sub">Genişlik</span>
+      <input type="range" id="yellow_width" min="0.01" max="0.6" step="0.01" value="0.18">
+      <span class="ctrl-val" id="yellow_width_val">0.18</span>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-sub">Opaklık</span>
+      <input type="range" id="yellow_opacity" min="0" max="1" step="0.01" value="0.55">
+      <span class="ctrl-val" id="yellow_opacity_val">0.55</span>
+    </div>
+  </div>
+
+  <!-- YEŞİL -->
+  <div class="ctrl-row">
+    <div class="ctrl-label" style="color:#40d758;">● Yeşil</div>
+    <div class="ctrl-group">
+      <span class="ctrl-sub">Uzaklık Azalma</span>
+      <input type="range" id="green_falloff" min="0.5" max="4" step="0.05" value="1.0">
+      <span class="ctrl-val" id="green_falloff_val">1.0</span>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-sub">Merkez Yoğunluk</span>
+      <input type="range" id="green_strength" min="0" max="1" step="0.01" value="1.0">
+      <span class="ctrl-val" id="green_strength_val">1.0</span>
+    </div>
+  </div>
+
+  <!-- MAVİ -->
+  <div class="ctrl-row">
+    <div class="ctrl-label" style="color:#5599ff;">● Mavi</div>
+    <div class="ctrl-group">
+      <span class="ctrl-sub">Uzaklık Azalma</span>
+      <input type="range" id="blue_falloff" min="0.5" max="4" step="0.05" value="1.8">
+      <span class="ctrl-val" id="blue_falloff_val">1.8</span>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-sub">Merkez Yoğunluk</span>
+      <input type="range" id="blue_strength" min="0" max="1" step="0.01" value="0.72">
+      <span class="ctrl-val" id="blue_strength_val">0.72</span>
+    </div>
+  </div>
+
+  <!-- KIRMIZI -->
+  <div class="ctrl-row">
+    <div class="ctrl-label" style="color:#ff6655;">● Kırmızı</div>
+    <div class="ctrl-group">
+      <span class="ctrl-sub">Uzaklık Azalma</span>
+      <input type="range" id="red_falloff" min="0.5" max="4" step="0.05" value="1.0">
+      <span class="ctrl-val" id="red_falloff_val">1.0</span>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-sub">Merkez Yoğunluk</span>
+      <input type="range" id="red_strength" min="0" max="1" step="0.01" value="1.0">
+      <span class="ctrl-val" id="red_strength_val">1.0</span>
+    </div>
+  </div>
+
+  <!-- SİYAH -->
+  <div class="ctrl-row">
+    <div class="ctrl-label" style="color:#888;">● Siyah</div>
+    <div class="ctrl-group">
+      <span class="ctrl-sub">Uzaklık Azalma</span>
+      <input type="range" id="black_falloff" min="0.5" max="4" step="0.05" value="1.8">
+      <span class="ctrl-val" id="black_falloff_val">1.8</span>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-sub">Merkez Yoğunluk</span>
+      <input type="range" id="black_strength" min="0" max="1" step="0.01" value="0.70">
+      <span class="ctrl-val" id="black_strength_val">0.70</span>
+    </div>
+  </div>
+</div>
+
+<style>
+.ctrl-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.ctrl-label {
+  font-size: 10px;
+  letter-spacing: 1px;
+  width: 80px;
+  flex-shrink: 0;
+}
+.ctrl-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+.ctrl-sub {
+  font-size: 8px;
+  color: #444;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  width: 90px;
+  flex-shrink: 0;
+}
+.ctrl-val {
+  font-size: 9px;
+  color: #555;
+  width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 2px;
+  background: #2a2a2a;
+  outline: none;
+  border-radius: 1px;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #555;
+  cursor: pointer;
+}
+input[type=range]:hover::-webkit-slider-thumb { background: #888; }
+</style>
+
+<script>
+(function() {
+  const canvas = document.getElementById('c3');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  const TL = [40,  215, 85];
+  const TR = [55,  90,  230];
+  const BL = [16,  16,  20];
+  const BR = [235, 45,  45];
+
+  // Parametreler
+  const params = {
+    yellow_falloff:   1.0,
+    yellow_width:     0.18,
+    yellow_opacity:   0.55,
+    green_falloff:    1.0,
+    green_strength:   1.0,
+    blue_falloff:     1.8,
+    blue_strength:    0.72,
+    red_falloff:      1.0,
+    red_strength:     1.0,
+    black_falloff:    1.8,
+    black_strength:   0.70,
+  };
+
+  // Slider bağlama
+  Object.keys(params).forEach(key => {
+    const el = document.getElementById(key);
+    const valEl = document.getElementById(key + '_val');
+    if (!el) return;
+    el.addEventListener('input', () => {
+      params[key] = parseFloat(el.value);
+      valEl.textContent = params[key].toFixed(2);
+      draw();
+    });
+  });
+
+  function draw() {
+    const imageData = ctx.createImageData(W, H);
+    const data = imageData.data;
+
+    const YELLOW = [255, 210, 30]; // sarı eksen rengi
+
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const idx = (y * W + x) * 4;
+        const nx = x / (W - 1);
+        const ny = y / (H - 1);
+
+        // ── Diyagonale dik mesafe: sarı eksen merkezi (sol-alt→sağ-üst)
+        // c = 0 → tam diyagonal (sarı merkez), uzaklaştıkça azalır
+        const diagDist = Math.abs(nx + ny - 1); // 0..1
+        const yellowRaw = Math.max(0, 1 - diagDist / Math.max(params.yellow_width, 0.01));
+        const yellowStr = Math.pow(yellowRaw, params.yellow_falloff) * params.yellow_opacity;
+
+        // ── Köşe renk merkezleri: köşeye uzaklık bazlı
+        // Yeşil: sol-üst
+        const distTL = Math.sqrt(nx*nx + ny*ny);
+        const greenStr = Math.pow(Math.max(0, 1 - distTL), params.green_falloff) * params.green_strength;
+
+        // Mavi: sağ-üst
+        const distTR = Math.sqrt((1-nx)*(1-nx) + ny*ny);
+        const blueStr = Math.pow(Math.max(0, 1 - distTR), params.blue_falloff) * params.blue_strength;
+
+        // Kırmızı: sağ-alt
+        const distBR = Math.sqrt((1-nx)*(1-nx) + (1-ny)*(1-ny));
+        const redStr = Math.pow(Math.max(0, 1 - distBR), params.red_falloff) * params.red_strength;
+
+        // Siyah: sol-alt
+        const distBL = Math.sqrt(nx*nx + (1-ny)*(1-ny));
+        const blackStr = Math.pow(Math.max(0, 1 - distBL), params.black_falloff) * params.black_strength;
+
+        // ── Ağırlıklı karışım: önce sarı ekseni temel al, üstüne köşeler
+        // Başlangıç: sarı eksen rengi (strength kadar) + gri zemin
+        let r = YELLOW[0] * yellowStr + 128 * (1 - yellowStr);
+        let g = YELLOW[1] * yellowStr + 128 * (1 - yellowStr);
+        let b = YELLOW[2] * yellowStr + 128 * (1 - yellowStr);
+
+        // Yeşil karıştır
+        r = r * (1 - greenStr) + TL[0] * greenStr;
+        g = g * (1 - greenStr) + TL[1] * greenStr;
+        b = b * (1 - greenStr) + TL[2] * greenStr;
+
+        // Kırmızı karıştır
+        r = r * (1 - redStr) + BR[0] * redStr;
+        g = g * (1 - redStr) + BR[1] * redStr;
+        b = b * (1 - redStr) + BR[2] * redStr;
+
+        // Mavi karıştır
+        r = r * (1 - blueStr) + TR[0] * blueStr;
+        g = g * (1 - blueStr) + TR[1] * blueStr;
+        b = b * (1 - blueStr) + TR[2] * blueStr;
+
+        // Siyah karart
+        r = r * (1 - blackStr);
+        g = g * (1 - blackStr);
+        b = b * (1 - blackStr);
+
+        // S-curve kontrast
+        function sc(v) {
+          v = v / 255;
+          v = v < 0.5 ? 2*v*v : 1 - 2*(1-v)*(1-v);
+          return v * 255;
+        }
+        r = sc(r); g = sc(g); b = sc(b);
+
+        data[idx]     = Math.round(Math.min(255, Math.max(0, r)));
+        data[idx + 1] = Math.round(Math.min(255, Math.max(0, g)));
+        data[idx + 2] = Math.round(Math.min(255, Math.max(0, b)));
+        data[idx + 3] = 255;
+      }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+
+    // Köşe nokta işaretleri — sarı overlay'in ÜSTÜNDE
+    [
+      { x: 10,     y: 10,    color: 'rgba(40,215,85,0.95)'  },
+      { x: W - 10, y: 10,    color: 'rgba(70,110,235,0.95)' },
+      { x: 10,     y: H - 10,color: 'rgba(25,25,28,0.95)', stroke: '#555' },
+      { x: W - 10, y: H - 10,color: 'rgba(235,45,45,0.95)' },
+    ].forEach(({ x, y, color, stroke }) => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x, y, 6, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1.5; ctx.stroke(); }
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 14;
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  draw();
+})();
+</script>
+</body>
+</html>
