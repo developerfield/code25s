@@ -394,37 +394,12 @@
   .popup-cell.selected { background: var(--accent); color: #fff; }
   .popup-cell.today { box-shadow: 0 0 0 1px var(--accent2); }
 
-  /* MODE SWITCHER */
-  .mode-switcher {
-    display: flex;
-    gap: 6px;
-    width: 100%; max-width: 420px;
-    margin-bottom: 20px;
-  }
-  .mode-btn {
-    flex: 1;
-    padding: 9px 6px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    background: var(--surface2);
-    color: var(--muted);
-    font-family: 'Space Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all .15s;
-    text-align: center;
-  }
-  .mode-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-
   /* LINEAR ROW (tip 2) */
   .row-section {
-    display: none;
+    display: block;
     width: 100%; max-width: 420px;
     margin-bottom: 16px;
   }
-  .row-section.visible { display: block; }
 
   .btn-row {
     display: flex;
@@ -461,6 +436,28 @@
   .row-btn:hover::before { background: rgba(0,0,0,0.0); }
   .row-btn.selected { border-color: rgba(255,255,255,0.8); transform: scale(1.06); box-shadow: 0 0 14px rgba(255,255,255,0.2); }
   .row-btn.selected::before { background: rgba(0,0,0,0.0); }
+
+  .section-divider {
+    width: 100%; max-width: 420px;
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 4px 0 16px;
+  }
+  .tip-badge {
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  /* dual values in calendar cells */
+  .cell-vals { display: flex; flex-direction: column; align-items: center; gap: 1px; margin-top: 1px; }
+  /* daily view dual */
+  .daily-dual { display: flex; gap: 20px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  .daily-item { text-align: center; }
+  .daily-item-label { font-size: 9px; color: var(--muted); font-family: 'Space Mono', monospace; letter-spacing: 2px; margin-bottom: 4px; }
+  .daily-item-val { font-size: 36px; font-weight: 800; font-family: 'Space Mono', monospace; letter-spacing: 2px; }
   .toast {
     position: fixed;
     bottom: 24px;
@@ -485,12 +482,6 @@
 
 <p class="app-title">yeniAX · veri girişi</p>
 
-<!-- MODE SWITCHER -->
-<div class="mode-switcher">
-  <button class="mode-btn active" id="mode1Btn">TİP · 1</button>
-  <button class="mode-btn" id="mode2Btn">TİP · 2</button>
-</div>
-
 <!-- DATE NAV -->
 <div class="date-nav">
   <button class="nav-btn" id="prevDay">‹</button>
@@ -504,14 +495,16 @@
 
 <!-- GRID (Tip 1) -->
 <div class="grid-section" id="gridSection">
-  <div class="grid-label">değer seç</div>
+  <div class="tip-badge">TİP · 1</div>
   <div class="selected-preview" id="selPreview">seçili: <span>—</span></div>
   <div class="btn-grid" id="btnGrid"></div>
 </div>
 
+<hr class="section-divider">
+
 <!-- ROW (Tip 2) -->
 <div class="row-section" id="rowSection">
-  <div class="grid-label">değer seç</div>
+  <div class="tip-badge">TİP · 2</div>
   <div class="selected-preview" id="selPreview2">seçili: <span>—</span></div>
   <div class="btn-row" id="btnRow"></div>
 </div>
@@ -664,24 +657,9 @@
     document.getElementById("selPreview2").innerHTML = `seçili: <span>—</span>`;
   }
 
-  // ── Mode switch ───────────────────────────────────────────
-  document.getElementById("mode1Btn").addEventListener("click", () => setMode(1));
-  document.getElementById("mode2Btn").addEventListener("click", () => setMode(2));
-
-  function setMode(m) {
-    activeMode = m;
-    document.getElementById("mode1Btn").classList.toggle("active", m===1);
-    document.getElementById("mode2Btn").classList.toggle("active", m===2);
-    document.getElementById("gridSection").classList.toggle("visible", false);
-    document.getElementById("rowSection").classList.toggle("visible", false);
-    if(m===1) document.getElementById("gridSection").style.display="block";
-    else document.getElementById("gridSection").style.display="none";
-    if(m===2) document.getElementById("rowSection").style.display="block";
-    else document.getElementById("rowSection").style.display="none";
-  }
-  // init visibility
-  document.getElementById("gridSection").style.display="block";
-  document.getElementById("rowSection").style.display="none";
+  // ── Mode switch (removed — both always visible) ───────────
+  // activeMode kept for backward compat but unused now
+  let activeMode = 1;
 
   // ── Date nav ──────────────────────────────────────────────
   function updateDateNav() {
@@ -711,22 +689,27 @@
       .catch(() => { cache[k] = {}; cb({}); });
   }
 
-  // ── Save ──────────────────────────────────────────────────
+  // ── Save ─────────────────────────────────────────────────
   document.getElementById("saveBtn").addEventListener("click", async () => {
-    const val = activeMode===1 ? selectedVal1 : selectedVal2;
-    const field = activeMode===1 ? "v" : "v2";
-    if(!val) { showToast("Önce bir değer seç", "err"); return; }
+    if(!selectedVal1 && !selectedVal2) { showToast("Önce en az bir değer seç", "err"); return; }
     const k = dateKey(selectedDate);
     const btn = document.getElementById("saveBtn");
     btn.classList.add("saving");
+    const data = {};
+    if(selectedVal1) data.v  = selectedVal1;
+    if(selectedVal2) data.v2 = selectedVal2;
     try {
-      await db.collection(COL).doc(k).set({[field]: val}, {merge: true});
+      await db.collection(COL).doc(k).set(data, {merge: true});
       if(!cache[k]) cache[k] = {};
-      cache[k][field] = val;
+      if(selectedVal1) cache[k].v  = selectedVal1;
+      if(selectedVal2) cache[k].v2 = selectedVal2;
       btn.classList.remove("saving");
       btn.classList.add("saved");
       setTimeout(() => btn.classList.remove("saved"), 1800);
-      showToast(`${k} [${field}] → ${val}`, "ok");
+      const parts = [];
+      if(selectedVal1) parts.push(`v:${selectedVal1}`);
+      if(selectedVal2) parts.push(`v2:${selectedVal2}`);
+      showToast(`${k} → ${parts.join(" | ")}`, "ok");
       refreshCal();
     } catch(e) {
       btn.classList.remove("saving");
@@ -742,16 +725,13 @@
     setTimeout(() => t.classList.remove("show"), 2500);
   }
 
-  // ── Calendar helpers ──────────────────────────────────────
+  // ── Calendar helpers — her zaman ikisi birden ─────────────
   function getColor(doc) {
-    // aktif moda göre renk döner
-    if(activeMode===1 && doc.v)  return COLOR1[doc.v]  || null;
-    if(activeMode===2 && doc.v2) return COLOR2[doc.v2] || null;
+    if(doc.v)  return COLOR1[doc.v]  || null;
     return null;
   }
-  function getLabel(doc) {
-    if(activeMode===1 && doc.v)  return doc.v;
-    if(activeMode===2 && doc.v2) return doc.v2;
+  function getColor2(doc) {
+    if(doc.v2) return COLOR2[doc.v2] || null;
     return null;
   }
 
@@ -790,11 +770,23 @@
     loadDoc(dateKey(calDate), doc => {
       const c = document.getElementById("calContent"); c.innerHTML = "";
       const dv = document.createElement("div"); dv.className = "daily-view";
-      const vEl = document.createElement("div"); vEl.className = "daily-val";
-      const lbl = getLabel(doc), col = getColor(doc);
-      if(lbl) { vEl.textContent = lbl; vEl.style.color = col; }
-      else vEl.innerHTML = `<span style="color:var(--muted);font-size:18px;letter-spacing:2px">veri yok</span>`;
-      dv.appendChild(vEl); c.appendChild(dv);
+      const dual = document.createElement("div"); dual.className = "daily-dual";
+      // Tip 1
+      const item1 = document.createElement("div"); item1.className = "daily-item";
+      const lbl1 = document.createElement("div"); lbl1.className = "daily-item-label"; lbl1.textContent = "TİP·1";
+      const val1 = document.createElement("div"); val1.className = "daily-item-val";
+      if(doc.v) { val1.textContent = doc.v; val1.style.color = COLOR1[doc.v]||"var(--muted)"; }
+      else val1.innerHTML = `<span style="color:var(--muted);font-size:16px">—</span>`;
+      item1.appendChild(lbl1); item1.appendChild(val1);
+      // Tip 2
+      const item2 = document.createElement("div"); item2.className = "daily-item";
+      const lbl2 = document.createElement("div"); lbl2.className = "daily-item-label"; lbl2.textContent = "TİP·2";
+      const val2 = document.createElement("div"); val2.className = "daily-item-val";
+      if(doc.v2) { val2.textContent = doc.v2; val2.style.color = COLOR2[doc.v2]||"var(--muted)"; }
+      else val2.innerHTML = `<span style="color:var(--muted);font-size:16px">—</span>`;
+      item2.appendChild(lbl2); item2.appendChild(val2);
+      dual.appendChild(item1); dual.appendChild(item2);
+      dv.appendChild(dual); c.appendChild(dv);
     });
   }
 
@@ -814,12 +806,26 @@
       for(let d=1;d<=daysInMonth;d++) {
         const k = dateKey(new Date(y,m,d));
         const doc = map[k]||{};
-        const col = getColor(doc), lbl = getLabel(doc);
+        const col1 = getColor(doc), col2 = getColor2(doc);
+        const hasAny = doc.v || doc.v2;
         const cell = document.createElement("div");
-        cell.className = "month-cell"+(lbl?" has-val":"")+(k===todayK?" today":"");
-        if(col) { cell.style.background=col+"28"; cell.style.boxShadow=`inset 0 0 0 1px ${col}55`; }
+        cell.className = "month-cell"+(hasAny?" has-val":"")+(k===todayK?" today":"");
+        // background: split if both, single color if one
+        if(col1 && col2) {
+          cell.style.background = `linear-gradient(135deg, ${col1}30 50%, ${col2}30 50%)`;
+          cell.style.boxShadow = `inset 0 0 0 1px ${col1}44`;
+        } else if(col1) {
+          cell.style.background = col1+"28"; cell.style.boxShadow = `inset 0 0 0 1px ${col1}55`;
+        } else if(col2) {
+          cell.style.background = col2+"28"; cell.style.boxShadow = `inset 0 0 0 1px ${col2}55`;
+        }
         const dn=document.createElement("div"); dn.className="cell-day"; dn.textContent=d; cell.appendChild(dn);
-        if(lbl) { const vn=document.createElement("div"); vn.className="cell-val"; vn.style.color=col; vn.textContent=lbl; cell.appendChild(vn); }
+        if(hasAny) {
+          const vw = document.createElement("div"); vw.className="cell-vals";
+          if(doc.v)  { const vn=document.createElement("div"); vn.className="cell-val";  vn.style.color=col1; vn.textContent=doc.v;  vw.appendChild(vn); }
+          if(doc.v2) { const vn=document.createElement("div"); vn.className="cell-val2"; vn.style.color=col2; vn.textContent=doc.v2; vw.appendChild(vn); }
+          cell.appendChild(vw);
+        }
         grid.appendChild(cell);
       }
       c.appendChild(grid);
@@ -843,11 +849,17 @@
         for(let d=1;d<=days;d++) {
           const k=dateKey(new Date(y,m,d));
           const doc=map[k]||{};
-          const col=getColor(doc), lbl=getLabel(doc);
+          const col1=getColor(doc), col2=getColor2(doc);
           const dot=document.createElement("div");
-          dot.className="ym-dot "+(lbl?"has-val":"empty-day");
-          if(col) dot.style.background=col;
-          dot.title=k+(lbl?" → "+lbl:"");
+          dot.className="ym-dot";
+          if(col1 && col2) {
+            dot.style.background=`linear-gradient(135deg,${col1} 50%,${col2} 50%)`;
+            dot.style.opacity="1";
+          } else if(col1) { dot.style.background=col1; dot.style.opacity="1"; }
+          else if(col2) { dot.style.background=col2; dot.style.opacity="1"; }
+          else dot.classList.add("empty-day");
+          const ttip=(col1?`v:${doc.v} `:"")+(col2?`v2:${doc.v2}`:"");
+          dot.title=k+(ttip?" → "+ttip.trim():"");
           dots.appendChild(dot);
         }
         ym.appendChild(dots); grid.appendChild(ym);
