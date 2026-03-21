@@ -7,475 +7,380 @@
 <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
 
-  :root {
-    --bg: #0a0a0f;
-    --surface: #12121a;
-    --surface2: #1a1a26;
-    --border: #2a2a3a;
-    --accent: #7c6aff;
-    --accent2: #ff6a8a;
-    --text: #e8e8f0;
-    --muted: #5a5a7a;
-  }
+:root {
+  --bg: #0a0a0f;
+  --surface: #12121a;
+  --surface2: #1a1a26;
+  --border: #2a2a3a;
+  --accent: #7c6aff;
+  --accent2: #ff6a8a;
+  --text: #e8e8f0;
+  --muted: #5a5a7a;
+}
 
-  * { margin:0; padding:0; box-sizing:border-box; }
+* { margin:0; padding:0; box-sizing:border-box; }
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Syne', sans-serif;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 20px 16px 40px;
-  }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 16px 60px;
+}
 
-  .app-title {
-    font-size: 11px;
-    letter-spacing: 6px;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-bottom: 24px;
-    font-family: 'Space Mono', monospace;
-  }
+.app-title {
+  font-size: 11px;
+  letter-spacing: 6px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  font-family: 'Space Mono', monospace;
+}
 
-  /* DATE NAV */
-  .date-nav {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 24px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 12px 16px;
-    width: 100%;
-    max-width: 420px;
-  }
+/* DATE NAV */
+.date-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  width: 100%;
+  max-width: 420px;
+}
+.nav-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.nav-btn:hover { background: var(--accent); border-color: var(--accent); }
+.date-center {
+  flex: 1; text-align: center; cursor: pointer;
+}
+.date-display { font-size: 17px; font-weight: 700; letter-spacing: 1px; }
+.day-display {
+  font-size: 11px; color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  letter-spacing: 2px; margin-top: 2px;
+}
+.cal-popup-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  width: 36px; height: 36px;
+  border-radius: 8px; cursor: pointer; font-size: 15px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s; flex-shrink: 0;
+}
+.cal-popup-btn:hover { color: var(--accent); border-color: var(--accent); }
 
-  .nav-btn {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    width: 36px; height: 36px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 16px;
-    display: flex; align-items: center; justify-content: center;
-    transition: all .15s;
-    flex-shrink: 0;
-  }
-  .nav-btn:hover { background: var(--accent); border-color: var(--accent); }
+/* SECTION */
+.input-section {
+  width: 100%; max-width: 420px;
+  margin-bottom: 14px;
+}
+.tip-label {
+  font-size: 9px;
+  letter-spacing: 4px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.sel-preview {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  margin-bottom: 8px;
+  min-height: 15px;
+}
+.sel-preview span { font-weight: 700; }
 
-  .date-center {
-    flex: 1;
-    text-align: center;
-    cursor: pointer;
-  }
-  .date-display {
-    font-size: 17px;
-    font-weight: 700;
-    letter-spacing: 1px;
-  }
-  .day-display {
-    font-size: 11px;
-    color: var(--muted);
-    font-family: 'Space Mono', monospace;
-    letter-spacing: 2px;
-    margin-top: 2px;
-  }
+/* 3x3 GRID */
+.btn-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+.val-btn {
+  aspect-ratio: 1;
+  border-radius: 11px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all .15s;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+.val-btn::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.22);
+  transition: background .15s;
+  pointer-events: none;
+}
+.val-btn span { position: relative; z-index: 1; }
+.val-btn:hover { transform: scale(1.05); }
+.val-btn:hover::before { background: rgba(0,0,0,0.04); }
+.val-btn.active-sel { border-color: rgba(255,255,255,0.85); transform: scale(1.07); box-shadow: 0 0 14px rgba(255,255,255,0.22); }
+.val-btn.active-sel::before { background: rgba(0,0,0,0.0); }
 
-  .cal-popup-btn {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    width: 36px; height: 36px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 15px;
-    display: flex; align-items: center; justify-content: center;
-    transition: all .15s;
-    flex-shrink: 0;
-  }
-  .cal-popup-btn:hover { color: var(--accent); border-color: var(--accent); }
+/* ROW */
+.btn-row {
+  display: flex;
+  gap: 4px;
+}
+.row-btn {
+  flex: 1;
+  padding: 13px 2px;
+  border-radius: 9px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  transition: all .15s;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.55);
+}
+.row-btn::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.22);
+  transition: background .15s;
+  pointer-events: none;
+}
+.row-btn span { position: relative; z-index: 1; }
+.row-btn:hover { transform: scale(1.04); }
+.row-btn:hover::before { background: rgba(0,0,0,0.04); }
+.row-btn.active-sel { border-color: rgba(255,255,255,0.85); transform: scale(1.06); box-shadow: 0 0 12px rgba(255,255,255,0.2); }
+.row-btn.active-sel::before { background: rgba(0,0,0,0.0); }
 
-  /* GRID */
-  .grid-section {
-    width: 100%; max-width: 420px;
-    margin-bottom: 16px;
-  }
+/* DIVIDER */
+.divider {
+  width: 100%; max-width: 420px;
+  height: 1px;
+  background: var(--border);
+  margin: 6px 0 18px;
+}
 
-  .grid-label {
-    font-size: 10px;
-    letter-spacing: 4px;
-    color: var(--muted);
-    text-transform: uppercase;
-    font-family: 'Space Mono', monospace;
-    margin-bottom: 8px;
-  }
+/* SAVE */
+.save-btn {
+  width: 100%; max-width: 420px;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+  margin-bottom: 26px;
+  position: relative;
+  overflow: hidden;
+}
+.save-btn:hover { background: #9580ff; transform: translateY(-1px); }
+.save-btn:active { transform: translateY(0); }
+.save-btn.saving { opacity: .55; pointer-events: none; }
+.save-ok {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: #22c55e; opacity: 0;
+  transition: opacity .3s; font-size: 13px;
+}
+.save-btn.saved .save-ok { opacity: 1; }
 
-  .selected-preview {
-    font-size: 11px;
-    color: var(--muted);
-    font-family: 'Space Mono', monospace;
-    margin-bottom: 10px;
-    min-height: 16px;
-  }
-  .selected-preview span { font-weight: 700; }
+/* DATA CALENDAR */
+.data-cal {
+  width: 100%; max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+}
+.cal-tabs {
+  display: flex; gap: 6px; margin-bottom: 14px;
+}
+.cal-tab {
+  flex: 1; padding: 7px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--muted);
+  font-family: 'Space Mono', monospace; font-size: 10px;
+  letter-spacing: 2px; text-transform: uppercase;
+  cursor: pointer; transition: all .15s; text-align: center;
+}
+.cal-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.cal-nav {
+  display: flex; align-items: center;
+  justify-content: space-between; margin-bottom: 14px;
+}
+.cal-nav-btn {
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); width: 28px; height: 28px;
+  border-radius: 6px; cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.cal-nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+.cal-period { font-size: 13px; font-weight: 700; letter-spacing: 1px; }
 
-  .btn-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-  }
+/* DAY VIEW */
+.daily-view { padding: 10px 0; }
+.daily-dual {
+  display: flex; gap: 16px;
+  align-items: center; justify-content: center;
+}
+.daily-item { text-align: center; }
+.daily-item-lbl {
+  font-size: 9px; color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  letter-spacing: 2px; margin-bottom: 4px;
+}
+.daily-item-val {
+  font-size: 38px; font-weight: 800;
+  font-family: 'Space Mono', monospace;
+  letter-spacing: 2px; min-height: 50px;
+  display: flex; align-items: center; justify-content: center;
+}
 
-  .val-btn {
-    aspect-ratio: 1;
-    border-radius: 12px;
-    border: 2px solid transparent;
-    cursor: pointer;
-    font-family: 'Space Mono', monospace;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    transition: all .15s;
-    position: relative;
-    display: flex; align-items: center; justify-content: center;
-    overflow: hidden;
-    color: #fff;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.6);
-  }
-  .val-btn::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: rgba(0,0,0,0.22);
-    transition: background .15s;
-    pointer-events: none;
-  }
-  .val-btn span { position: relative; z-index: 1; }
-  .val-btn:hover { transform: scale(1.05); }
-  .val-btn:hover::before { background: rgba(0,0,0,0.05); }
-  .val-btn.selected { border-color: rgba(255,255,255,0.8); transform: scale(1.07); box-shadow: 0 0 16px rgba(255,255,255,0.25); }
-  .val-btn.selected::before { background: rgba(0,0,0,0.0); }
+/* MONTH VIEW */
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+.month-dow {
+  text-align: center; font-size: 8px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace; padding-bottom: 4px;
+}
+.month-cell {
+  aspect-ratio: 1; border-radius: 5px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: var(--surface2);
+}
+.month-cell.empty { background: transparent; }
+.month-cell.today { box-shadow: 0 0 0 1px var(--accent); }
+.cell-day { font-size: 8px; color: var(--muted); line-height: 1; }
+.month-cell.has-val .cell-day { color: rgba(255,255,255,0.45); }
+.cell-vals { display: flex; flex-direction: column; align-items: center; gap: 0px; margin-top: 1px; }
+.cv1 { font-size: 8px; font-family: 'Space Mono', monospace; font-weight: 700; line-height: 1.1; }
+.cv2 { font-size: 7px; font-family: 'Space Mono', monospace; font-weight: 700; line-height: 1.1; }
 
-  /* SAVE */
-  .save-btn {
-    width: 100%; max-width: 420px;
-    padding: 14px;
-    border-radius: 12px;
-    border: none;
-    background: var(--accent);
-    color: #fff;
-    font-family: 'Syne', sans-serif;
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all .15s;
-    margin-bottom: 28px;
-    position: relative;
-    overflow: hidden;
-  }
-  .save-btn:hover { background: #9580ff; transform: translateY(-1px); }
-  .save-btn:active { transform: translateY(0); }
-  .save-btn.saving { opacity: .6; pointer-events: none; }
-  .save-status {
-    position: absolute;
-    inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    background: #22c55e;
-    opacity: 0;
-    transition: opacity .3s;
-    font-size: 13px;
-  }
-  .save-btn.saved .save-status { opacity: 1; }
+/* YEAR VIEW */
+.year-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.year-month { background: var(--surface2); border-radius: 8px; padding: 8px; }
+.year-month-name {
+  font-size: 9px; letter-spacing: 2px; color: var(--muted);
+  font-family: 'Space Mono', monospace; text-transform: uppercase;
+  margin-bottom: 5px; text-align: center;
+}
+.year-dots { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; }
+.ydot {
+  width: 6px; height: 6px; border-radius: 1px;
+  background: var(--surface); opacity: 0.25;
+}
+.ydot.has { opacity: 1; }
 
-  /* DATA CALENDAR */
-  .data-cal {
-    width: 100%; max-width: 420px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 16px;
-  }
+/* POPUP */
+.overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+  z-index: 100; align-items: center; justify-content: center;
+}
+.overlay.show { display: flex; }
+.popup {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 20px;
+  width: 320px; max-width: 95vw;
+}
+.popup-header {
+  display: flex; align-items: center;
+  justify-content: space-between; margin-bottom: 14px;
+}
+.popup-title {
+  font-size: 11px; letter-spacing: 4px; color: var(--muted);
+  text-transform: uppercase; font-family: 'Space Mono', monospace;
+}
+.popup-close {
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--muted); width: 28px; height: 28px;
+  border-radius: 6px; cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.popup-close:hover { color: var(--accent2); border-color: var(--accent2); }
+.pp-nav {
+  display: flex; align-items: center;
+  justify-content: space-between; margin-bottom: 12px;
+}
+.pp-nav-btn {
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); width: 28px; height: 28px;
+  border-radius: 6px; cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.pp-nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+.pp-period { font-size: 14px; font-weight: 700; }
+.pp-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
+}
+.pp-dow {
+  text-align: center; font-size: 8px; color: var(--muted);
+  font-family: 'Space Mono', monospace; padding-bottom: 3px;
+}
+.pp-cell {
+  aspect-ratio: 1; border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; cursor: pointer;
+  background: var(--surface2); transition: all .12s;
+  font-family: 'Space Mono', monospace;
+}
+.pp-cell.empty { background: transparent; cursor: default; }
+.pp-cell:not(.empty):hover { background: var(--accent); color: #fff; }
+.pp-cell.selected { background: var(--accent); color: #fff; }
+.pp-cell.today { box-shadow: 0 0 0 1px var(--accent2); }
 
-  .cal-tabs {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 16px;
-  }
-  .cal-tab {
-    flex: 1;
-    padding: 7px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--muted);
-    font-family: 'Space Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all .15s;
-    text-align: center;
-  }
-  .cal-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-
-  .cal-nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 14px;
-  }
-  .cal-nav-btn {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    width: 28px; height: 28px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 12px;
-    display: flex; align-items: center; justify-content: center;
-    transition: all .15s;
-  }
-  .cal-nav-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .cal-period { font-size: 13px; font-weight: 700; letter-spacing: 1px; }
-
-  /* Day view */
-  .daily-view { text-align: center; padding: 16px 0; }
-  .daily-val {
-    font-size: 52px;
-    font-weight: 800;
-    font-family: 'Space Mono', monospace;
-    letter-spacing: 4px;
-    min-height: 64px;
-    display: flex; align-items: center; justify-content: center;
-  }
-
-  /* Month view */
-  .month-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 3px;
-  }
-  .month-dow {
-    text-align: center;
-    font-size: 8px;
-    color: var(--muted);
-    font-family: 'Space Mono', monospace;
-    padding-bottom: 4px;
-  }
-  .month-cell {
-    aspect-ratio: 1;
-    border-radius: 5px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: var(--surface2);
-  }
-  .month-cell.empty { background: transparent; }
-  .month-cell.today { box-shadow: 0 0 0 1px var(--accent); }
-  .cell-day { font-size: 8px; color: var(--muted); line-height: 1; }
-  .month-cell.has-val .cell-day { color: rgba(255,255,255,0.5); }
-  .cell-val { font-size: 8px; font-family: 'Space Mono', monospace; font-weight: 700; line-height: 1; margin-top: 1px; }
-
-  /* Year view */
-  .year-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .year-month { background: var(--surface2); border-radius: 8px; padding: 8px; }
-  .year-month-name {
-    font-size: 9px;
-    letter-spacing: 2px;
-    color: var(--muted);
-    font-family: 'Space Mono', monospace;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-    text-align: center;
-  }
-  .year-month-dots { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; }
-  .ym-dot { width: 6px; height: 6px; border-radius: 1px; background: var(--surface); }
-  .ym-dot.empty-day { opacity: 0.25; }
-
-  /* POPUP */
-  .overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.75);
-    backdrop-filter: blur(4px);
-    z-index: 100;
-    align-items: center;
-    justify-content: center;
-  }
-  .overlay.show { display: flex; }
-  .popup {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 20px;
-    width: 320px;
-    max-width: 95vw;
-  }
-  .popup-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-  }
-  .popup-title {
-    font-size: 11px;
-    letter-spacing: 4px;
-    color: var(--muted);
-    text-transform: uppercase;
-    font-family: 'Space Mono', monospace;
-  }
-  .popup-close {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    width: 28px; height: 28px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    display: flex; align-items: center; justify-content: center;
-    transition: all .15s;
-  }
-  .popup-close:hover { color: var(--accent2); border-color: var(--accent2); }
-  .popup-cal-nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-  }
-  .popup-period { font-size: 14px; font-weight: 700; }
-  .popup-nav-btn {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    width: 28px; height: 28px;
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 12px;
-    transition: all .15s;
-  }
-  .popup-nav-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .popup-month-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 3px;
-  }
-  .popup-dow {
-    text-align: center;
-    font-size: 8px;
-    color: var(--muted);
-    font-family: 'Space Mono', monospace;
-    padding-bottom: 3px;
-  }
-  .popup-cell {
-    aspect-ratio: 1;
-    border-radius: 5px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    cursor: pointer;
-    background: var(--surface2);
-    transition: all .12s;
-    font-family: 'Space Mono', monospace;
-  }
-  .popup-cell.empty { background: transparent; cursor: default; }
-  .popup-cell:not(.empty):hover { background: var(--accent); color: #fff; }
-  .popup-cell.selected { background: var(--accent); color: #fff; }
-  .popup-cell.today { box-shadow: 0 0 0 1px var(--accent2); }
-
-  /* LINEAR ROW (tip 2) */
-  .row-section {
-    display: block;
-    width: 100%; max-width: 420px;
-    margin-bottom: 16px;
-  }
-
-  .btn-row {
-    display: flex;
-    gap: 5px;
-    width: 100%;
-  }
-  .row-btn {
-    flex: 1;
-    padding: 14px 4px;
-    border-radius: 10px;
-    border: 2px solid transparent;
-    cursor: pointer;
-    font-family: 'Space Mono', monospace;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    transition: all .15s;
-    position: relative;
-    display: flex; align-items: center; justify-content: center;
-    overflow: hidden;
-    color: #fff;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
-  }
-  .row-btn::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: rgba(0,0,0,0.2);
-    transition: background .15s;
-    pointer-events: none;
-  }
-  .row-btn span { position: relative; z-index: 1; }
-  .row-btn:hover { transform: scale(1.04); }
-  .row-btn:hover::before { background: rgba(0,0,0,0.0); }
-  .row-btn.selected { border-color: rgba(255,255,255,0.8); transform: scale(1.06); box-shadow: 0 0 14px rgba(255,255,255,0.2); }
-  .row-btn.selected::before { background: rgba(0,0,0,0.0); }
-
-  .section-divider {
-    width: 100%; max-width: 420px;
-    border: none;
-    border-top: 1px solid var(--border);
-    margin: 4px 0 16px;
-  }
-  .tip-badge {
-    font-size: 9px;
-    letter-spacing: 3px;
-    color: var(--muted);
-    font-family: 'Space Mono', monospace;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
-  /* dual values in calendar cells */
-  .cell-vals { display: flex; flex-direction: column; align-items: center; gap: 1px; margin-top: 1px; }
-  /* daily view dual */
-  .daily-dual { display: flex; gap: 20px; align-items: center; justify-content: center; flex-wrap: wrap; }
-  .daily-item { text-align: center; }
-  .daily-item-label { font-size: 9px; color: var(--muted); font-family: 'Space Mono', monospace; letter-spacing: 2px; margin-bottom: 4px; }
-  .daily-item-val { font-size: 36px; font-weight: 800; font-family: 'Space Mono', monospace; letter-spacing: 2px; }
-  .toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(60px);
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 20px;
-    font-size: 12px;
-    font-family: 'Space Mono', monospace;
-    transition: transform .3s;
-    z-index: 200;
-    white-space: nowrap;
-  }
-  .toast.show { transform: translateX(-50%) translateY(0); }
-  .toast.ok { border-color: #22c55e; color: #22c55e; }
-  .toast.err { border-color: var(--accent2); color: var(--accent2); }
+/* TOAST */
+.toast {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(70px);
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 20px;
+  font-size: 12px; font-family: 'Space Mono', monospace;
+  transition: transform .3s; z-index: 200; white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.ok { border-color: #22c55e; color: #22c55e; }
+.toast.err { border-color: var(--accent2); color: var(--accent2); }
 </style>
 </head>
 <body>
@@ -493,34 +398,34 @@
   <button class="nav-btn" id="nextDay">›</button>
 </div>
 
-<!-- GRID (Tip 1) -->
-<div class="grid-section" id="gridSection">
-  <div class="tip-badge">TİP · 1</div>
-  <div class="selected-preview" id="selPreview">seçili: <span>—</span></div>
-  <div class="btn-grid" id="btnGrid"></div>
+<!-- TİP 1 -->
+<div class="input-section">
+  <div class="tip-label">TİP · 1</div>
+  <div class="sel-preview" id="prev1">seçili: <span>—</span></div>
+  <div class="btn-grid" id="grid1"></div>
 </div>
 
-<hr class="section-divider">
+<div class="divider"></div>
 
-<!-- ROW (Tip 2) -->
-<div class="row-section" id="rowSection">
-  <div class="tip-badge">TİP · 2</div>
-  <div class="selected-preview" id="selPreview2">seçili: <span>—</span></div>
-  <div class="btn-row" id="btnRow"></div>
+<!-- TİP 2 -->
+<div class="input-section">
+  <div class="tip-label">TİP · 2</div>
+  <div class="sel-preview" id="prev2">seçili: <span>—</span></div>
+  <div class="btn-row" id="row2"></div>
 </div>
 
 <!-- SAVE -->
 <button class="save-btn" id="saveBtn">
   <span>Seçili Güne Kaydet</span>
-  <span class="save-status">✓ Kaydedildi</span>
+  <span class="save-ok">✓ Kaydedildi</span>
 </button>
 
 <!-- DATA CALENDAR -->
 <div class="data-cal">
   <div class="cal-tabs">
-    <div class="cal-tab active" data-mode="day">GÜN</div>
-    <div class="cal-tab" data-mode="month">AY</div>
-    <div class="cal-tab" data-mode="year">YIL</div>
+    <div class="cal-tab active" data-view="day">GÜN</div>
+    <div class="cal-tab" data-view="month">AY</div>
+    <div class="cal-tab" data-view="year">YIL</div>
   </div>
   <div class="cal-nav">
     <button class="cal-nav-btn" id="calPrev">‹</button>
@@ -531,378 +436,405 @@
 </div>
 
 <!-- POPUP CALENDAR -->
-<div class="overlay" id="popupOverlay">
+<div class="overlay" id="overlay">
   <div class="popup">
     <div class="popup-header">
       <div class="popup-title">tarih seç</div>
-      <button class="popup-close" id="popupClose">✕</button>
+      <button class="popup-close" id="ppClose">✕</button>
     </div>
-    <div class="popup-cal-nav">
-      <button class="popup-nav-btn" id="ppPrev">‹</button>
-      <div class="popup-period" id="ppPeriod">—</div>
-      <button class="popup-nav-btn" id="ppNext">›</button>
+    <div class="pp-nav">
+      <button class="pp-nav-btn" id="ppPrev">‹</button>
+      <div class="pp-period" id="ppPeriod">—</div>
+      <button class="pp-nav-btn" id="ppNext">›</button>
     </div>
-    <div class="popup-month-grid" id="ppGrid"></div>
+    <div class="pp-grid" id="ppGrid"></div>
   </div>
 </div>
 
-<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",
-    authDomain: "paralayici.firebaseapp.com",
-    projectId: "paralayici",
-    storageBucket: "paralayici.firebasestorage.app",
-    messagingSenderId: "980843550614",
-    appId: "1:980843550614:web:93dd5bda4ddc377b20efb7"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-  const COL = "yeniAX";
+// ── Firebase ──────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",
+  authDomain: "paralayici.firebaseapp.com",
+  projectId: "paralayici",
+  storageBucket: "paralayici.firebasestorage.app",
+  messagingSenderId: "980843550614",
+  appId: "1:980843550614:web:93dd5bda4ddc377b20efb7"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const COL = "yeniAX";
 
-  const DAYS_TR   = ["Paz","Pzt","Sal","Çar","Per","Cum","Cmt"];
-  const DAYS_FULL = ["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"];
-  const MONTHS_TR = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+// ── Consts ────────────────────────────────────────────────
+const DAYS_SHORT = ["Paz","Pzt","Sal","Çar","Per","Cum","Cmt"];
+const DAYS_LONG  = ["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"];
+const MONTHS     = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
 
-  // ── TİP 1: 3x3 grid ──────────────────────────────────────
-  const VALUES1 = ["C1","B1","A1","C2","B2","A2","C3","B3","A3"];
-  const COLOR1 = {
-    A1:"#4ade80", B1:"#a3e635", C1:"#facc15",
-    A2:"#34d399", B2:"#fb923c", C2:"#f97316",
-    A3:"#16a34a", B3:"#dc2626", C3:"#991b1b",
-  };
+// TİP 1 — 3x3, soldan sağa C→B→A, yukarıdan aşağı 1→2→3
+const T1_VALS = ["C1","B1","A1","C2","B2","A2","C3","B3","A3"];
+const T1_CLR  = {
+  A1:"#4ade80", B1:"#a3e635", C1:"#facc15",
+  A2:"#34d399", B2:"#fb923c", C2:"#f97316",
+  A3:"#16a34a", B3:"#dc2626", C3:"#991b1b"
+};
 
-  // ── TİP 2: yatay sıra — C'ler kırmızı, B'ler turuncu, A'lar yeşil ──
-  // Sıra: C-- C- C  B- B B+  A A+ A++
-  const VALUES2 = ["C--","C-","C","B-","B","B+","A","A+","A++"];
-  const COLOR2 = {
-    "C--":"#7f1d1d",  // koyu kırmızı
-    "C-" :"#b91c1c",  // kırmızı
-    "C"  :"#ef4444",  // açık kırmızı
-    "B-" :"#c2410c",  // koyu turuncu
-    "B"  :"#f97316",  // turuncu
-    "B+" :"#fb923c",  // açık turuncu
-    "A"  :"#16a34a",  // koyu yeşil
-    "A+" :"#22c55e",  // yeşil
-    "A++":"#4ade80",  // açık yeşil
-  };
+// TİP 2 — yatay sıra
+const T2_VALS = ["C--","C-","C","B-","B","B+","A","A+","A++"];
+const T2_CLR  = {
+  "C--":"#7f1d1d","C-":"#b91c1c","C":"#ef4444",
+  "B-":"#c2410c","B":"#f97316","B+":"#fb923c",
+  "A":"#16a34a","A+":"#22c55e","A++":"#4ade80"
+};
 
-  let activeMode = 1; // 1 veya 2
-  let selectedDate = new Date();
-  let selectedVal1 = null;
-  let selectedVal2 = null;
-  let calMode = "day";
-  let calDate = new Date();
-  let ppDate  = new Date();
-  let cache   = {}; // dateKey → {v, v2}
+// ── State ─────────────────────────────────────────────────
+let selDate = new Date();
+let sel1 = null, sel2 = null;
+let calView = "day";
+let calDate = new Date();
+let ppDate  = new Date();
+let cache   = {}; // "YYYY-MM-DD" → {v, v2}
 
-  function dateKey(d) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth()+1).padStart(2,'0');
-    const day = String(d.getDate()).padStart(2,'0');
-    return `${y}-${m}-${day}`;
-  }
+function dk(d) {
+  return d.getFullYear()+"-"+
+    String(d.getMonth()+1).padStart(2,"0")+"-"+
+    String(d.getDate()).padStart(2,"0");
+}
 
-  // ── Build Tip 1 buttons ───────────────────────────────────
-  const btnGrid = document.getElementById("btnGrid");
-  VALUES1.forEach(v => {
-    const btn = document.createElement("button");
-    btn.className = "val-btn"; btn.id = "vbtn1-"+v; btn.dataset.val = v;
-    btn.style.background = COLOR1[v]; btn.style.color = "#fff";
-    const label = document.createElement("span"); label.textContent = v;
-    btn.appendChild(label);
-    btn.addEventListener("click", () => selectVal1(v));
-    btnGrid.appendChild(btn);
+// ── Build TİP 1 buttons ───────────────────────────────────
+T1_VALS.forEach(function(v) {
+  var btn = document.createElement("button");
+  btn.className = "val-btn";
+  btn.id = "t1_"+v;
+  btn.style.background = T1_CLR[v];
+  var sp = document.createElement("span");
+  sp.textContent = v;
+  btn.appendChild(sp);
+  btn.addEventListener("click", function() { pickT1(v); });
+  document.getElementById("grid1").appendChild(btn);
+});
+
+// ── Build TİP 2 buttons ───────────────────────────────────
+T2_VALS.forEach(function(v) {
+  var btn = document.createElement("button");
+  btn.className = "row-btn";
+  btn.id = "t2_"+safeId(v);
+  btn.style.background = T2_CLR[v];
+  var sp = document.createElement("span");
+  sp.textContent = v;
+  btn.appendChild(sp);
+  btn.addEventListener("click", function() { pickT2(v); });
+  document.getElementById("row2").appendChild(btn);
+});
+
+function safeId(v) { return v.replace(/\+/g,"p").replace(/-/g,"m"); }
+
+function pickT1(v) {
+  sel1 = v;
+  document.querySelectorAll("#grid1 .val-btn").forEach(function(b) { b.classList.remove("active-sel"); });
+  document.getElementById("t1_"+v).classList.add("active-sel");
+  document.getElementById("prev1").innerHTML = 'seçili: <span style="color:'+T1_CLR[v]+'">'+v+'</span>';
+}
+function clearT1() {
+  sel1 = null;
+  document.querySelectorAll("#grid1 .val-btn").forEach(function(b) { b.classList.remove("active-sel"); });
+  document.getElementById("prev1").innerHTML = 'seçili: <span>—</span>';
+}
+function pickT2(v) {
+  sel2 = v;
+  document.querySelectorAll("#row2 .row-btn").forEach(function(b) { b.classList.remove("active-sel"); });
+  document.getElementById("t2_"+safeId(v)).classList.add("active-sel");
+  document.getElementById("prev2").innerHTML = 'seçili: <span style="color:'+T2_CLR[v]+'">'+v+'</span>';
+}
+function clearT2() {
+  sel2 = null;
+  document.querySelectorAll("#row2 .row-btn").forEach(function(b) { b.classList.remove("active-sel"); });
+  document.getElementById("prev2").innerHTML = 'seçili: <span>—</span>';
+}
+
+// ── Date nav ──────────────────────────────────────────────
+function updateDateNav() {
+  document.getElementById("dateDisplay").textContent =
+    selDate.getDate()+" "+MONTHS[selDate.getMonth()]+" "+selDate.getFullYear();
+  document.getElementById("dayDisplay").textContent =
+    DAYS_LONG[selDate.getDay()].toUpperCase();
+  loadDoc(dk(selDate), function(doc) {
+    if(doc.v)  pickT1(doc.v);  else clearT1();
+    if(doc.v2) pickT2(doc.v2); else clearT2();
   });
+}
 
-  // ── Build Tip 2 buttons ───────────────────────────────────
-  const btnRow = document.getElementById("btnRow");
-  VALUES2.forEach(v => {
-    const btn = document.createElement("button");
-    btn.className = "row-btn"; btn.id = "vbtn2-"+v.replace("+","p").replace("-","m"); btn.dataset.val = v;
-    btn.style.background = COLOR2[v]; btn.style.color = "#fff";
-    const label = document.createElement("span"); label.textContent = v;
-    btn.appendChild(label);
-    btn.addEventListener("click", () => selectVal2(v));
-    btnRow.appendChild(btn);
-  });
+document.getElementById("prevDay").addEventListener("click", function() {
+  selDate.setDate(selDate.getDate()-1); updateDateNav();
+});
+document.getElementById("nextDay").addEventListener("click", function() {
+  selDate.setDate(selDate.getDate()+1); updateDateNav();
+});
 
-  function btnId2(v) { return "vbtn2-"+v.replace(/\+/g,"p").replace(/-/g,"m"); }
+// ── Firebase ──────────────────────────────────────────────
+function loadDoc(key, cb) {
+  if(cache[key] !== undefined) { cb(cache[key]); return; }
+  db.collection(COL).doc(key).get()
+    .then(function(doc) {
+      cache[key] = doc.exists ? doc.data() : {};
+      cb(cache[key]);
+    })
+    .catch(function() { cache[key] = {}; cb({}); });
+}
 
-  function selectVal1(v) {
-    selectedVal1 = v;
-    document.querySelectorAll(".val-btn").forEach(b => b.classList.remove("selected"));
-    document.getElementById("vbtn1-"+v).classList.add("selected");
-    document.getElementById("selPreview").innerHTML =
-      `seçili: <span style="color:${COLOR1[v]}">${v}</span>`;
-  }
-  function clearSel1() {
-    selectedVal1 = null;
-    document.querySelectorAll(".val-btn").forEach(b => b.classList.remove("selected"));
-    document.getElementById("selPreview").innerHTML = `seçili: <span>—</span>`;
-  }
-
-  function selectVal2(v) {
-    selectedVal2 = v;
-    document.querySelectorAll(".row-btn").forEach(b => b.classList.remove("selected"));
-    document.getElementById(btnId2(v)).classList.add("selected");
-    document.getElementById("selPreview2").innerHTML =
-      `seçili: <span style="color:${COLOR2[v]}">${v}</span>`;
-  }
-  function clearSel2() {
-    selectedVal2 = null;
-    document.querySelectorAll(".row-btn").forEach(b => b.classList.remove("selected"));
-    document.getElementById("selPreview2").innerHTML = `seçili: <span>—</span>`;
-  }
-
-  // ── Mode switch (removed — both always visible) ───────────
-  // activeMode kept for backward compat but unused now
-  let activeMode = 1;
-
-  // ── Date nav ──────────────────────────────────────────────
-  function updateDateNav() {
-    document.getElementById("dateDisplay").textContent =
-      `${selectedDate.getDate()} ${MONTHS_TR[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
-    document.getElementById("dayDisplay").textContent =
-      DAYS_FULL[selectedDate.getDay()].toUpperCase();
-    const k = dateKey(selectedDate);
-    loadDoc(k, doc => {
-      doc.v  ? selectVal1(doc.v)  : clearSel1();
-      doc.v2 ? selectVal2(doc.v2) : clearSel2();
-    });
-  }
-
-  document.getElementById("prevDay").addEventListener("click", () => {
-    selectedDate.setDate(selectedDate.getDate()-1); updateDateNav();
-  });
-  document.getElementById("nextDay").addEventListener("click", () => {
-    selectedDate.setDate(selectedDate.getDate()+1); updateDateNav();
-  });
-
-  // ── Firebase ──────────────────────────────────────────────
-  function loadDoc(k, cb) {
-    if(cache[k] !== undefined) { cb(cache[k]); return; }
-    db.collection(COL).doc(k).get()
-      .then(doc => { cache[k] = doc.exists ? doc.data() : {}; cb(cache[k]); })
-      .catch(() => { cache[k] = {}; cb({}); });
-  }
-
-  // ── Save ─────────────────────────────────────────────────
-  document.getElementById("saveBtn").addEventListener("click", async () => {
-    if(!selectedVal1 && !selectedVal2) { showToast("Önce en az bir değer seç", "err"); return; }
-    const k = dateKey(selectedDate);
-    const btn = document.getElementById("saveBtn");
-    btn.classList.add("saving");
-    const data = {};
-    if(selectedVal1) data.v  = selectedVal1;
-    if(selectedVal2) data.v2 = selectedVal2;
-    try {
-      await db.collection(COL).doc(k).set(data, {merge: true});
-      if(!cache[k]) cache[k] = {};
-      if(selectedVal1) cache[k].v  = selectedVal1;
-      if(selectedVal2) cache[k].v2 = selectedVal2;
+// ── Save ──────────────────────────────────────────────────
+document.getElementById("saveBtn").addEventListener("click", function() {
+  if(!sel1 && !sel2) { toast("Önce en az bir değer seç","err"); return; }
+  var key = dk(selDate);
+  var btn = document.getElementById("saveBtn");
+  btn.classList.add("saving");
+  var data = {};
+  if(sel1) data.v  = sel1;
+  if(sel2) data.v2 = sel2;
+  db.collection(COL).doc(key).set(data, {merge:true})
+    .then(function() {
+      if(!cache[key]) cache[key] = {};
+      if(sel1) cache[key].v  = sel1;
+      if(sel2) cache[key].v2 = sel2;
       btn.classList.remove("saving");
       btn.classList.add("saved");
-      setTimeout(() => btn.classList.remove("saved"), 1800);
-      const parts = [];
-      if(selectedVal1) parts.push(`v:${selectedVal1}`);
-      if(selectedVal2) parts.push(`v2:${selectedVal2}`);
-      showToast(`${k} → ${parts.join(" | ")}`, "ok");
+      setTimeout(function() { btn.classList.remove("saved"); }, 1800);
+      var msg = key+" →";
+      if(sel1) msg += " "+sel1;
+      if(sel2) msg += " | "+sel2;
+      toast(msg,"ok");
       refreshCal();
-    } catch(e) {
+    })
+    .catch(function(e) {
       btn.classList.remove("saving");
-      showToast("Hata: "+e.message, "err");
-    }
-  });
-
-  // ── Toast ─────────────────────────────────────────────────
-  function showToast(msg, type) {
-    const t = document.getElementById("toast");
-    t.textContent = msg;
-    t.className = "toast show "+(type||"");
-    setTimeout(() => t.classList.remove("show"), 2500);
-  }
-
-  // ── Calendar helpers — her zaman ikisi birden ─────────────
-  function getColor(doc) {
-    if(doc.v)  return COLOR1[doc.v]  || null;
-    return null;
-  }
-  function getColor2(doc) {
-    if(doc.v2) return COLOR2[doc.v2] || null;
-    return null;
-  }
-
-  document.querySelectorAll(".cal-tab").forEach(tab => {
-    tab.addEventListener("click", () => {
-      document.querySelectorAll(".cal-tab").forEach(t => t.classList.remove("active"));
-      tab.classList.add("active");
-      calMode = tab.dataset.mode;
-      calDate = new Date(selectedDate);
-      refreshCal();
+      toast("Hata: "+e.message,"err");
     });
-  });
+});
 
-  document.getElementById("calPrev").addEventListener("click", () => {
-    if(calMode==="day") calDate.setDate(calDate.getDate()-1);
-    else if(calMode==="month") calDate.setMonth(calDate.getMonth()-1);
-    else calDate.setFullYear(calDate.getFullYear()-1);
+// ── Toast ─────────────────────────────────────────────────
+function toast(msg, type) {
+  var t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast show "+(type||"");
+  setTimeout(function() { t.classList.remove("show"); }, 2600);
+}
+
+// ── Calendar tabs ─────────────────────────────────────────
+document.querySelectorAll(".cal-tab").forEach(function(tab) {
+  tab.addEventListener("click", function() {
+    document.querySelectorAll(".cal-tab").forEach(function(t) { t.classList.remove("active"); });
+    tab.classList.add("active");
+    calView = tab.dataset.view;
+    calDate = new Date(selDate);
     refreshCal();
   });
-  document.getElementById("calNext").addEventListener("click", () => {
-    if(calMode==="day") calDate.setDate(calDate.getDate()+1);
-    else if(calMode==="month") calDate.setMonth(calDate.getMonth()+1);
-    else calDate.setFullYear(calDate.getFullYear()+1);
-    refreshCal();
-  });
-
-  function refreshCal() {
-    if(calMode==="day") renderDayView();
-    else if(calMode==="month") renderMonthView();
-    else renderYearView();
-  }
-
-  function renderDayView() {
-    document.getElementById("calPeriod").textContent =
-      `${calDate.getDate()} ${MONTHS_TR[calDate.getMonth()]} ${calDate.getFullYear()}`;
-    loadDoc(dateKey(calDate), doc => {
-      const c = document.getElementById("calContent"); c.innerHTML = "";
-      const dv = document.createElement("div"); dv.className = "daily-view";
-      const dual = document.createElement("div"); dual.className = "daily-dual";
-      // Tip 1
-      const item1 = document.createElement("div"); item1.className = "daily-item";
-      const lbl1 = document.createElement("div"); lbl1.className = "daily-item-label"; lbl1.textContent = "TİP·1";
-      const val1 = document.createElement("div"); val1.className = "daily-item-val";
-      if(doc.v) { val1.textContent = doc.v; val1.style.color = COLOR1[doc.v]||"var(--muted)"; }
-      else val1.innerHTML = `<span style="color:var(--muted);font-size:16px">—</span>`;
-      item1.appendChild(lbl1); item1.appendChild(val1);
-      // Tip 2
-      const item2 = document.createElement("div"); item2.className = "daily-item";
-      const lbl2 = document.createElement("div"); lbl2.className = "daily-item-label"; lbl2.textContent = "TİP·2";
-      const val2 = document.createElement("div"); val2.className = "daily-item-val";
-      if(doc.v2) { val2.textContent = doc.v2; val2.style.color = COLOR2[doc.v2]||"var(--muted)"; }
-      else val2.innerHTML = `<span style="color:var(--muted);font-size:16px">—</span>`;
-      item2.appendChild(lbl2); item2.appendChild(val2);
-      dual.appendChild(item1); dual.appendChild(item2);
-      dv.appendChild(dual); c.appendChild(dv);
-    });
-  }
-
-  function renderMonthView() {
-    const y = calDate.getFullYear(), m = calDate.getMonth();
-    document.getElementById("calPeriod").textContent = `${MONTHS_TR[m]} ${y}`;
-    const daysInMonth = new Date(y,m+1,0).getDate();
-    const keys = Array.from({length:daysInMonth}, (_,i) => dateKey(new Date(y,m,i+1)));
-    Promise.all(keys.map(k => new Promise(res => loadDoc(k, doc => res({k,doc}))))).then(results => {
-      const map = {}; results.forEach(r => { map[r.k] = r.doc; });
-      const c = document.getElementById("calContent"); c.innerHTML = "";
-      const grid = document.createElement("div"); grid.className = "month-grid";
-      DAYS_TR.forEach(d => { const h=document.createElement("div"); h.className="month-dow"; h.textContent=d; grid.appendChild(h); });
-      const firstDay = new Date(y,m,1).getDay();
-      const todayK = dateKey(new Date());
-      for(let i=0;i<firstDay;i++) { const e=document.createElement("div"); e.className="month-cell empty"; grid.appendChild(e); }
-      for(let d=1;d<=daysInMonth;d++) {
-        const k = dateKey(new Date(y,m,d));
-        const doc = map[k]||{};
-        const col1 = getColor(doc), col2 = getColor2(doc);
-        const hasAny = doc.v || doc.v2;
-        const cell = document.createElement("div");
-        cell.className = "month-cell"+(hasAny?" has-val":"")+(k===todayK?" today":"");
-        // background: split if both, single color if one
-        if(col1 && col2) {
-          cell.style.background = `linear-gradient(135deg, ${col1}30 50%, ${col2}30 50%)`;
-          cell.style.boxShadow = `inset 0 0 0 1px ${col1}44`;
-        } else if(col1) {
-          cell.style.background = col1+"28"; cell.style.boxShadow = `inset 0 0 0 1px ${col1}55`;
-        } else if(col2) {
-          cell.style.background = col2+"28"; cell.style.boxShadow = `inset 0 0 0 1px ${col2}55`;
-        }
-        const dn=document.createElement("div"); dn.className="cell-day"; dn.textContent=d; cell.appendChild(dn);
-        if(hasAny) {
-          const vw = document.createElement("div"); vw.className="cell-vals";
-          if(doc.v)  { const vn=document.createElement("div"); vn.className="cell-val";  vn.style.color=col1; vn.textContent=doc.v;  vw.appendChild(vn); }
-          if(doc.v2) { const vn=document.createElement("div"); vn.className="cell-val2"; vn.style.color=col2; vn.textContent=doc.v2; vw.appendChild(vn); }
-          cell.appendChild(vw);
-        }
-        grid.appendChild(cell);
-      }
-      c.appendChild(grid);
-    });
-  }
-
-  function renderYearView() {
-    const y = calDate.getFullYear();
-    document.getElementById("calPeriod").textContent = `${y}`;
-    const allKeys = [];
-    for(let m=0;m<12;m++) { const days=new Date(y,m+1,0).getDate(); for(let d=1;d<=days;d++) allKeys.push(dateKey(new Date(y,m,d))); }
-    Promise.all(allKeys.map(k => new Promise(res => loadDoc(k, doc => res({k,doc}))))).then(results => {
-      const map={}; results.forEach(r=>{ map[r.k]=r.doc; });
-      const c=document.getElementById("calContent"); c.innerHTML="";
-      const grid=document.createElement("div"); grid.className="year-grid";
-      for(let m=0;m<12;m++) {
-        const days=new Date(y,m+1,0).getDate();
-        const ym=document.createElement("div"); ym.className="year-month";
-        const mn=document.createElement("div"); mn.className="year-month-name"; mn.textContent=MONTHS_TR[m].slice(0,3); ym.appendChild(mn);
-        const dots=document.createElement("div"); dots.className="year-month-dots";
-        for(let d=1;d<=days;d++) {
-          const k=dateKey(new Date(y,m,d));
-          const doc=map[k]||{};
-          const col1=getColor(doc), col2=getColor2(doc);
-          const dot=document.createElement("div");
-          dot.className="ym-dot";
-          if(col1 && col2) {
-            dot.style.background=`linear-gradient(135deg,${col1} 50%,${col2} 50%)`;
-            dot.style.opacity="1";
-          } else if(col1) { dot.style.background=col1; dot.style.opacity="1"; }
-          else if(col2) { dot.style.background=col2; dot.style.opacity="1"; }
-          else dot.classList.add("empty-day");
-          const ttip=(col1?`v:${doc.v} `:"")+(col2?`v2:${doc.v2}`:"");
-          dot.title=k+(ttip?" → "+ttip.trim():"");
-          dots.appendChild(dot);
-        }
-        ym.appendChild(dots); grid.appendChild(ym);
-      }
-      c.appendChild(grid);
-    });
-  }
-
-  // ── Popup calendar ────────────────────────────────────────
-  document.getElementById("openPopupBtn").addEventListener("click", openPopup);
-  document.getElementById("calPopupBtn").addEventListener("click", openPopup);
-  document.getElementById("popupClose").addEventListener("click", closePopup);
-  document.getElementById("popupOverlay").addEventListener("click", e => {
-    if(e.target===document.getElementById("popupOverlay")) closePopup();
-  });
-  document.getElementById("ppPrev").addEventListener("click", () => { ppDate.setMonth(ppDate.getMonth()-1); renderPopupCal(); });
-  document.getElementById("ppNext").addEventListener("click", () => { ppDate.setMonth(ppDate.getMonth()+1); renderPopupCal(); });
-
-  function openPopup() { ppDate=new Date(selectedDate); renderPopupCal(); document.getElementById("popupOverlay").classList.add("show"); }
-  function closePopup() { document.getElementById("popupOverlay").classList.remove("show"); }
-
-  function renderPopupCal() {
-    const y=ppDate.getFullYear(), m=ppDate.getMonth();
-    document.getElementById("ppPeriod").textContent = `${MONTHS_TR[m]} ${y}`;
-    const grid=document.getElementById("ppGrid"); grid.innerHTML="";
-    DAYS_TR.forEach(d => { const h=document.createElement("div"); h.className="popup-dow"; h.textContent=d; grid.appendChild(h); });
-    const firstDay=new Date(y,m,1).getDay(), days=new Date(y,m+1,0).getDate();
-    const todayK=dateKey(new Date()), selK=dateKey(selectedDate);
-    for(let i=0;i<firstDay;i++){ const e=document.createElement("div"); e.className="popup-cell empty"; grid.appendChild(e); }
-    for(let d=1;d<=days;d++){
-      const date=new Date(y,m,d), k=dateKey(date);
-      const cell=document.createElement("div");
-      cell.className="popup-cell"+(k===todayK?" today":"")+(k===selK?" selected":"");
-      cell.textContent=d;
-      cell.addEventListener("click", ()=>{ selectedDate=new Date(date); updateDateNav(); calDate=new Date(selectedDate); refreshCal(); closePopup(); });
-      grid.appendChild(cell);
-    }
-  }
-
-  // ── Init ──────────────────────────────────────────────────
-  calDate=new Date(selectedDate);
-  updateDateNav();
+});
+document.getElementById("calPrev").addEventListener("click", function() {
+  if(calView==="day")        calDate.setDate(calDate.getDate()-1);
+  else if(calView==="month") calDate.setMonth(calDate.getMonth()-1);
+  else                       calDate.setFullYear(calDate.getFullYear()-1);
   refreshCal();
+});
+document.getElementById("calNext").addEventListener("click", function() {
+  if(calView==="day")        calDate.setDate(calDate.getDate()+1);
+  else if(calView==="month") calDate.setMonth(calDate.getMonth()+1);
+  else                       calDate.setFullYear(calDate.getFullYear()+1);
+  refreshCal();
+});
+
+function refreshCal() {
+  if(calView==="day")        renderDay();
+  else if(calView==="month") renderMonth();
+  else                       renderYear();
+}
+
+// ── DAY VIEW ──────────────────────────────────────────────
+function renderDay() {
+  document.getElementById("calPeriod").textContent =
+    calDate.getDate()+" "+MONTHS[calDate.getMonth()]+" "+calDate.getFullYear();
+  loadDoc(dk(calDate), function(doc) {
+    var c = document.getElementById("calContent");
+    c.innerHTML = "";
+    var dv = document.createElement("div"); dv.className = "daily-view";
+    var dd = document.createElement("div"); dd.className = "daily-dual";
+
+    // TİP 1 item
+    var i1 = document.createElement("div"); i1.className = "daily-item";
+    var l1 = document.createElement("div"); l1.className = "daily-item-lbl"; l1.textContent = "TİP·1";
+    var v1 = document.createElement("div"); v1.className = "daily-item-val";
+    if(doc.v) { v1.textContent = doc.v; v1.style.color = T1_CLR[doc.v]||"#fff"; }
+    else v1.innerHTML = '<span style="color:var(--muted);font-size:18px">—</span>';
+    i1.appendChild(l1); i1.appendChild(v1);
+
+    // TİP 2 item
+    var i2 = document.createElement("div"); i2.className = "daily-item";
+    var l2 = document.createElement("div"); l2.className = "daily-item-lbl"; l2.textContent = "TİP·2";
+    var v2 = document.createElement("div"); v2.className = "daily-item-val";
+    if(doc.v2) { v2.textContent = doc.v2; v2.style.color = T2_CLR[doc.v2]||"#fff"; }
+    else v2.innerHTML = '<span style="color:var(--muted);font-size:18px">—</span>';
+    i2.appendChild(l2); i2.appendChild(v2);
+
+    dd.appendChild(i1); dd.appendChild(i2);
+    dv.appendChild(dd); c.appendChild(dv);
+  });
+}
+
+// ── MONTH VIEW ────────────────────────────────────────────
+function renderMonth() {
+  var y = calDate.getFullYear(), m = calDate.getMonth();
+  document.getElementById("calPeriod").textContent = MONTHS[m]+" "+y;
+  var days = new Date(y,m+1,0).getDate();
+  var keys = [];
+  for(var d=1; d<=days; d++) keys.push(dk(new Date(y,m,d)));
+  Promise.all(keys.map(function(k) {
+    return new Promise(function(res) { loadDoc(k, function(doc) { res({k:k,doc:doc}); }); });
+  })).then(function(results) {
+    var map = {};
+    results.forEach(function(r) { map[r.k] = r.doc; });
+    var c = document.getElementById("calContent"); c.innerHTML = "";
+    var g = document.createElement("div"); g.className = "month-grid";
+    DAYS_SHORT.forEach(function(d) {
+      var h = document.createElement("div"); h.className = "month-dow"; h.textContent = d; g.appendChild(h);
+    });
+    var first = new Date(y,m,1).getDay();
+    var todayK = dk(new Date());
+    for(var i=0; i<first; i++) {
+      var e = document.createElement("div"); e.className = "month-cell empty"; g.appendChild(e);
+    }
+    for(var d=1; d<=days; d++) {
+      var key = dk(new Date(y,m,d));
+      var doc = map[key]||{};
+      var hasAny = doc.v || doc.v2;
+      var cell = document.createElement("div");
+      cell.className = "month-cell"+(hasAny?" has-val":"")+(key===todayK?" today":"");
+      if(doc.v && doc.v2) {
+        cell.style.background = "linear-gradient(135deg,"+T1_CLR[doc.v]+"30 50%,"+T2_CLR[doc.v2]+"30 50%)";
+        cell.style.boxShadow = "inset 0 0 0 1px "+T1_CLR[doc.v]+"44";
+      } else if(doc.v) {
+        cell.style.background = T1_CLR[doc.v]+"28";
+        cell.style.boxShadow = "inset 0 0 0 1px "+T1_CLR[doc.v]+"55";
+      } else if(doc.v2) {
+        cell.style.background = T2_CLR[doc.v2]+"28";
+        cell.style.boxShadow = "inset 0 0 0 1px "+T2_CLR[doc.v2]+"55";
+      }
+      var dn = document.createElement("div"); dn.className = "cell-day"; dn.textContent = d;
+      cell.appendChild(dn);
+      if(hasAny) {
+        var vw = document.createElement("div"); vw.className = "cell-vals";
+        if(doc.v)  { var n1=document.createElement("div"); n1.className="cv1"; n1.style.color=T1_CLR[doc.v]; n1.textContent=doc.v; vw.appendChild(n1); }
+        if(doc.v2) { var n2=document.createElement("div"); n2.className="cv2"; n2.style.color=T2_CLR[doc.v2]; n2.textContent=doc.v2; vw.appendChild(n2); }
+        cell.appendChild(vw);
+      }
+      g.appendChild(cell);
+    }
+    c.appendChild(g);
+  });
+}
+
+// ── YEAR VIEW ─────────────────────────────────────────────
+function renderYear() {
+  var y = calDate.getFullYear();
+  document.getElementById("calPeriod").textContent = ""+y;
+  var allKeys = [];
+  for(var m=0; m<12; m++) {
+    var days = new Date(y,m+1,0).getDate();
+    for(var d=1; d<=days; d++) allKeys.push(dk(new Date(y,m,d)));
+  }
+  Promise.all(allKeys.map(function(k) {
+    return new Promise(function(res) { loadDoc(k, function(doc) { res({k:k,doc:doc}); }); });
+  })).then(function(results) {
+    var map = {}; results.forEach(function(r) { map[r.k]=r.doc; });
+    var c = document.getElementById("calContent"); c.innerHTML = "";
+    var g = document.createElement("div"); g.className = "year-grid";
+    for(var m=0; m<12; m++) {
+      var days = new Date(y,m+1,0).getDate();
+      var ym = document.createElement("div"); ym.className = "year-month";
+      var mn = document.createElement("div"); mn.className = "year-month-name";
+      mn.textContent = MONTHS[m].slice(0,3); ym.appendChild(mn);
+      var dots = document.createElement("div"); dots.className = "year-dots";
+      for(var d=1; d<=days; d++) {
+        var key = dk(new Date(y,m,d));
+        var doc = map[key]||{};
+        var dot = document.createElement("div");
+        dot.className = "ydot";
+        if(doc.v && doc.v2) {
+          dot.style.background = "linear-gradient(135deg,"+T1_CLR[doc.v]+" 50%,"+T2_CLR[doc.v2]+" 50%)";
+          dot.classList.add("has");
+        } else if(doc.v) {
+          dot.style.background = T1_CLR[doc.v]; dot.classList.add("has");
+        } else if(doc.v2) {
+          dot.style.background = T2_CLR[doc.v2]; dot.classList.add("has");
+        }
+        var tt = key;
+        if(doc.v)  tt += " v:"+doc.v;
+        if(doc.v2) tt += " v2:"+doc.v2;
+        dot.title = tt;
+        dots.appendChild(dot);
+      }
+      ym.appendChild(dots); g.appendChild(ym);
+    }
+    c.appendChild(g);
+  });
+}
+
+// ── Popup calendar ────────────────────────────────────────
+document.getElementById("openPopupBtn").addEventListener("click", openPP);
+document.getElementById("calPopupBtn").addEventListener("click", openPP);
+document.getElementById("ppClose").addEventListener("click", closePP);
+document.getElementById("overlay").addEventListener("click", function(e) {
+  if(e.target===document.getElementById("overlay")) closePP();
+});
+document.getElementById("ppPrev").addEventListener("click", function() {
+  ppDate.setMonth(ppDate.getMonth()-1); renderPP();
+});
+document.getElementById("ppNext").addEventListener("click", function() {
+  ppDate.setMonth(ppDate.getMonth()+1); renderPP();
+});
+
+function openPP() {
+  ppDate = new Date(selDate);
+  renderPP();
+  document.getElementById("overlay").classList.add("show");
+}
+function closePP() {
+  document.getElementById("overlay").classList.remove("show");
+}
+function renderPP() {
+  var y = ppDate.getFullYear(), m = ppDate.getMonth();
+  document.getElementById("ppPeriod").textContent = MONTHS[m]+" "+y;
+  var g = document.getElementById("ppGrid"); g.innerHTML = "";
+  DAYS_SHORT.forEach(function(d) {
+    var h = document.createElement("div"); h.className = "pp-dow"; h.textContent = d; g.appendChild(h);
+  });
+  var first = new Date(y,m,1).getDay();
+  var days  = new Date(y,m+1,0).getDate();
+  var todayK = dk(new Date()), selK = dk(selDate);
+  for(var i=0; i<first; i++) {
+    var e = document.createElement("div"); e.className = "pp-cell empty"; g.appendChild(e);
+  }
+  for(var d=1; d<=days; d++) {
+    (function(day) {
+      var date = new Date(y,m,day), key = dk(date);
+      var cell = document.createElement("div");
+      cell.className = "pp-cell"+(key===todayK?" today":"")+(key===selK?" selected":"");
+      cell.textContent = day;
+      cell.addEventListener("click", function() {
+        selDate = new Date(date);
+        updateDateNav();
+        calDate = new Date(selDate);
+        refreshCal();
+        closePP();
+      });
+      g.appendChild(cell);
+    })(d);
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────
+calDate = new Date(selDate);
+updateDateNav();
+refreshCal();
 </script>
 </body>
 </html>
