@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sensör · Tam Türev & Ters-Türev Analizi</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,600;1,400&family=Bebas+Neue&family=Syne:wght@400;800&display=swap');
+
+  :root {
+    --bg:     #07070d;
+    --panel:  #0c0c15;
+    --border: #18182a;
+    --c-anti2: #38bdf8;   /* F(F(x)) — 2. ters türev — açık mavi */
+    --c-anti1: #818cf8;   /* F(x)    — 1. ters türev — leylak  */
+    --c-f:     #7fffd4;   /* f(x)    — aquamarine              */
+    --c-d1:    #fb923c;   /* f'(x)   — turuncu                 */
+    --c-d2:    #f472b6;   /* f''(x)  — pembe                   */
+    --c-d3:    #facc15;   /* f'''(x) — sarı                    */
+    --text:    #dde0f0;
+    --muted:   #44445f;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Mono',monospace;
+    min-height:100vh;
+    padding:28px 18px 48px;
+    overflow-x:hidden;
+  }
+
+  /* noise grain overlay */
+  body::after {
+    content:''; position:fixed; inset:0;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events:none; z-index:999; opacity:.4;
+  }
+
+  /* glow bg */
+  body::before {
+    content:''; position:fixed; inset:0;
+    background:
+      radial-gradient(ellipse 60% 30% at 10% 0%,   rgba(129,140,248,.06) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 40% at 90% 100%,  rgba(127,255,212,.05) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 50% at 50% 50%,   rgba(250,204,21,.02) 0%, transparent 70%);
+    pointer-events:none;
+  }
+
+  /* ── HEADER ── */
+  header {
+    text-align:center;
+    margin-bottom:30px;
+  }
+  header h1 {
+    font-family:'Bebas Neue',sans-serif;
+    font-size:clamp(2rem,6vw,3.6rem);
+    letter-spacing:.12em;
+    background:linear-gradient(90deg, var(--c-anti2), var(--c-anti1), var(--c-f), var(--c-d1), var(--c-d2), var(--c-d3));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  }
+  header p {
+    color:var(--muted); font-size:.72rem; letter-spacing:.1em; margin-top:6px;
+  }
+
+  /* ── HIERARCHY STRIP ── */
+  .hierarchy {
+    max-width:900px; margin:0 auto 28px;
+    display:flex; align-items:center; justify-content:center;
+    gap:0; flex-wrap:wrap;
+  }
+  .h-item {
+    display:flex; flex-direction:column; align-items:center;
+    padding:9px 14px;
+    border:1px solid var(--border);
+    background:var(--panel);
+    cursor:default; transition:background .2s;
+    min-width:90px;
+  }
+  .h-item:first-child { border-radius:10px 0 0 10px; }
+  .h-item:last-child  { border-radius:0 10px 10px 0; }
+  .h-item + .h-item   { border-left:none; }
+  .h-item:hover       { background:#13131f; }
+
+  .h-label { font-size:.65rem; color:var(--muted); letter-spacing:.07em; margin-bottom:3px; }
+  .h-name  { font-family:'Syne',sans-serif; font-size:.88rem; font-weight:800; }
+  .h-arrow {
+    font-size:1.1rem; color:var(--muted); padding:0 2px;
+    align-self:center; margin-bottom:0;
+  }
+
+  .arrow-wrap { display:flex; align-items:center; }
+  .arrow-label { font-size:.58rem; color:var(--muted); writing-mode:horizontal-tb; }
+
+  /* ── INPUT ── */
+  .input-section {
+    max-width:900px; margin:0 auto 24px;
+    background:var(--panel); border:1px solid var(--border); border-radius:12px; overflow:hidden;
+  }
+  .input-header {
+    padding:10px 16px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:10px;
+  }
+  .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .input-header h2 { font-family:'Syne',sans-serif; font-size:.82rem; font-weight:800; }
+  .badge { margin-left:auto; font-size:.65rem; color:var(--muted); background:#0f0f1e; padding:3px 8px; border-radius:20px; border:1px solid var(--border); }
+
+  .input-body { padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
+
+  textarea {
+    width:100%; height:72px;
+    background:#080810; border:1px solid var(--border); border-radius:8px;
+    color:var(--c-f); font-family:'IBM Plex Mono',monospace; font-size:.78rem;
+    padding:9px 11px; resize:vertical; outline:none; transition:border-color .2s;
+  }
+  textarea:focus { border-color:var(--c-anti1); }
+
+  .controls { display:flex; gap:9px; flex-wrap:wrap; align-items:center; }
+
+  select {
+    background:#080810; border:1px solid var(--border); color:var(--text);
+    font-family:'IBM Plex Mono',monospace; font-size:.73rem;
+    padding:7px 11px; border-radius:7px; outline:none; cursor:pointer;
+  }
+
+  button {
+    background:linear-gradient(135deg,#1a1040,#101a40);
+    border:1px solid var(--c-anti1); color:var(--c-anti1);
+    font-family:'IBM Plex Mono',monospace; font-size:.75rem; font-weight:600;
+    padding:8px 20px; border-radius:7px; cursor:pointer; letter-spacing:.05em;
+    transition:all .2s;
+  }
+  button:hover { background:var(--c-anti1); color:#07070d; }
+
+  .fit-info {
+    font-size:.68rem; color:var(--muted);
+    background:#0a0a16; border:1px solid var(--border);
+    border-radius:7px; padding:7px 11px; line-height:1.9;
+    display:none;
+  }
+  .fit-info.visible { display:block; }
+  .fit-info span { color:var(--c-f); }
+
+  /* ── GRAPH GRID ── */
+  .graphs {
+    max-width:900px; margin:0 auto;
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    grid-template-rows:auto auto;
+    gap:14px;
+  }
+
+  /* top row: anti2, anti1, f  (3 columns) */
+  /* bottom row: d1, d2, d3    (3 columns) */
+
+  .graph-card {
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:12px; overflow:hidden;
+    transition:border-color .25s, transform .2s;
+  }
+  .graph-card:hover { border-color:#28284a; transform:translateY(-2px); }
+
+  .graph-header {
+    padding:9px 13px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:8px;
+  }
+  .graph-header h2 { font-family:'Syne',sans-serif; font-size:.78rem; font-weight:800; }
+  .graph-header .eq { margin-left:auto; font-size:.6rem; color:var(--muted); font-style:italic; max-width:120px; text-align:right; line-height:1.4; }
+
+  canvas { display:block; width:100%; height:180px; }
+
+  /* ── DIVIDER ── */
+  .divider {
+    max-width:900px; margin:8px auto 0;
+    display:flex; align-items:center; gap:12px; grid-column:1/-1;
+  }
+  .divider-line { flex:1; height:1px; background:var(--border); }
+  .divider-label {
+    font-family:'Bebas Neue',sans-serif; font-size:.9rem; letter-spacing:.15em;
+    color:var(--muted);
+  }
+
+  /* ── LEGEND ── */
+  .legend {
+    max-width:900px; margin:20px auto 0;
+    display:flex; justify-content:center; gap:18px; flex-wrap:wrap;
+  }
+  .li { display:flex; align-items:center; gap:7px; font-size:.67rem; color:var(--muted); }
+  .ll { width:22px; height:2px; border-radius:2px; }
+
+  /* ── TOOLTIP ── */
+  .tooltip {
+    position:fixed; background:rgba(7,7,16,.97);
+    border:1px solid var(--border); border-radius:8px;
+    padding:6px 11px; font-size:.68rem; pointer-events:none;
+    opacity:0; transition:opacity .12s; z-index:200;
+  }
+
+  @media(max-width:640px){
+    .graphs { grid-template-columns:1fr; }
+  }
+  @media(max-width:900px) and (min-width:641px){
+    .graphs { grid-template-columns:1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Ters Türev · f(x) · Türev Analizi</h1>
+  <p>2. ters türev → 1. ters türev → f(x) → 1. türev → 2. türev → 3. türev</p>
+</header>
+
+<!-- hierarchy strip -->
+<div class="hierarchy">
+  <div class="h-item">
+    <span class="h-label">2. ters türev</span>
+    <span class="h-name" style="color:var(--c-anti2)">F²(x)</span>
+  </div>
+  <div class="arrow-wrap" style="background:var(--panel);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:0 6px;height:100%;align-self:stretch;display:flex;flex-direction:column;justify-content:center">
+    <span style="font-size:.55rem;color:var(--muted)">d/dx</span>
+    <span style="color:var(--muted);font-size:.9rem">→</span>
+  </div>
+  <div class="h-item">
+    <span class="h-label">1. ters türev</span>
+    <span class="h-name" style="color:var(--c-anti1)">F(x)</span>
+  </div>
+  <div class="arrow-wrap" style="background:var(--panel);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:0 6px;align-self:stretch;display:flex;flex-direction:column;justify-content:center">
+    <span style="font-size:.55rem;color:var(--muted)">d/dx</span>
+    <span style="color:var(--muted);font-size:.9rem">→</span>
+  </div>
+  <div class="h-item" style="border:2px solid var(--c-f)">
+    <span class="h-label" style="color:var(--c-f)">▶ VERİ</span>
+    <span class="h-name" style="color:var(--c-f)">f(x)</span>
+  </div>
+  <div class="arrow-wrap" style="background:var(--panel);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:0 6px;align-self:stretch;display:flex;flex-direction:column;justify-content:center">
+    <span style="font-size:.55rem;color:var(--muted)">d/dx</span>
+    <span style="color:var(--muted);font-size:.9rem">→</span>
+  </div>
+  <div class="h-item">
+    <span class="h-label">1. türev</span>
+    <span class="h-name" style="color:var(--c-d1)">f′(x)</span>
+  </div>
+  <div class="arrow-wrap" style="background:var(--panel);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:0 6px;align-self:stretch;display:flex;flex-direction:column;justify-content:center">
+    <span style="font-size:.55rem;color:var(--muted)">d/dx</span>
+    <span style="color:var(--muted);font-size:.9rem">→</span>
+  </div>
+  <div class="h-item">
+    <span class="h-label">2. türev</span>
+    <span class="h-name" style="color:var(--c-d2)">f″(x)</span>
+  </div>
+  <div class="arrow-wrap" style="background:var(--panel);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:0 6px;align-self:stretch;display:flex;flex-direction:column;justify-content:center">
+    <span style="font-size:.55rem;color:var(--muted)">d/dx</span>
+    <span style="color:var(--muted);font-size:.9rem">→</span>
+  </div>
+  <div class="h-item" style="border-radius:0 10px 10px 0">
+    <span class="h-label">3. türev</span>
+    <span class="h-name" style="color:var(--c-d3)">f‴(x)</span>
+  </div>
+</div>
+
+<!-- input -->
+<div class="input-section">
+  <div class="input-header">
+    <div class="dot" style="background:var(--c-f)"></div>
+    <h2 style="color:var(--c-f)">Sensör Verisi</h2>
+    <span class="badge">virgül / boşluk ile ayır</span>
+  </div>
+  <div class="input-body">
+    <textarea id="dataInput">10, 12, 13, 9, 8, 10, 15, 7, 9, 12, 13, 10, 8, 11, 14, 6, 10, 13, 11, 9, 12, 8, 10, 15, 7, 11</textarea>
+    <div class="controls">
+      <select id="methodSel">
+        <option value="fourier">Fourier Serisi</option>
+        <option value="poly">Polinom Fit (derece 6)</option>
+        <option value="spline">Cubic Spline</option>
+      </select>
+      <button onclick="run()">▶ Hesapla &amp; Çiz</button>
+    </div>
+    <div class="fit-info" id="fitInfo"></div>
+  </div>
+</div>
+
+<!-- graphs 2x3 grid -->
+<div class="graphs" id="graphGrid">
+  <!-- ROW 1: antiderivatives + f -->
+  <div class="graph-card">
+    <div class="graph-header">
+      <div class="dot" style="background:var(--c-anti2)"></div>
+      <h2 style="color:var(--c-anti2)">F²(x)</h2>
+      <span class="eq">2. ters türev<br>∫∫f(x)dx²</span>
+    </div>
+    <canvas id="c_a2"></canvas>
+  </div>
+  <div class="graph-card">
+    <div class="graph-header">
+      <div class="dot" style="background:var(--c-anti1)"></div>
+      <h2 style="color:var(--c-anti1)">F(x)</h2>
+      <span class="eq">1. ters türev<br>∫f(x)dx</span>
+    </div>
+    <canvas id="c_a1"></canvas>
+  </div>
+  <div class="graph-card" style="border-color:rgba(127,255,212,.25)">
+    <div class="graph-header">
+      <div class="dot" style="background:var(--c-f)"></div>
+      <h2 style="color:var(--c-f)">f(x) — Veri</h2>
+      <span class="eq" id="eq_f">fit fonksiyonu</span>
+    </div>
+    <canvas id="c_f"></canvas>
+  </div>
+  <!-- ROW 2: derivatives -->
+  <div class="graph-card">
+    <div class="graph-header">
+      <div class="dot" style="background:var(--c-d1)"></div>
+      <h2 style="color:var(--c-d1)">f′(x)</h2>
+      <span class="eq">1. türev</span>
+    </div>
+    <canvas id="c_d1"></canvas>
+  </div>
+  <div class="graph-card">
+    <div class="graph-header">
+      <div class="dot" style="background:var(--c-d2)"></div>
+      <h2 style="color:var(--c-d2)">f″(x)</h2>
+      <span class="eq">2. türev</span>
+    </div>
+    <canvas id="c_d2"></canvas>
+  </div>
+  <div class="graph-card">
+    <div class="graph-header">
+      <div class="dot" style="background:var(--c-d3)"></div>
+      <h2 style="color:var(--c-d3)">f‴(x)</h2>
+      <span class="eq">3. türev</span>
+    </div>
+    <canvas id="c_d3"></canvas>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="li"><div class="ll" style="background:var(--c-anti2)"></div>F²(x) 2.ters türev</div>
+  <div class="li"><div class="ll" style="background:var(--c-anti1)"></div>F(x) 1.ters türev</div>
+  <div class="li"><div class="ll" style="background:var(--c-f)"></div>f(x) veri</div>
+  <div class="li"><div class="ll" style="background:var(--c-d1)"></div>f′(x)</div>
+  <div class="li"><div class="ll" style="background:var(--c-d2)"></div>f″(x)</div>
+  <div class="li"><div class="ll" style="background:var(--c-d3)"></div>f‴(x)</div>
+</div>
+
+<div class="tooltip" id="tip"></div>
+
+<script>
+// ─── PARSE ────────────────────────────────────────────────
+function parseData(s) {
+  return s.split(/[\s,;]+/).map(Number).filter(v=>!isNaN(v)&&String(v).trim()!=='');
+}
+
+// ─── NUMERICAL OPS ────────────────────────────────────────
+const H = 1e-4;
+const deriv  = (f,x) => (f(x+H)-f(x-H))/(2*H);
+const deriv2 = (f,x) => (f(x+H)-2*f(x)+f(x-H))/(H*H);
+const deriv3 = (f,x) => (f(x+2*H)-2*f(x+H)+2*f(x-H)-f(x-2*H))/(2*H*H*H);
+
+// Numerical antiderivative via trapezoidal cumulative sum
+// Returns a function; starts from x=0 with C=0 (vertical shift arbitrary)
+function antideriv(f, x0, steps=2000, xMax=1) {
+  // precompute cumulative integral on [0, xMax]
+  const dx = xMax/steps;
+  const vals = new Float64Array(steps+1);
+  vals[0] = 0;
+  for(let i=1;i<=steps;i++) {
+    const xa = (i-1)*dx + x0;
+    const xb = i*dx + x0;
+    vals[i] = vals[i-1] + (f(xa)+f(xb))*dx/2;
+  }
+  return x => {
+    if(x<=x0) return vals[0];
+    const rel = x - x0;
+    const idx = Math.min(Math.floor(rel/dx), steps-1);
+    const frac = (rel - idx*dx)/dx;
+    return vals[idx]*(1-frac) + vals[idx+1]*frac;
+  };
+}
+
+// ─── FIT METHODS ──────────────────────────────────────────
+function fourierFit(data) {
+  const N=data.length, T=N-1;
+  const K=Math.min(6,Math.floor(N/3));
+  const a=[],b=[];
+  a[0]=data.reduce((s,v)=>s+v,0)/N;
+  for(let k=1;k<=K;k++){
+    let ak=0,bk=0;
+    for(let n=0;n<N;n++){ak+=data[n]*Math.cos(2*Math.PI*k*n/T);bk+=data[n]*Math.sin(2*Math.PI*k*n/T);}
+    a[k]=2*ak/T; b[k]=2*bk/T;
+  }
+  const fn=x=>{let s=a[0];for(let k=1;k<=K;k++)s+=a[k]*Math.cos(2*Math.PI*k*x/T)+b[k]*Math.sin(2*Math.PI*k*x/T);return s;};
+  return {fn, label:`Fourier (${K} harmonik)`};
+}
+
+function polyFit(data, deg=6) {
+  const N=data.length; deg=Math.min(deg,N-1);
+  const xs=data.map((_,i)=>i/(N-1)*2-1);
+  const A=[],rhs=[];
+  for(let i=0;i<=deg;i++){A[i]=[];for(let j=0;j<=deg;j++)A[i][j]=xs.reduce((s,x)=>s+Math.pow(x,i+j),0);rhs[i]=xs.reduce((s,x,k)=>s+Math.pow(x,i)*data[k],0);}
+  for(let col=0;col<=deg;col++){
+    let piv=col;
+    for(let r=col+1;r<=deg;r++)if(Math.abs(A[r][col])>Math.abs(A[piv][col]))piv=r;
+    [A[col],A[piv]]=[A[piv],A[col]];[rhs[col],rhs[piv]]=[rhs[piv],rhs[col]];
+    for(let r=col+1;r<=deg;r++){const f=A[r][col]/A[col][col];for(let j=col;j<=deg;j++)A[r][j]-=f*A[col][j];rhs[r]-=f*rhs[col];}
+  }
+  const c=new Array(deg+1).fill(0);
+  for(let i=deg;i>=0;i--){c[i]=rhs[i];for(let j=i+1;j<=deg;j++)c[i]-=A[i][j]*c[j];c[i]/=A[i][i];}
+  const fn=x=>{const xn=x/(N-1)*2-1;return c.reduce((s,ci,k)=>s+ci*Math.pow(xn,k),0);};
+  return {fn, label:`Polinom derece-${deg}`};
+}
+
+function cubicSpline(data) {
+  const n=data.length-1, h=new Array(n).fill(1), al=[];
+  for(let i=1;i<n;i++)al[i]=3*(data[i+1]-data[i])/h[i]-3*(data[i]-data[i-1])/h[i-1];
+  const l=[1,...new Array(n).fill(0)],mu=new Array(n+1).fill(0),z=new Array(n+1).fill(0);
+  for(let i=1;i<n;i++){l[i]=2*(2)-mu[i-1]*h[i-1];mu[i]=h[i]/l[i];z[i]=(al[i]-h[i-1]*z[i-1])/l[i];}
+  l[n]=1;
+  const c=new Array(n+1).fill(0),bv=new Array(n).fill(0),d=new Array(n).fill(0);
+  for(let j=n-1;j>=0;j--){c[j]=z[j]-mu[j]*c[j+1];bv[j]=(data[j+1]-data[j])/h[j]-h[j]*(c[j+1]+2*c[j])/3;d[j]=(c[j+1]-c[j])/(3*h[j]);}
+  const fn=x=>{let i=Math.min(Math.max(Math.floor(x),0),n-1);const dx=x-i;return data[i]+bv[i]*dx+c[i]*dx*dx+d[i]*dx*dx*dx;};
+  return {fn, label:'Cubic Spline'};
+}
+
+// ─── DRAW ─────────────────────────────────────────────────
+const PANEL_IDS = ['c_a2','c_a1','c_f','c_d1','c_d2','c_d3'];
+const COLORS = {
+  c_a2:getComputedStyle(document.documentElement).getPropertyValue('--c-anti2').trim(),
+  c_a1:getComputedStyle(document.documentElement).getPropertyValue('--c-anti1').trim(),
+  c_f: getComputedStyle(document.documentElement).getPropertyValue('--c-f').trim(),
+  c_d1:getComputedStyle(document.documentElement).getPropertyValue('--c-d1').trim(),
+  c_d2:getComputedStyle(document.documentElement).getPropertyValue('--c-d2').trim(),
+  c_d3:getComputedStyle(document.documentElement).getPropertyValue('--c-d3').trim(),
+};
+const GLOWS = {
+  c_a2:'rgba(56,189,248,.22)',
+  c_a1:'rgba(129,140,248,.22)',
+  c_f: 'rgba(127,255,212,.18)',
+  c_d1:'rgba(251,146,60,.2)',
+  c_d2:'rgba(244,114,182,.2)',
+  c_d3:'rgba(250,204,21,.18)',
+};
+
+function drawGraph(canvasId, fn, rawData, xMax, showDots) {
+  const canvas = document.getElementById(canvasId);
+  const color = COLORS[canvasId];
+  const glow  = GLOWS[canvasId];
+  const dpr = window.devicePixelRatio||1;
+  const W = canvas.offsetWidth||300, H2=canvas.offsetHeight||180;
+  canvas.width=W*dpr; canvas.height=H2*dpr;
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+
+  const STEPS=500;
+  let yMin=Infinity,yMax=-Infinity;
+  for(let i=0;i<=STEPS;i++){
+    const x=i/STEPS*xMax, y=fn(x);
+    if(isFinite(y)){if(y<yMin)yMin=y;if(y>yMax)yMax=y;}
+  }
+  if(showDots&&rawData) rawData.forEach(v=>{if(v<yMin)yMin=v;if(v>yMax)yMax=v;});
+  const pad=(yMax-yMin)*0.15; yMin-=pad; yMax+=pad;
+  if(!isFinite(yMin)){yMin=-10;yMax=10;}
+
+  const tx=x=>x/xMax*W;
+  const ty=y=>H2-(y-yMin)/(yMax-yMin)*H2;
+
+  canvas._fn=fn; canvas._tx=tx; canvas._ty=ty; canvas._xMax=xMax; canvas._W=W;
+
+  ctx.fillStyle='#0c0c15'; ctx.fillRect(0,0,W,H2);
+
+  // grid
+  ctx.strokeStyle='#18182a'; ctx.lineWidth=1;
+  for(let i=0;i<=10;i++){const cx=tx(i/10*xMax);ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,H2);ctx.stroke();}
+  for(let i=0;i<=4;i++){const cy=ty(yMin+(yMax-yMin)*i/4);ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(W,cy);ctx.stroke();}
+
+  // zero line
+  const yz=ty(0);
+  ctx.strokeStyle='rgba(255,255,255,.1)'; ctx.setLineDash([3,6]);
+  ctx.beginPath();ctx.moveTo(0,yz);ctx.lineTo(W,yz);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // fill
+  const grad=ctx.createLinearGradient(0,0,0,H2);
+  grad.addColorStop(0,glow); grad.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.beginPath(); ctx.moveTo(tx(0),yz);
+  for(let i=0;i<=STEPS;i++){const x=i/STEPS*xMax,y=fn(x);if(isFinite(y))ctx.lineTo(tx(x),ty(y));}
+  ctx.lineTo(tx(xMax),yz); ctx.closePath();
+  ctx.fillStyle=grad; ctx.fill();
+
+  // curve
+  ctx.shadowColor=color; ctx.shadowBlur=6;
+  ctx.strokeStyle=color; ctx.lineWidth=2;
+  ctx.beginPath(); let first=true;
+  for(let i=0;i<=STEPS;i++){
+    const x=i/STEPS*xMax, y=fn(x);
+    if(!isFinite(y)){first=true;continue;}
+    first?(ctx.moveTo(tx(x),ty(y)),first=false):ctx.lineTo(tx(x),ty(y));
+  }
+  ctx.stroke(); ctx.shadowBlur=0;
+
+  // data dots (only f)
+  if(showDots&&rawData){
+    rawData.forEach((v,i)=>{
+      ctx.beginPath();
+      ctx.arc(tx(i),ty(v),3.5,0,Math.PI*2);
+      ctx.fillStyle='rgba(127,255,212,.85)';
+      ctx.shadowColor='#7fffd4'; ctx.shadowBlur=7;
+      ctx.fill(); ctx.shadowBlur=0;
+    });
+  }
+
+  // y axis label
+  ctx.fillStyle='#333355'; ctx.font='9px IBM Plex Mono,monospace'; ctx.textAlign='right';
+  [yMin,yMax,(yMin+yMax)/2].forEach(v=>{
+    ctx.fillText(v.toFixed(1),W-3,ty(v)-2);
+  });
+}
+
+// ─── HOVER ────────────────────────────────────────────────
+const tip = document.getElementById('tip');
+let activeFns = {};
+
+function bindHover(canvasId, label, color) {
+  const canvas=document.getElementById(canvasId);
+  canvas.addEventListener('mousemove',e=>{
+    const rect=canvas.getBoundingClientRect();
+    const mx=e.clientX-rect.left;
+    const xMax=canvas._xMax||1, W=canvas._W||300;
+    const x=mx/W*xMax;
+    const fn=activeFns[canvasId];
+    if(!fn) return;
+    const y=fn(x);
+    if(!isFinite(y)) return;
+
+    // redraw with dot
+    const showDots = canvasId==='c_f';
+    drawGraph(canvasId, fn, showDots?activeData:null, xMax, showDots);
+    const ctx2=document.getElementById(canvasId).getContext('2d');
+    const dpr=window.devicePixelRatio||1;
+    ctx2.scale(dpr,dpr);
+    const cx=canvas._tx(x),cy=canvas._ty(y);
+    ctx2.beginPath();
+    ctx2.arc(cx/dpr,cy/dpr,5,0,Math.PI*2);
+    ctx2.fillStyle=color; ctx2.shadowColor=color; ctx2.shadowBlur=12;
+    ctx2.fill(); ctx2.shadowBlur=0;
+
+    tip.innerHTML=`<span style="color:${color}">${label}</span> &nbsp; x=${x.toFixed(2)} &nbsp; y=${y.toFixed(4)}`;
+    tip.style.opacity='1';
+    tip.style.left=(e.clientX+14)+'px';
+    tip.style.top=(e.clientY-26)+'px';
+  });
+  canvas.addEventListener('mouseleave',()=>{
+    tip.style.opacity='0';
+    const fn=activeFns[canvasId];
+    if(!fn) return;
+    const xMax=canvas._xMax||1;
+    const showDots=canvasId==='c_f';
+    drawGraph(canvasId, fn, showDots?activeData:null, xMax, showDots);
+  });
+}
+
+const hoverLabels = {
+  c_a2:['F²(x)','#38bdf8'], c_a1:['F(x)','#818cf8'],
+  c_f: ['f(x)', '#7fffd4'],
+  c_d1:["f′(x)",'#fb923c'], c_d2:["f″(x)",'#f472b6'], c_d3:["f‴(x)",'#facc15']
+};
+Object.entries(hoverLabels).forEach(([id,[label,color]])=>bindHover(id,label,color));
+
+let activeData = [];
+
+// ─── MAIN RUN ─────────────────────────────────────────────
+function run() {
+  const raw=parseData(document.getElementById('dataInput').value);
+  if(raw.length<3){alert('En az 3 veri noktası girin.');return;}
+  activeData=raw;
+
+  const method=document.getElementById('methodSel').value;
+  let fit;
+  if(method==='fourier') fit=fourierFit(raw);
+  else if(method==='poly') fit=polyFit(raw,Math.min(6,raw.length-1));
+  else fit=cubicSpline(raw);
+
+  const f=fit.fn;
+  const xMax=raw.length-1;
+
+  // derivatives
+  const d1 = x=>deriv(f,x);
+  const d2 = x=>deriv2(f,x);
+  const d3 = x=>deriv3(f,x);
+
+  // antiderivatives (cumulative integral)
+  const A1 = antideriv(f, 0, 2000, xMax);
+  const A2 = antideriv(A1, 0, 2000, xMax);
+
+  activeFns = { c_a2:A2, c_a1:A1, c_f:f, c_d1:d1, c_d2:d2, c_d3:d3 };
+
+  document.getElementById('eq_f').textContent = fit.label;
+
+  // fit info
+  const r=Math.sqrt(raw.reduce((s,v,i)=>s+Math.pow(f(i)-v,2),0)/raw.length);
+  const info=document.getElementById('fitInfo');
+  info.innerHTML=`Yöntem: <span>${fit.label}</span> &nbsp;|&nbsp; n=${raw.length} &nbsp;|&nbsp; RMSE: <span>${r.toFixed(4)}</span>`;
+  info.classList.add('visible');
+
+  drawGraph('c_a2', A2, null,   xMax, false);
+  drawGraph('c_a1', A1, null,   xMax, false);
+  drawGraph('c_f',  f,  raw,    xMax, true);
+  drawGraph('c_d1', d1, null,   xMax, false);
+  drawGraph('c_d2', d2, null,   xMax, false);
+  drawGraph('c_d3', d3, null,   xMax, false);
+}
+
+window.addEventListener('resize',()=>{if(Object.keys(activeFns).length)run();});
+run();
+</script>
+</body>
+</html>
