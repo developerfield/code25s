@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sensör → Fonksiyon Fiti</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap');
+
+  :root {
+    --bg: #09090e;
+    --panel: #0f0f17;
+    --border: #1c1c2e;
+    --accent1: #7fffd4;
+    --accent2: #ff6b9d;
+    --accent3: #ffd166;
+    --data: #a78bfa;
+    --text: #dde0f0;
+    --muted: #4a4a6a;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    padding: 28px 20px 40px;
+  }
+
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background:
+      radial-gradient(ellipse 55% 35% at 15% 5%, rgba(127,255,212,.05) 0%, transparent 70%),
+      radial-gradient(ellipse 45% 45% at 85% 95%, rgba(167,139,250,.04) 0%, transparent 70%);
+    pointer-events:none;
+  }
+
+  header { text-align:center; margin-bottom:28px; }
+  header h1 {
+    font-family:'Syne',sans-serif; font-size:clamp(1.5rem,4vw,2.4rem);
+    font-weight:800; letter-spacing:-.02em;
+    background:linear-gradient(135deg,var(--accent1),var(--data),var(--accent2));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  }
+  header p { color:var(--muted); font-size:.74rem; margin-top:6px; letter-spacing:.06em; }
+
+  /* ── INPUT AREA ── */
+  .input-section {
+    max-width:860px; margin:0 auto 28px;
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:14px; overflow:hidden;
+  }
+
+  .input-header {
+    padding:12px 18px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:10px;
+  }
+  .input-header h2 { font-family:'Syne',sans-serif; font-size:.85rem; color:var(--data); }
+  .input-header .badge {
+    margin-left:auto; font-size:.68rem; color:var(--muted);
+    background:#1a1a2e; padding:3px 8px; border-radius:20px; border:1px solid var(--border);
+  }
+
+  .input-body { padding:16px 18px; display:flex; flex-direction:column; gap:12px; }
+
+  textarea {
+    width:100%; height:80px;
+    background:#0a0a14; border:1px solid var(--border); border-radius:8px;
+    color:var(--accent1); font-family:'Space Mono',monospace; font-size:.8rem;
+    padding:10px 12px; resize:vertical; outline:none;
+    transition:border-color .2s;
+  }
+  textarea:focus { border-color:var(--data); }
+
+  .controls { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+
+  select {
+    background:#0a0a14; border:1px solid var(--border); color:var(--text);
+    font-family:'Space Mono',monospace; font-size:.76rem;
+    padding:8px 12px; border-radius:8px; outline:none; cursor:pointer;
+  }
+  select:focus { border-color:var(--data); }
+
+  button {
+    background:linear-gradient(135deg,#2a1a4e,#1a2a4e);
+    border:1px solid var(--data); color:var(--data);
+    font-family:'Space Mono',monospace; font-size:.78rem; font-weight:700;
+    padding:9px 22px; border-radius:8px; cursor:pointer; letter-spacing:.04em;
+    transition:all .2s;
+  }
+  button:hover { background:var(--data); color:#09090e; }
+
+  .fit-info {
+    font-size:.72rem; color:var(--muted);
+    background:#0d0d1a; border:1px solid var(--border);
+    border-radius:8px; padding:8px 12px; line-height:1.8;
+    display:none;
+  }
+  .fit-info.visible { display:block; }
+  .fit-info span { color:var(--accent1); }
+
+  /* ── GRAPHS ── */
+  .graphs { max-width:860px; margin:0 auto; display:flex; flex-direction:column; gap:22px; }
+
+  .graph-card {
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:14px; overflow:hidden;
+  }
+  .graph-header {
+    padding:12px 18px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:10px;
+  }
+  .dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .graph-header h2 { font-family:'Syne',sans-serif; font-size:.85rem; font-weight:700; }
+  .graph-header .eq { margin-left:auto; font-size:.68rem; color:var(--muted); font-style:italic; }
+
+  canvas { display:block; width:100%; height:210px; }
+
+  .legend {
+    display:flex; justify-content:center; gap:22px;
+    margin-top:18px; flex-wrap:wrap;
+  }
+  .li { display:flex; align-items:center; gap:7px; font-size:.7rem; color:var(--muted); }
+  .ll { width:22px; height:2px; border-radius:2px; }
+  .ld { width:9px; height:9px; border-radius:50%; background:var(--data); }
+
+  .tooltip {
+    position:fixed; background:rgba(9,9,20,.96);
+    border:1px solid var(--border); border-radius:8px;
+    padding:7px 11px; font-size:.7rem; pointer-events:none;
+    opacity:0; transition:opacity .15s; z-index:100;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Sensör Verisi → Fonksiyon Fiti</h1>
+  <p>Veriyi en uygun eğriye dönüştür · f(x) · f′(x) · f″(x)</p>
+</header>
+
+<!-- INPUT -->
+<div class="input-section">
+  <div class="input-header">
+    <div class="dot" style="background:var(--data)"></div>
+    <h2>Sensör Verisi</h2>
+    <span class="badge">virgül veya boşluk ile ayır</span>
+  </div>
+  <div class="input-body">
+    <textarea id="dataInput">10, 12, 13, 9, 8, 10, 15, 7, 9, 12, 13, 10, 8, 11, 14, 6, 10, 13, 11, 9, 12, 8, 10, 15, 7, 11</textarea>
+    <div class="controls">
+      <select id="methodSel">
+        <option value="fourier">Fourier Serisi (harmonik fit)</option>
+        <option value="poly">Polinom Fit (derece 6)</option>
+        <option value="spline">Cubic Spline (tam interpolasyon)</option>
+      </select>
+      <button onclick="run()">▶ Hesapla &amp; Çiz</button>
+      <div class="fit-info" id="fitInfo"></div>
+    </div>
+  </div>
+</div>
+
+<!-- GRAPHS -->
+<div class="graphs">
+  <div class="graph-card">
+    <div class="graph-header">
+      <div class="dot" style="background:var(--accent1)"></div>
+      <h2 style="color:var(--accent1)">f(x) — Fonksiyon</h2>
+      <span class="eq" id="eq0">—</span>
+    </div>
+    <canvas id="c0"></canvas>
+  </div>
+  <div class="graph-card">
+    <div class="graph-header">
+      <div class="dot" style="background:var(--accent2)"></div>
+      <h2 style="color:var(--accent2)">f′(x) — 1. Türev</h2>
+      <span class="eq" id="eq1">sayısal türev</span>
+    </div>
+    <canvas id="c1"></canvas>
+  </div>
+  <div class="graph-card">
+    <div class="graph-header">
+      <div class="dot" style="background:var(--accent3)"></div>
+      <h2 style="color:var(--accent3)">f″(x) — 2. Türev</h2>
+      <span class="eq" id="eq2">sayısal türev</span>
+    </div>
+    <canvas id="c2"></canvas>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="li"><div class="ll" style="background:var(--accent1)"></div> f(x)</div>
+  <div class="li"><div class="ll" style="background:var(--accent2)"></div> f′(x)</div>
+  <div class="li"><div class="ll" style="background:var(--accent3)"></div> f″(x)</div>
+  <div class="li"><div class="ld"></div> Ham veri noktası</div>
+</div>
+
+<div class="tooltip" id="tip"></div>
+
+<script>
+// ─── HELPERS ───────────────────────────────────────────────
+function parseData(str) {
+  return str.split(/[\s,;]+/).map(Number).filter(v => !isNaN(v) && v !== null && String(v).trim() !== '');
+}
+
+// Numerical derivative (central differences)
+function derivative(fn, x, h=1e-5) { return (fn(x+h) - fn(x-h)) / (2*h); }
+function derivative2(fn, x, h=1e-5) { return (fn(x+h) - 2*fn(x) + fn(x-h)) / (h*h); }
+
+// ─── FIT METHODS ───────────────────────────────────────────
+
+// 1. FOURIER SERIES FIT
+function fourierFit(data) {
+  const N = data.length;
+  const T = N - 1; // period mapped to data indices
+  const numHarmonics = Math.min(6, Math.floor(N/3));
+  // DFT coefficients
+  const a = [], b = [];
+  a[0] = data.reduce((s,v)=>s+v,0)/N;
+  for (let k=1; k<=numHarmonics; k++) {
+    let ak=0, bk=0;
+    for (let n=0; n<N; n++) {
+      ak += data[n]*Math.cos(2*Math.PI*k*n/T);
+      bk += data[n]*Math.sin(2*Math.PI*k*n/T);
+    }
+    a[k] = 2*ak/T;
+    b[k] = 2*bk/T;
+  }
+  const fn = x => {
+    let s = a[0];
+    for (let k=1; k<=numHarmonics; k++)
+      s += a[k]*Math.cos(2*Math.PI*k*x/T) + b[k]*Math.sin(2*Math.PI*k*x/T);
+    return s;
+  };
+  const terms = [`${a[0].toFixed(2)}`];
+  for (let k=1; k<=Math.min(3,numHarmonics); k++) {
+    if (Math.abs(a[k])>0.01) terms.push(`${a[k].toFixed(2)}cos(${k===1?'':''+k}ω)`);
+    if (Math.abs(b[k])>0.01) terms.push(`${b[k].toFixed(2)}sin(${k===1?'':''+k}ω)`);
+  }
+  return { fn, label: terms.slice(0,4).join(' + ') + (numHarmonics>2?'…':''), harmonics: numHarmonics, a, b, T };
+}
+
+// 2. POLYNOMIAL FIT (least squares, degree d)
+function polyFit(data, deg=6) {
+  const N = data.length;
+  deg = Math.min(deg, N-1);
+  // Vandermonde normal equations via Gaussian elimination
+  const xs = data.map((_,i)=>i/(N-1)*2-1); // normalize to [-1,1]
+  const A = [], rhs = [];
+  for (let i=0; i<=deg; i++) {
+    A[i] = [];
+    for (let j=0; j<=deg; j++) {
+      A[i][j] = xs.reduce((s,x)=>s+Math.pow(x,i+j),0);
+    }
+    rhs[i] = xs.reduce((s,x,k)=>s+Math.pow(x,i)*data[k],0);
+  }
+  // Gaussian elimination
+  for (let col=0; col<=deg; col++) {
+    let pivot=col;
+    for (let row=col+1; row<=deg; row++) if(Math.abs(A[row][col])>Math.abs(A[pivot][col])) pivot=row;
+    [A[col],A[pivot]]=[A[pivot],A[col]]; [rhs[col],rhs[pivot]]=[rhs[pivot],rhs[col]];
+    for (let row=col+1; row<=deg; row++) {
+      const f=A[row][col]/A[col][col];
+      for (let j=col; j<=deg; j++) A[row][j]-=f*A[col][j];
+      rhs[row]-=f*rhs[col];
+    }
+  }
+  const coef=new Array(deg+1).fill(0);
+  for (let i=deg; i>=0; i--) {
+    coef[i]=rhs[i];
+    for (let j=i+1; j<=deg; j++) coef[i]-=A[i][j]*coef[j];
+    coef[i]/=A[i][i];
+  }
+  const fn = x => {
+    const xn = x/(N-1)*2-1;
+    return coef.reduce((s,c,k)=>s+c*Math.pow(xn,k),0);
+  };
+  const label = `derece-${deg} polinom`;
+  return { fn, label };
+}
+
+// 3. CUBIC SPLINE
+function cubicSpline(data) {
+  const n = data.length - 1;
+  const h = new Array(n).fill(1);
+  const alpha = [];
+  for (let i=1; i<n; i++)
+    alpha[i] = 3*(data[i+1]-data[i])/h[i] - 3*(data[i]-data[i-1])/h[i-1];
+  const l=[1,...new Array(n).fill(0)],mu=new Array(n+1).fill(0),z=new Array(n+1).fill(0);
+  for (let i=1; i<n; i++) {
+    l[i]=2*(i+1-(i-1))-mu[i-1]*h[i-1];
+    mu[i]=h[i]/l[i]; z[i]=(alpha[i]-h[i-1]*z[i-1])/l[i];
+  }
+  l[n]=1;
+  const c=new Array(n+1).fill(0),b=new Array(n).fill(0),d=new Array(n).fill(0);
+  for (let j=n-1; j>=0; j--) {
+    c[j]=z[j]-mu[j]*c[j+1];
+    b[j]=(data[j+1]-data[j])/h[j]-h[j]*(c[j+1]+2*c[j])/3;
+    d[j]=(c[j+1]-c[j])/(3*h[j]);
+  }
+  const fn = x => {
+    let i = Math.min(Math.max(Math.floor(x),0),n-1);
+    if (x >= n) i = n-1;
+    const dx = x - i;
+    return data[i] + b[i]*dx + c[i]*dx*dx + d[i]*dx*dx*dx;
+  };
+  return { fn, label: 'cubic spline interpolasyonu' };
+}
+
+// ─── RMSE ──────────────────────────────────────────────────
+function rmse(fn, data) {
+  const err = data.reduce((s,v,i)=>s+Math.pow(fn(i)-v,2),0);
+  return Math.sqrt(err/data.length);
+}
+
+// ─── DRAW ──────────────────────────────────────────────────
+const COLORS = ['#7fffd4','#ff6b9d','#ffd166'];
+const GLOWS  = ['rgba(127,255,212,.3)','rgba(255,107,157,.3)','rgba(255,209,102,.3)'];
+const tip = document.getElementById('tip');
+let activeData = [], activeFn = null;
+
+function drawGraph(canvas, fn, color, glow, rawData, showDots, xMax) {
+  const dpr = window.devicePixelRatio||1;
+  const W = canvas.offsetWidth || 800;
+  const H = canvas.offsetHeight || 210;
+  canvas.width = W*dpr; canvas.height = H*dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+
+  const STEPS = 600;
+  let yMin=Infinity, yMax=-Infinity;
+  for (let i=0; i<=STEPS; i++) {
+    const x = i/STEPS*xMax;
+    const y = fn(x);
+    if(isFinite(y)){if(y<yMin)yMin=y;if(y>yMax)yMax=y;}
+  }
+  if(showDots && rawData) rawData.forEach(v=>{if(v<yMin)yMin=v;if(v>yMax)yMax=v;});
+  const pad=(yMax-yMin)*0.14; yMin-=pad; yMax+=pad;
+  if(!isFinite(yMin)||!isFinite(yMax)){yMin=-10;yMax=10;}
+
+  const toX = x => x/xMax*W;
+  const toY = y => H - (y-yMin)/(yMax-yMin)*H;
+
+  canvas._fn=fn; canvas._yMin=yMin; canvas._yMax=yMax;
+  canvas._toX=toX; canvas._toY=toY; canvas._xMax=xMax; canvas._W=W;
+
+  // bg
+  ctx.fillStyle='#0f0f17'; ctx.fillRect(0,0,W,H);
+
+  // grid
+  ctx.strokeStyle='#1a1a28'; ctx.lineWidth=1;
+  const nVgrid=Math.min(rawData?rawData.length:10,20);
+  for(let i=0;i<=nVgrid;i++){
+    const cx=toX(i/nVgrid*xMax);
+    ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,H);ctx.stroke();
+  }
+  for(let i=0;i<=5;i++){
+    const cy=toY(yMin+(yMax-yMin)*i/5);
+    ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(W,cy);ctx.stroke();
+  }
+
+  // y=0 line
+  const y0=toY(0);
+  ctx.strokeStyle='rgba(255,255,255,.12)'; ctx.lineWidth=1;
+  ctx.setLineDash([4,6]);
+  ctx.beginPath();ctx.moveTo(0,y0);ctx.lineTo(W,y0);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // fill
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,glow); grad.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.beginPath();
+  ctx.moveTo(toX(0),y0);
+  for(let i=0;i<=STEPS;i++){
+    const x=i/STEPS*xMax; const y=fn(x);
+    if(isFinite(y)) ctx.lineTo(toX(x),toY(y));
+  }
+  ctx.lineTo(toX(xMax),y0); ctx.closePath();
+  ctx.fillStyle=grad; ctx.fill();
+
+  // curve
+  ctx.shadowColor=color; ctx.shadowBlur=7;
+  ctx.strokeStyle=color; ctx.lineWidth=2.2;
+  ctx.beginPath();
+  let first=true;
+  for(let i=0;i<=STEPS;i++){
+    const x=i/STEPS*xMax; const y=fn(x);
+    if(!isFinite(y)){first=true;continue;}
+    first?(ctx.moveTo(toX(x),toY(y)),first=false):ctx.lineTo(toX(x),toY(y));
+  }
+  ctx.stroke(); ctx.shadowBlur=0;
+
+  // data dots
+  if(showDots && rawData){
+    rawData.forEach((v,i)=>{
+      ctx.beginPath();
+      ctx.arc(toX(i),toY(v),4,0,Math.PI*2);
+      ctx.fillStyle='rgba(167,139,250,.9)';
+      ctx.shadowColor='#a78bfa'; ctx.shadowBlur=8;
+      ctx.fill(); ctx.shadowBlur=0;
+    });
+  }
+
+  // x labels
+  ctx.fillStyle='#333355'; ctx.font='9px Space Mono,monospace'; ctx.textAlign='center';
+  const step = Math.max(1,Math.round(xMax/10));
+  for(let i=0;i<=xMax;i+=step) ctx.fillText(i, toX(i), H-3);
+}
+
+// ─── HOVER ─────────────────────────────────────────────────
+function bindHover(canvas, idx, label, color) {
+  canvas.addEventListener('mousemove', e=>{
+    const rect=canvas.getBoundingClientRect();
+    const mx=e.clientX-rect.left;
+    const xMax=canvas._xMax||1;
+    const W=canvas._W||canvas.offsetWidth;
+    const x=mx/W*xMax;
+    const y=canvas._fn(x);
+    if(!isFinite(y)) return;
+
+    // redraw
+    const fns = [activeFn, x=>derivative(activeFn,x), x=>derivative2(activeFn,x)];
+    drawGraph(canvas, fns[idx], COLORS[idx], GLOWS[idx],
+      idx===0?activeData:null, idx===0, xMax);
+
+    const ctx=canvas.getContext('2d');
+    const dpr=window.devicePixelRatio||1;
+    ctx.scale(dpr,dpr);
+    const cx=canvas._toX(x), cy=canvas._toY(y);
+    ctx.beginPath(); ctx.arc(cx/dpr,cy/dpr,5,0,Math.PI*2);
+    ctx.fillStyle=color; ctx.shadowColor=color; ctx.shadowBlur=12;
+    ctx.fill(); ctx.shadowBlur=0;
+
+    tip.innerHTML=`<span style="color:${color}">${label}</span> &nbsp; x=${x.toFixed(2)} &nbsp; y=${y.toFixed(4)}`;
+    tip.style.opacity='1';
+    tip.style.left=(e.clientX+14)+'px';
+    tip.style.top=(e.clientY-28)+'px';
+  });
+  canvas.addEventListener('mouseleave',()=>{
+    tip.style.opacity='0';
+    const fns=[activeFn,x=>derivative(activeFn,x),x=>derivative2(activeFn,x)];
+    const xMax=canvas._xMax||1;
+    drawGraph(canvas,fns[idx],COLORS[idx],GLOWS[idx],
+      idx===0?activeData:null,idx===0,xMax);
+  });
+}
+
+const canvases=[document.getElementById('c0'),document.getElementById('c1'),document.getElementById('c2')];
+const labels=['f(x)','f′(x)','f″(x)'];
+canvases.forEach((c,i)=>bindHover(c,i,labels[i],COLORS[i]));
+
+// ─── MAIN RUN ──────────────────────────────────────────────
+function run() {
+  const raw = parseData(document.getElementById('dataInput').value);
+  if(raw.length < 3) { alert('En az 3 veri noktası girin.'); return; }
+
+  const method = document.getElementById('methodSel').value;
+  let fit;
+  if(method==='fourier') fit = fourierFit(raw);
+  else if(method==='poly') fit = polyFit(raw, Math.min(6, raw.length-1));
+  else fit = cubicSpline(raw);
+
+  activeFn = fit.fn;
+  activeData = raw;
+
+  const r = rmse(fit.fn, raw);
+  const info = document.getElementById('fitInfo');
+  info.innerHTML = `Yöntem: <span>${method}</span> &nbsp;|&nbsp; Veri sayısı: <span>${raw.length}</span> &nbsp;|&nbsp; RMSE: <span>${r.toFixed(4)}</span> &nbsp;|&nbsp; <span>${fit.label}</span>`;
+  info.classList.add('visible');
+  document.getElementById('eq0').textContent = fit.label;
+
+  const xMax = raw.length - 1;
+  const d1 = x => derivative(activeFn, x);
+  const d2 = x => derivative2(activeFn, x);
+
+  drawGraph(canvases[0], activeFn, COLORS[0], GLOWS[0], raw, true, xMax);
+  drawGraph(canvases[1], d1, COLORS[1], GLOWS[1], null, false, xMax);
+  drawGraph(canvases[2], d2, COLORS[2], GLOWS[2], null, false, xMax);
+}
+
+window.addEventListener('resize', ()=>{ if(activeFn) run(); });
+run();
+</script>
+</body>
+</html>
