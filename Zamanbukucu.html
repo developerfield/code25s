@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>📚 Ders Sayacı</title>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --study:#2196F3; --break:#FF9800; --start:#4CAF50; --stop:#F44336; --inactive:#757575;
+  --bg:#F0F4FF; --card:#FFFFFF; --text:#1a1a2e; --sub:#666; --border:#e0e0e0;
+  --shadow:0 4px 20px rgba(0,0,0,0.08); --radius:20px;
+}
+[data-theme="dark"] {
+  --bg:#0d0d1a; --card:#1a1a2e; --text:#e8eaf6; --sub:#9fa8da;
+  --border:#2a2a4a; --shadow:0 4px 20px rgba(0,0,0,0.4);
+}
+body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; transition:background .3s,color .3s; }
+
+/* TOPBAR */
+.topbar { display:flex; align-items:center; padding:14px 16px; background:var(--card); box-shadow:var(--shadow); position:sticky; top:0; z-index:100; gap:6px; }
+.topbar h1 { flex:1; font-size:18px; font-weight:800; }
+.sync-dot { width:8px; height:8px; border-radius:50%; background:#ccc; margin-right:4px; transition:background .3s; }
+.sync-dot.ok { background:#4CAF50; } .sync-dot.err { background:#F44336; }
+.icon-btn { background:none; border:none; font-size:20px; cursor:pointer; padding:8px; border-radius:50%; transition:background .2s; color:var(--text); }
+.icon-btn:hover { background:rgba(128,128,128,.15); }
+
+/* CONTAINER */
+.container { max-width:500px; margin:0 auto; padding:20px 14px 60px; display:flex; flex-direction:column; gap:16px; }
+
+/* MODE BADGE */
+.mode-badge { align-self:center; padding:6px 20px; border-radius:24px; font-weight:700; font-size:16px; transition:all .3s; }
+.mode-badge.study { background:#e3f2fd; color:var(--study); }
+.mode-badge.brk   { background:#fff3e0; color:var(--break); }
+[data-theme="dark"] .mode-badge.study { background:#1a237e55; }
+[data-theme="dark"] .mode-badge.brk   { background:#e6510033; }
+
+/* TIMER CARD */
+.timer-card { background:var(--card); border-radius:var(--radius); padding:28px 20px 20px; text-align:center; box-shadow:var(--shadow); }
+.timer-display { font-size:clamp(48px,16vw,76px); font-weight:900; font-family:'Courier New',monospace; letter-spacing:2px; line-height:1; transition:color .3s; }
+.timer-display.study { color:var(--study); } .timer-display.brk { color:var(--break); }
+.session-info { margin-top:6px; font-size:12px; color:var(--sub); }
+.goal-display { margin-top:10px; font-size:13px; color:var(--sub); display:flex; align-items:center; justify-content:center; gap:6px; }
+.goal-display .val { color:var(--study); font-weight:700; }
+.progress-wrap { margin-top:14px; height:10px; background:var(--border); border-radius:5px; overflow:hidden; }
+.progress-bar  { height:100%; border-radius:5px; transition:width 1s linear,background .3s; width:0%; }
+.progress-labels { display:flex; justify-content:space-between; font-size:11px; color:var(--sub); margin-top:4px; }
+
+/* BIG MODE BUTTONS */
+.mode-buttons { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.mode-btn { height:80px; border:none; border-radius:20px; font-size:19px; font-weight:700; color:white; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; box-shadow:0 4px 14px rgba(0,0,0,.15); transition:transform .1s,box-shadow .2s; }
+.mode-btn:active { transform:scale(.96); }
+.mode-btn .sub-text { font-size:11px; opacity:.85; }
+.study-btn { background:var(--inactive); } .break-btn { background:var(--inactive); }
+.active-study { background:var(--study)!important; box-shadow:0 4px 18px rgba(33,150,243,.45)!important; }
+.active-break { background:var(--break)!important; box-shadow:0 4px 18px rgba(255,152,0,.45)!important; }
+
+/* SMALL CONTROL BUTTONS */
+.control-buttons { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.ctrl-btn { height:44px; border:none; border-radius:12px; font-size:14px; font-weight:700; color:white; cursor:pointer; box-shadow:0 3px 10px rgba(0,0,0,.15); transition:transform .1s,opacity .2s; }
+.ctrl-btn:active { transform:scale(.96); }
+.ctrl-btn:disabled { opacity:.35; cursor:not-allowed; transform:none; }
+.btn-start { background:var(--start); } .btn-stop { background:var(--stop); }
+
+/* MANUAL CARD */
+.manual-card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+.manual-header { display:flex; align-items:center; padding:14px 16px; cursor:pointer; gap:10px; }
+.manual-header .title { flex:1; font-weight:700; font-size:15px; }
+.manual-header .arrow { transition:transform .3s; font-size:14px; color:var(--sub); }
+.manual-header.open .arrow { transform:rotate(180deg); }
+.manual-body { padding:0 16px 16px; display:none; }
+.manual-body.visible { display:block; }
+.manual-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+.field-group { display:flex; flex-direction:column; gap:4px; }
+.field-group label { font-size:12px; color:var(--sub); font-weight:600; }
+.field-group input,.field-group select { padding:9px 12px; border-radius:10px; border:1.5px solid var(--border); background:var(--bg); color:var(--text); font-size:14px; width:100%; }
+.field-group input:focus,.field-group select:focus { outline:none; border-color:var(--study); }
+.manual-note { font-size:12px; color:var(--sub); margin-bottom:10px; line-height:1.6; padding:10px; background:var(--bg); border-radius:10px; }
+.btn-add-manual { width:100%; height:42px; border:none; border-radius:12px; background:linear-gradient(135deg,var(--study),#1565C0); color:white; font-size:14px; font-weight:700; cursor:pointer; }
+
+/* SETTINGS */
+.settings-card { background:var(--card); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:14px; }
+.s-title { font-weight:700; font-size:15px; }
+.mode-tabs { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.tab-btn { height:38px; border:2px solid var(--border); border-radius:10px; background:none; color:var(--text); font-size:13px; font-weight:700; cursor:pointer; transition:all .2s; }
+.tab-btn.active { border-color:var(--study); color:var(--study); background:rgba(33,150,243,.08); }
+.pomo-inputs { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.toggle-row { display:flex; align-items:center; gap:10px; }
+.toggle-row .tr-wrap { flex:1; }
+.toggle-row .tr-label { font-size:14px; font-weight:600; }
+.toggle-row .tr-sub   { font-size:11px; color:var(--sub); margin-top:2px; }
+.toggle { position:relative; width:50px; height:26px; flex-shrink:0; }
+.toggle input { opacity:0; width:0; height:0; }
+.slider { position:absolute; inset:0; background:#ccc; border-radius:26px; cursor:pointer; transition:background .3s; }
+.slider::before { content:''; position:absolute; width:20px; height:20px; left:3px; top:3px; background:white; border-radius:50%; transition:transform .3s; box-shadow:0 2px 4px rgba(0,0,0,.2); }
+input:checked + .slider { background:var(--study); }
+input:checked + .slider::before { transform:translateX(24px); }
+
+/* STATS */
+.stats-card { background:var(--card); border-radius:var(--radius); padding:18px 16px; box-shadow:var(--shadow); }
+.stats-card h3 { font-size:15px; font-weight:800; margin-bottom:14px; }
+.stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+.stat-box { background:var(--bg); border-radius:14px; padding:12px; text-align:center; }
+.stat-box .s-icon { font-size:22px; } .stat-box .s-val { font-size:18px; font-weight:800; margin:4px 0; } .stat-box .s-lbl { font-size:11px; color:var(--sub); }
+.weekly-title,.sessions-title { font-size:13px; color:var(--sub); font-weight:700; margin-bottom:8px; }
+.sessions-title { margin-top:14px; }
+.day-row { display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+.day-label { width:34px; font-size:11px; color:var(--sub); }
+.day-bar-bg { flex:1; height:10px; background:var(--border); border-radius:5px; overflow:hidden; }
+.day-bar { height:100%; background:var(--study); border-radius:5px; transition:width .5s; }
+.day-time { width:46px; text-align:right; font-size:11px; color:var(--sub); }
+.session-item { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; background:var(--bg); margin-bottom:6px; font-size:13px; }
+.session-item .s-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.session-item .s-info { flex:1; }
+.session-item .s-dur { font-weight:700; } .session-item .s-date { font-size:11px; color:var(--sub); }
+.session-item .s-del { background:none; border:none; color:#F44336; cursor:pointer; font-size:16px; padding:4px; }
+
+/* POPUPS */
+.overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:500; display:none; align-items:flex-end; justify-content:center; padding:16px; }
+.overlay.show { display:flex; }
+.popup { background:var(--card); border-radius:24px 24px 16px 16px; padding:24px 20px 20px; width:100%; max-width:480px; animation:slideUp .3s ease; }
+@keyframes slideUp { from{transform:translateY(60px);opacity:0} to{transform:translateY(0);opacity:1} }
+.popup h2 { font-size:18px; margin-bottom:6px; }
+.popup .desc { font-size:13px; color:var(--sub); margin-bottom:18px; line-height:1.5; }
+.popup .input-row { margin-bottom:14px; }
+.popup .input-row label { display:block; font-size:12px; color:var(--sub); font-weight:700; margin-bottom:5px; }
+.popup .input-row input,.popup .input-row select { width:100%; padding:11px 14px; border-radius:12px; border:1.5px solid var(--border); background:var(--bg); color:var(--text); font-size:15px; }
+.popup .input-row input:focus { outline:none; border-color:var(--study); }
+.popup-btns { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px; }
+.popup-btns button { height:46px; border:none; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; }
+.btn-cancel { background:var(--border); color:var(--text); }
+.btn-confirm { background:var(--study); color:white; }
+.btn-confirm.green { background:var(--start); }
+
+/* TOAST */
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(70px); background:#222; color:white; padding:11px 22px; border-radius:24px; font-size:14px; font-weight:600; transition:transform .3s,opacity .3s; opacity:0; pointer-events:none; z-index:999; white-space:nowrap; max-width:90vw; text-align:center; }
+.toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+.hint { text-align:center; font-size:12px; color:var(--sub); line-height:1.8; }
+</style>
+</head>
+<body data-theme="light">
+
+<div class="topbar">
+  <h1>📖 Ders Sayacı</h1>
+  <div class="sync-dot" id="syncDot"></div>
+  <button class="icon-btn" onclick="scrollToStats()">📊</button>
+  <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
+</div>
+
+<div class="container">
+  <span class="mode-badge study" id="modeBadge">📚 Ders Modu</span>
+
+  <!-- Sayaç -->
+  <div class="timer-card">
+    <div class="timer-display study" id="timerDisplay">00:00:00</div>
+    <div class="session-info" id="sessionInfo">Oturum #1 — Bekliyor</div>
+    <div class="goal-display" id="goalDisplay" style="display:none">
+      🎯 Hedef: <span class="val" id="goalVal">—</span>
+      <span id="goalPct" style="color:var(--sub)"></span>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="progress-labels">
+      <span id="pLabelLeft">0:00</span>
+      <span id="pLabelRight"></span>
+    </div>
+  </div>
+
+  <!-- 2 BÜYÜK Buton -->
+  <div class="mode-buttons">
+    <button class="mode-btn study-btn active-study" id="btnStudy" onclick="showModePopup('study')">
+      📚 Ders<span class="sub-text" id="studySubText">Süre belirle</span>
+    </button>
+    <button class="mode-btn break-btn" id="btnBreak" onclick="showModePopup('break')">
+      ☕ Mola<span class="sub-text" id="breakSubText">Süre belirle</span>
+    </button>
+  </div>
+
+  <!-- 2 KÜÇÜK Buton -->
+  <div class="control-buttons">
+    <button class="ctrl-btn btn-start" id="btnStart" onclick="startTimer()">▶ Başla</button>
+    <button class="ctrl-btn btn-stop"  id="btnStop"  onclick="stopTimer()" disabled>⏹ Bitir</button>
+  </div>
+
+  <!-- Manuel Geçmiş -->
+  <div class="manual-card">
+    <div class="manual-header" id="manualHeader" onclick="toggleManual()">
+      <span style="font-size:20px">✏️</span>
+      <span class="title">Geçmiş Oturum Ekle</span>
+      <span class="arrow" id="manualArrow">▼</span>
+    </div>
+    <div class="manual-body" id="manualBody">
+      <p class="manual-note">💡 Molaya geçmeyi unuttuysan veya geçmiş oturumu girmen gerekiyorsa buradan ekle. Örn: 90 dakika çalıştın, son 30 dakikası molaydı → 60dk Ders + 30dk Mola olarak iki kayıt gir.</p>
+      <div class="manual-row">
+        <div class="field-group"><label>📅 Tarih</label><input type="date" id="manualDate"></div>
+        <div class="field-group"><label>🕐 Başlangıç</label><input type="time" id="manualStart"></div>
+      </div>
+      <div class="manual-row">
+        <div class="field-group"><label>⏱ Süre (dk)</label><input type="number" id="manualDur" placeholder="Örn: 90" min="1"></div>
+        <div class="field-group"><label>📌 Tür</label>
+          <select id="manualType"><option value="study">📚 Ders</option><option value="break">☕ Mola</option></select>
+        </div>
+      </div>
+      <div class="field-group" style="margin-bottom:12px">
+        <label>📝 Konu / Not</label>
+        <input type="text" id="manualNote" placeholder="Matematik, Fizik...">
+      </div>
+      <button class="btn-add-manual" onclick="addManualSession()">✅ Geçmiş Oturumu Kaydet</button>
+    </div>
+  </div>
+
+  <!-- Ayarlar -->
+  <div class="settings-card">
+    <div class="s-title">⚙️ Mod Ayarları</div>
+    <div class="mode-tabs">
+      <button class="tab-btn active" id="tabFree" onclick="setTimerMode('free')">🕊 Serbest</button>
+      <button class="tab-btn"        id="tabPomo" onclick="setTimerMode('pomo')">🍅 Pomodoro</button>
+    </div>
+    <div id="pomoInputsWrap" style="display:none">
+      <div class="pomo-inputs">
+        <div class="field-group"><label>📚 Ders (dk)</label><input type="number" id="pomoDur" value="25" min="1" max="120" onchange="saveSettings()"></div>
+        <div class="field-group"><label>☕ Mola (dk)</label><input type="number" id="pomoBreak" value="5" min="1" max="60" onchange="saveSettings()"></div>
+      </div>
+    </div>
+    <div class="toggle-row">
+      <div class="tr-wrap">
+        <div class="tr-label">📳 Titreşim</div>
+        <div class="tr-sub">Süre dolunca titreşim</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="vibToggle" checked onchange="saveSettings()"><span class="slider"></span></label>
+    </div>
+  </div>
+
+  <!-- İstatistikler -->
+  <div class="stats-card" id="statsSection">
+    <h3>📊 İstatistikler</h3>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="s-icon">📚</div><div class="s-val" id="statStudy">—</div><div class="s-lbl">Toplam Ders</div></div>
+      <div class="stat-box"><div class="s-icon">☕</div><div class="s-val" id="statBreak">—</div><div class="s-lbl">Toplam Mola</div></div>
+      <div class="stat-box"><div class="s-icon">🗂</div><div class="s-val" id="statSessions">0</div><div class="s-lbl">Oturum</div></div>
+      <div class="stat-box"><div class="s-icon">🔥</div><div class="s-val" id="statLongest">—</div><div class="s-lbl">En Uzun</div></div>
+    </div>
+    <div class="weekly-title">📅 Son 7 Gün</div>
+    <div id="weeklyBars"></div>
+    <div class="sessions-title">🕓 Son Oturumlar</div>
+    <div id="sessionList"></div>
+  </div>
+
+  <div class="hint">☁️ Firebase ile senkronize — telefon, bilgisayar, her cihazdan erişim</div>
+</div>
+
+<!-- POPUP: Başla -->
+<div class="overlay" id="startPopup">
+  <div class="popup">
+    <h2>▶ Oturumu Başlat</h2>
+    <p class="desc">İsteğe bağlı: bugünkü hedefini ve konunu gir</p>
+    <div class="input-row"><label>🎯 Bugünkü ders hedefi (saat) — boş = hedefsiz</label><input type="number" id="goalInput" placeholder="Örn: 6" min="0.5" max="16" step="0.5"></div>
+    <div class="input-row"><label>📝 Konu / Not</label><input type="text" id="topicInput" placeholder="Matematik, YKS..."></div>
+    <div class="popup-btns">
+      <button class="btn-cancel" onclick="closePopup('startPopup')">İptal</button>
+      <button class="btn-confirm green" onclick="confirmStart()">▶ Başlat</button>
+    </div>
+  </div>
+</div>
+
+<!-- POPUP: Mod seçimi (ders/mola süresi) -->
+<div class="overlay" id="modePopup">
+  <div class="popup">
+    <h2 id="modePopupTitle">📚 Ders Moduna Geç</h2>
+    <p class="desc" id="modePopupDesc">Bu oturum için süre belirle veya serbest bırak</p>
+    <div class="input-row"><label id="modeDurLabel">⏱ Hedef süre (dakika) — boş = serbest</label><input type="number" id="modeDurInput" placeholder="Boş = serbest" min="1"></div>
+    <div class="input-row"><label>📝 Konu / Not (isteğe bağlı)</label><input type="text" id="modeTopicInput" placeholder="Fizik, Türkçe..."></div>
+    <div class="popup-btns">
+      <button class="btn-cancel" onclick="closePopup('modePopup')">İptal</button>
+      <button class="btn-confirm" onclick="confirmMode()">✅ Geç</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── Firebase ───────────────────────────────────────────── */
+const firebaseConfig = {
+  apiKey:"AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",
+  authDomain:"paralayici.firebaseapp.com",
+  projectId:"paralayici",
+  storageBucket:"paralayici.firebasestorage.app",
+  messagingSenderId:"980843550614",
+  appId:"1:980843550614:web:93dd5bda4ddc377b20efb7"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const DEVICE_ID = localStorage.getItem('deviceId') || (() => {
+  const id = 'dev_' + Math.random().toString(36).slice(2,10);
+  localStorage.setItem('deviceId', id);
+  return id;
+})();
+
+function setSyncDot(s) {
+  const d = document.getElementById('syncDot');
+  d.className = 'sync-dot' + (s==='ok'?' ok':s==='err'?' err':'');
+}
+
+/* ── Durum ──────────────────────────────────────────────── */
+let isRunning=false, isStudy=true, timerMode='free';
+let elapsed=0, studyGoalSec=0, modeLimitSec=0, sessionCount=0;
+let currentTopic='', pendingMode=null, timerInterval=null;
+const POMO_STUDY=()=>parseInt(document.getElementById('pomoDur').value||25)*60;
+const POMO_BREAK=()=>parseInt(document.getElementById('pomoBreak').value||5)*60;
+
+/* ── Başla ──────────────────────────────────────────────── */
+function startTimer() {
+  document.getElementById('goalInput').value='';
+  document.getElementById('topicInput').value='';
+  document.getElementById('startPopup').classList.add('show');
+}
+function confirmStart() {
+  const goalH = parseFloat(document.getElementById('goalInput').value)||0;
+  studyGoalSec = goalH*3600;
+  currentTopic = document.getElementById('topicInput').value.trim();
+  closePopup('startPopup');
+  if(isRunning) return;
+  isRunning=true;
+  timerInterval=setInterval(tick,1000);
+  updateButtons(); updateDisplay(); syncState();
+  showToast(isStudy?'📚 Ders başladı!':'☕ Mola başladı!');
+}
+
+/* ── Mod Popup ──────────────────────────────────────────── */
+function showModePopup(mode) {
+  pendingMode=mode;
+  const isS=(mode==='study');
+  document.getElementById('modePopupTitle').textContent  = isS?'📚 Ders Moduna Geç':'☕ Mola Moduna Geç';
+  document.getElementById('modePopupDesc').textContent   = isS?'Bu ders için süre belirle veya serbest bırak':'Ne kadar mola yapacaksın? Boş = serbest';
+  document.getElementById('modeDurLabel').textContent    = isS?'⏱ Ders süresi (dk) — boş = serbest':'⏱ Mola süresi (dk) — boş = serbest';
+  document.getElementById('modeDurInput').value='';
+  document.getElementById('modeTopicInput').value='';
+  document.getElementById('modePopup').classList.add('show');
+}
+function confirmMode() {
+  const dur   = parseInt(document.getElementById('modeDurInput').value)||0;
+  const topic = document.getElementById('modeTopicInput').value.trim();
+  modeLimitSec = dur*60;
+  if(topic) currentTopic=topic;
+  closePopup('modePopup');
+  const newStudy=(pendingMode==='study');
+  if(isRunning && elapsed>5) { _saveSession(); elapsed=0; sessionCount++; }
+  isStudy=newStudy;
+  if(timerMode==='pomo') modeLimitSec=isStudy?POMO_STUDY():POMO_BREAK();
+  updateModeUI(); updateDisplay(); syncState();
+  showToast(isStudy?'📚 Ders moduna geçildi':'☕ Mola moduna geçildi');
+}
+
+/* ── Durdur ─────────────────────────────────────────────── */
+function stopTimer() {
+  if(!isRunning) return;
+  isRunning=false; clearInterval(timerInterval);
+  if(elapsed>5){ _saveSession(); sessionCount++; }
+  elapsed=0; modeLimitSec=0; studyGoalSec=0;
+  updateDisplay(); updateButtons(); syncState(); loadStats();
+  showToast('✅ Oturum kaydedildi!');
+}
+
+/* ── Tick ───────────────────────────────────────────────── */
+function tick() {
+  elapsed++;
+  updateDisplay();
+  if(timerMode==='pomo') checkPomodoro();
+  else if(modeLimitSec>0 && elapsed>=modeLimitSec) alertLimit();
+  if(elapsed%30===0) syncState();
+}
+
+function checkPomodoro() {
+  const limit=isStudy?POMO_STUDY():POMO_BREAK();
+  if(elapsed>0 && elapsed%limit===0) {
+    _saveSession(); elapsed=0; sessionCount++;
+    isStudy=!isStudy; modeLimitSec=isStudy?POMO_STUDY():POMO_BREAK();
+    updateModeUI();
+    showToast(isStudy?'🎉 Mola bitti! Ders zamanı 📚':'☕ Harika! Mola zamanı',4000);
+    if(document.getElementById('vibToggle').checked && navigator.vibrate) navigator.vibrate([300,200,300]);
+    syncState();
+  }
+}
+
+function alertLimit() {
+  showToast(isStudy?'⏰ Ders süresi doldu!':'⏰ Mola süresi doldu!',4000);
+  if(document.getElementById('vibToggle').checked && navigator.vibrate) navigator.vibrate([400,200,400,200,400]);
+  modeLimitSec=0;
+}
+
+/* ── Firebase: Oturum Kaydet ────────────────────────────── */
+function _saveSession() {
+  const now=Date.now(), durSec=elapsed;
+  setSyncDot('wait');
+  db.collection('sessions').add({
+    deviceId:DEVICE_ID, startTime:now-durSec*1000, endTime:now,
+    durationSec:durSec, isStudy, topic:currentTopic, manual:false,
+    createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  }).then(()=>{ setSyncDot('ok'); loadStats(); })
+    .catch(()=> setSyncDot('err'));
+}
+
+/* ── Firebase: Durum Sync ───────────────────────────────── */
+function syncState() {
+  setSyncDot('wait');
+  db.collection('timerState').doc(DEVICE_ID).set({
+    isRunning, isStudy, elapsed, studyGoalSec, modeLimitSec,
+    sessionCount, topic:currentTopic,
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  }).then(()=>setSyncDot('ok')).catch(()=>setSyncDot('err'));
+}
+
+/* ── Manuel Oturum ──────────────────────────────────────── */
+function toggleManual() {
+  const body=document.getElementById('manualBody');
+  const hdr =document.getElementById('manualHeader');
+  const open=body.classList.toggle('visible');
+  hdr.classList.toggle('open',open);
+  if(open) {
+    const now=new Date();
+    document.getElementById('manualDate').value =now.toISOString().slice(0,10);
+    document.getElementById('manualStart').value=now.toTimeString().slice(0,5);
+  }
+}
+function addManualSession() {
+  const dateStr=document.getElementById('manualDate').value;
+  const timeStr=document.getElementById('manualStart').value;
+  const durMin =parseInt(document.getElementById('manualDur').value);
+  const type   =document.getElementById('manualType').value;
+  const note   =document.getElementById('manualNote').value.trim();
+  if(!dateStr||!timeStr||!durMin||durMin<1){ showToast('⚠️ Tarih, saat ve süre doldur!'); return; }
+  const startMs=new Date(`${dateStr}T${timeStr}`).getTime();
+  const durSec =durMin*60;
+  setSyncDot('wait');
+  db.collection('sessions').add({
+    deviceId:DEVICE_ID, startTime:startMs, endTime:startMs+durSec*1000,
+    durationSec:durSec, isStudy:(type==='study'), topic:note, manual:true,
+    createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  }).then(()=>{
+    setSyncDot('ok');
+    showToast('✅ Geçmiş oturum eklendi!');
+    document.getElementById('manualDur').value='';
+    document.getElementById('manualNote').value='';
+    loadStats();
+  }).catch(e=>{ setSyncDot('err'); showToast('❌ '+e.message); });
+}
+
+/* ── İstatistikler ──────────────────────────────────────── */
+function loadStats() {
+  db.collection('sessions').where('deviceId','==',DEVICE_ID)
+    .orderBy('startTime','desc').limit(100).get()
+    .then(snap=>{
+      let totalStudy=0,totalBreak=0,longest=0;
+      const weekly={}, recent=[];
+      const cutoff=Date.now()-7*24*3600*1000;
+      snap.forEach(doc=>{
+        const s={...doc.data(),_id:doc.id};
+        if(s.isStudy){ totalStudy+=s.durationSec; if(s.durationSec>longest) longest=s.durationSec; }
+        else totalBreak+=s.durationSec;
+        if(s.isStudy && s.startTime>cutoff){
+          const day=new Date(s.startTime).toISOString().slice(0,10);
+          weekly[day]=(weekly[day]||0)+s.durationSec;
+        }
+        if(recent.length<8) recent.push(s);
+      });
+      document.getElementById('statStudy').textContent   =formatTime(totalStudy);
+      document.getElementById('statBreak').textContent   =formatTime(totalBreak);
+      document.getElementById('statSessions').textContent=snap.size;
+      document.getElementById('statLongest').textContent =formatTime(longest);
+      renderWeekly(weekly); renderSessions(recent);
+    }).catch(()=>setSyncDot('err'));
+}
+
+function renderWeekly(weekly) {
+  const days=[];
+  for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); days.push(d.toISOString().slice(0,10)); }
+  const maxVal=Math.max(...days.map(d=>weekly[d]||0),1);
+  document.getElementById('weeklyBars').innerHTML=days.map(day=>{
+    const val=weekly[day]||0;
+    const pct=(val/maxVal*100).toFixed(1);
+    return `<div class="day-row"><span class="day-label">${day.slice(5)}</span><div class="day-bar-bg"><div class="day-bar" style="width:${pct}%"></div></div><span class="day-time">${val>0?formatTime(val):'—'}</span></div>`;
+  }).join('');
+}
+
+function renderSessions(sessions) {
+  document.getElementById('sessionList').innerHTML=sessions.map(s=>{
+    const date=new Date(s.startTime);
+    const label=date.toLocaleDateString('tr-TR',{day:'numeric',month:'short'})+' '+date.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
+    const color=s.isStudy?'var(--study)':'var(--break)';
+    const icon =s.isStudy?'📚':'☕';
+    const man  =s.manual?' ✏️':'';
+    const topic=s.topic?` · ${s.topic}`:'';
+    return `<div class="session-item"><div class="s-dot" style="background:${color}"></div><div class="s-info"><div class="s-dur">${icon} ${formatTime(s.durationSec)}${man}${topic}</div><div class="s-date">${label}</div></div><button class="s-del" onclick="deleteSession('${s._id}')">🗑</button></div>`;
+  }).join('');
+}
+
+function deleteSession(id) {
+  if(!confirm('Bu oturumu sil?')) return;
+  db.collection('sessions').doc(id).delete()
+    .then(()=>{ showToast('🗑 Silindi'); loadStats(); })
+    .catch(e =>showToast('❌ '+e.message));
+}
+
+/* ── UI ─────────────────────────────────────────────────── */
+function updateDisplay() {
+  document.getElementById('timerDisplay').textContent=secToHMS(elapsed);
+  document.getElementById('timerDisplay').className ='timer-display '+(isStudy?'study':'brk');
+  document.getElementById('sessionInfo').textContent =`Oturum #${sessionCount+1}${currentTopic?' · '+currentTopic:''} — ${isRunning?'● Çalışıyor':'Bekliyor'}`;
+  if(studyGoalSec>0){
+    document.getElementById('goalDisplay').style.display='flex';
+    document.getElementById('goalVal').textContent=formatTime(studyGoalSec);
+    document.getElementById('goalPct').textContent='(%'+Math.min(100,(elapsed/studyGoalSec*100).toFixed(0))+')'
+  } else document.getElementById('goalDisplay').style.display='none';
+  const limit=timerMode==='pomo'?(isStudy?POMO_STUDY():POMO_BREAK()):(modeLimitSec>0?modeLimitSec:(studyGoalSec>0&&isStudy?studyGoalSec:0));
+  if(limit>0){
+    document.getElementById('progressBar').style.width     =Math.min(100,elapsed/limit*100).toFixed(1)+'%';
+    document.getElementById('progressBar').style.background=isStudy?'var(--study)':'var(--break)';
+    document.getElementById('pLabelLeft').textContent =secToHMS(elapsed);
+    document.getElementById('pLabelRight').textContent=formatTime(limit);
+  } else {
+    document.getElementById('progressBar').style.width='0%';
+    document.getElementById('pLabelLeft').textContent =secToHMS(elapsed);
+    document.getElementById('pLabelRight').textContent='';
+  }
+}
+
+function updateModeUI() {
+  const badge=document.getElementById('modeBadge');
+  badge.textContent=isStudy?'📚 Ders Modu':'☕ Mola Modu';
+  badge.className  ='mode-badge '+(isStudy?'study':'brk');
+  document.getElementById('btnStudy').className='mode-btn study-btn '+(isStudy?'active-study':'');
+  document.getElementById('btnBreak').className='mode-btn break-btn '+(!isStudy?'active-break':'');
+  const sl=modeLimitSec>0?formatTime(modeLimitSec):'Serbest';
+  document.getElementById('studySubText').textContent=isStudy ?(modeLimitSec>0?sl:'Süre serbest'):'Süre belirle';
+  document.getElementById('breakSubText').textContent=!isStudy?(modeLimitSec>0?sl:'Süre serbest'):'Süre belirle';
+}
+
+function updateButtons() {
+  document.getElementById('btnStart').disabled=isRunning;
+  document.getElementById('btnStop').disabled =!isRunning;
+}
+
+/* ── Timer Modu ─────────────────────────────────────────── */
+function setTimerMode(mode) {
+  timerMode=mode;
+  document.getElementById('tabFree').classList.toggle('active',mode==='free');
+  document.getElementById('tabPomo').classList.toggle('active',mode==='pomo');
+  document.getElementById('pomoInputsWrap').style.display=mode==='pomo'?'block':'none';
+  if(mode==='pomo') modeLimitSec=isStudy?POMO_STUDY():POMO_BREAK();
+  saveSettings();
+}
+
+/* ── Ayarlar ────────────────────────────────────────────── */
+function saveSettings() {
+  localStorage.setItem('settings',JSON.stringify({timerMode,pomoDur:document.getElementById('pomoDur').value,pomoBreak:document.getElementById('pomoBreak').value,vib:document.getElementById('vibToggle').checked}));
+}
+function loadSettings() {
+  const s=JSON.parse(localStorage.getItem('settings')||'{}');
+  if(s.timerMode) setTimerMode(s.timerMode);
+  if(s.pomoDur)   document.getElementById('pomoDur').value=s.pomoDur;
+  if(s.pomoBreak) document.getElementById('pomoBreak').value=s.pomoBreak;
+  if(s.vib!==undefined) document.getElementById('vibToggle').checked=s.vib;
+}
+
+/* ── Tema ───────────────────────────────────────────────── */
+function toggleTheme() {
+  const dark=document.body.getAttribute('data-theme')==='dark';
+  document.body.setAttribute('data-theme',dark?'light':'dark');
+  document.getElementById('themeBtn').textContent=dark?'🌙':'☀️';
+  localStorage.setItem('theme',dark?'light':'dark');
+}
+
+/* ── Popup ──────────────────────────────────────────────── */
+function closePopup(id){ document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('.overlay').forEach(el=>el.addEventListener('click',e=>{ if(e.target===el) el.classList.remove('show'); }));
+
+/* ── Toast ──────────────────────────────────────────────── */
+let toastT;
+function showToast(msg,dur=2500){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+/* ── Yardımcılar ────────────────────────────────────────── */
+function secToHMS(sec){ const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60; return `${pad(h)}:${pad(m)}:${pad(s)}`; }
+function formatTime(sec){ if(!sec||sec<60) return sec+'s'; const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60); return h>0?`${h}s ${m}d`:`${m}d`; }
+function pad(n){ return String(n).padStart(2,'0'); }
+function scrollToStats(){ document.getElementById('statsSection').scrollIntoView({behavior:'smooth'}); }
+
+/* ── Başlangıç ──────────────────────────────────────────── */
+window.onload=()=>{
+  const theme=localStorage.getItem('theme')||'light';
+  document.body.setAttribute('data-theme',theme);
+  document.getElementById('themeBtn').textContent=theme==='dark'?'☀️':'🌙';
+  loadSettings(); updateDisplay(); updateModeUI(); updateButtons(); loadStats();
+  setSyncDot('ok');
+};
+window.onbeforeunload=()=>{ if(isRunning&&elapsed>5){ _saveSession(); syncState(); } };
+</script>
+</body>
+</html>
