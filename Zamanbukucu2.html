@@ -1,0 +1,1003 @@
+<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><title>Ders Sayacı</title>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--s:#2196F3;--m:#FF9800;--g:#4CAF50;--r:#F44336;--bg:#f0f4ff;--card:#fff;--text:#1a1a2e;--sub:#666;--brd:#e0e0e0;--nav:#fff;--sh:0 2px 12px rgba(0,0,0,.1);--rad:16px}
+[data-theme=dark]{--bg:#0d0d1a;--card:#1a1a2e;--text:#e8eaf6;--sub:#9fa8da;--brd:#2a2a4a;--nav:#111827;--sh:0 2px 12px rgba(0,0,0,.4)}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s;padding-bottom:80px}
+
+/* NAVBAR */
+nav{display:flex;align-items:center;padding:10px 14px;background:var(--nav);box-shadow:var(--sh);position:sticky;top:0;z-index:200;gap:8px}
+.nav-lamp{font-size:20px;cursor:pointer;line-height:1}
+.nav-center{flex:1;display:flex;justify-content:center;gap:8px}
+#btnStart{background:var(--s);color:#fff;border:none;border-radius:24px;padding:9px 24px;font-size:15px;font-weight:700;cursor:pointer;transition:opacity .2s}
+#btnStart:disabled{opacity:.4}
+#btnStop{background:var(--r);color:#fff;border:none;border-radius:50%;width:38px;height:38px;font-size:16px;cursor:pointer;transition:opacity .2s}
+#btnStop:disabled{opacity:.4}
+.nav-theme{background:none;border:none;font-size:20px;cursor:pointer;padding:6px;border-radius:50%;transition:background .2s;color:var(--text)}
+.nav-theme:hover{background:rgba(128,128,128,.15)}
+
+/* SECTIONS */
+.sec{max-width:520px;margin:0 auto;padding:12px 12px 0}
+
+/* PROGRESS BARS */
+.pb-wrap{background:var(--card);border-radius:var(--rad);padding:14px;box-shadow:var(--sh);display:flex;flex-direction:column;gap:8px}
+.pb-row{display:flex;align-items:center;gap:8px}
+.pb-label{font-size:11px;color:var(--sub);width:28px;flex-shrink:0}
+.pb-track{flex:1;height:12px;background:var(--brd);border-radius:6px;overflow:hidden;position:relative}
+.pb-fill{height:100%;border-radius:6px;transition:width .5s,background .3s;position:absolute;top:0}
+.pb-fill.left{right:0} /* sağdan sola = right:0, width azalır */
+.pb-fill.right{left:0} /* soldan sağa = left:0, width artar */
+.pb-time{font-size:11px;color:var(--sub);width:46px;text-align:right;flex-shrink:0}
+
+/* Özel (dinamik) progress bar */
+.dyn-pb-wrap{background:var(--card);border-radius:var(--rad);padding:10px 14px;box-shadow:var(--sh)}
+.dyn-pb-label{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-bottom:4px}
+.dyn-pb-track{height:14px;border-radius:7px;overflow:hidden;display:flex;width:100%}
+.dyn-seg{height:100%;transition:flex .5s}
+
+/* BIG BUTTONS */
+.big-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.big-btn{height:72px;border:none;border-radius:20px;font-size:20px;font-weight:800;color:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 4px 14px rgba(0,0,0,.15);transition:transform .1s,box-shadow .2s;position:relative}
+.big-btn:active{transform:scale(.96)}
+.big-btn .sub{font-size:11px;opacity:.85;font-weight:400}
+#bigStudy{background:var(--s)} #bigStudy.inactive{background:var(--sub)}
+#bigBreak{background:var(--m)} #bigBreak.inactive{background:var(--sub)}
+.big-btn.active-btn{box-shadow:0 4px 20px rgba(33,150,243,.5)}
+#bigBreak.active-btn{box-shadow:0 4px 20px rgba(255,152,0,.5)}
+
+/* INLINE FORM (ders butonunun altında) */
+.inline-form{background:var(--card);border-radius:0 0 var(--rad) var(--rad);padding:10px 12px;box-shadow:var(--sh);display:none;flex-direction:column;gap:8px}
+.inline-form.open{display:flex}
+.inline-form input{padding:8px 12px;border-radius:10px;border:1.5px solid var(--brd);background:var(--bg);color:var(--text);font-size:14px;width:100%}
+.inline-form input:focus{outline:none;border-color:var(--s)}
+.inline-form .if-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.inline-form .if-btn{height:36px;border:none;border-radius:10px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;background:var(--s)}
+.inline-form .if-btn.cancel{background:var(--brd);color:var(--text)}
+
+/* TABLE */
+.tbl-wrap{background:var(--card);border-radius:var(--rad);padding:12px;box-shadow:var(--sh)}
+.tbl-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.tbl-title{font-size:14px;font-weight:700}
+.tbl-btns{display:flex;gap:8px}
+.tbl-btn{height:30px;padding:0 14px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;color:#fff}
+.tbl-btn.del{background:var(--r)} .tbl-btn.add{background:var(--s)}
+.tbl-list{display:flex;flex-direction:column;gap:4px;max-height:280px;overflow-y:auto}
+.tbl-row{display:flex;align-items:baseline;gap:6px;font-size:13px;padding:4px 6px;border-radius:8px;transition:background .2s}
+.tbl-row:hover{background:var(--brd)}
+.tbl-time{color:var(--sub);font-size:12px;flex-shrink:0;width:38px}
+.tbl-tag{font-weight:700;padding:1px 7px;border-radius:8px;font-size:12px;border:2px solid transparent}
+.tag-start{color:#4CAF50;border-color:#4CAF50} .tag-stop{color:#F44336;border-color:#F44336}
+.tag-study{color:#2196F3;border-color:#2196F3} .tag-break{color:#FF9800;border-color:#FF9800}
+.tbl-info{color:var(--sub);font-size:12px}
+.tbl-empty{text-align:center;color:var(--sub);font-size:13px;padding:20px}
+
+/* BOTTOM BAR */
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;background:var(--nav);box-shadow:0 -2px 12px rgba(0,0,0,.1);display:flex;justify-content:space-around;padding:8px 0;z-index:200}
+.bot-btn{display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;cursor:pointer;font-size:20px;color:var(--sub);padding:6px 12px;border-radius:12px;transition:color .2s,background .2s}
+.bot-btn span{font-size:10px;font-weight:600}
+.bot-btn:hover,.bot-btn.active{color:var(--s);background:rgba(33,150,243,.1)}
+.bot-switch{display:flex;align-items:center;gap:4px;flex-direction:column;cursor:pointer}
+.toggle{position:relative;width:42px;height:22px}
+.toggle input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;background:#ccc;border-radius:22px;cursor:pointer;transition:background .3s}
+.slider::before{content:'';position:absolute;width:18px;height:18px;left:2px;top:2px;background:#fff;border-radius:50%;transition:transform .3s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+input:checked+.slider{background:var(--s)}
+input:checked+.slider::before{transform:translateX(20px)}
+
+/* OVERLAYS & POPUPS */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;display:none;align-items:flex-end;justify-content:center;padding:12px}
+.ov.show{display:flex}
+.ov.center{align-items:center}
+.pop{background:var(--card);border-radius:24px 24px 16px 16px;padding:22px 18px 18px;width:100%;max-width:480px;animation:su .3s ease;max-height:90vh;overflow-y:auto}
+.ov.center .pop{border-radius:20px}
+@keyframes su{from{transform:translateY(50px);opacity:0}to{transform:translateY(0);opacity:1}}
+.pop h2{font-size:17px;margin-bottom:12px}
+.pop .desc{font-size:13px;color:var(--sub);margin-bottom:14px;line-height:1.5}
+.pop-row{margin-bottom:12px}
+.pop-row label{display:block;font-size:12px;color:var(--sub);font-weight:700;margin-bottom:4px}
+.pop-row input,.pop-row select{width:100%;padding:10px 13px;border-radius:12px;border:1.5px solid var(--brd);background:var(--bg);color:var(--text);font-size:14px}
+.pop-row input:focus,.pop-row select:focus{outline:none;border-color:var(--s)}
+.pop-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.pop-btns.triple{grid-template-columns:1fr 1fr 1fr}
+.pop-btn{height:44px;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .2s}
+.pop-btn:hover{opacity:.9}
+.pb-cancel{background:var(--brd);color:var(--text)} .pb-ok{background:var(--s);color:#fff} .pb-red{background:var(--r);color:#fff} .pb-green{background:var(--g);color:#fff} .pb-orange{background:var(--m);color:#fff}
+
+/* ADD popup: type buttons */
+.type-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.type-btn{height:40px;border:2px solid var(--brd);border-radius:12px;background:none;color:var(--text);font-size:13px;font-weight:700;cursor:pointer;transition:all .2s}
+.type-btn.sel-start{border-color:#4CAF50;color:#4CAF50;background:rgba(76,175,80,.1)}
+.type-btn.sel-stop{border-color:#F44336;color:#F44336;background:rgba(244,67,54,.1)}
+.type-btn.sel-study{border-color:#2196F3;color:#2196F3;background:rgba(33,150,243,.1)}
+.type-btn.sel-break{border-color:#FF9800;color:#FF9800;background:rgba(255,152,0,.1)}
+
+/* DELETE popup: list */
+.del-list{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;margin-bottom:12px}
+.del-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;border:2px solid var(--brd);cursor:pointer;transition:all .2s;font-size:13px}
+.del-item.selected{border-color:var(--r);background:rgba(244,67,54,.08)}
+
+/* CALENDAR */
+.cal-tabs{display:flex;gap:8px;margin-bottom:14px}
+.cal-tab{flex:1;height:34px;border:2px solid var(--brd);border-radius:10px;background:none;color:var(--text);font-size:13px;font-weight:700;cursor:pointer;transition:all .2s}
+.cal-tab.active{border-color:var(--s);color:var(--s);background:rgba(33,150,243,.08)}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cal-nav button{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text);padding:4px 8px}
+.cal-nav span{font-size:15px;font-weight:700}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:10px}
+.cal-day-hdr{text-align:center;font-size:11px;color:var(--sub);font-weight:700;padding:4px 0}
+.cal-day{aspect-ratio:1;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;border:2px solid transparent;transition:all .2s;flex-direction:column;gap:1px}
+.cal-day.today{border-color:var(--s)}
+.cal-day.empty{pointer-events:none;opacity:0}
+.cal-day .cd-dot{width:5px;height:5px;border-radius:50%}
+/* renk sınıfları */
+.c-blue{background:#2196F3;color:#fff} .c-green{background:#4CAF50;color:#fff}
+.c-ygreen{background:#8BC34A;color:#fff} .c-yellow{background:#FFEB3B;color:#222}
+.c-orange{background:#FF9800;color:#fff} .c-red{background:#F44336;color:#fff}
+.c-grey{background:var(--brd);color:var(--sub)}
+.cal-day-detail{background:var(--bg);border-radius:12px;padding:10px;font-size:13px}
+.cal-day-detail .cd-title{font-weight:700;margin-bottom:6px}
+.cd-stat-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--brd)}
+.cd-stat-row:last-child{border:none}
+
+/* GOAL popup */
+.day-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.day-btn{width:40px;height:40px;border-radius:50%;border:2px solid var(--brd);background:none;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;color:var(--text)}
+.day-btn.on{background:var(--g);border-color:var(--g);color:#fff}
+
+/* TIMED BREAK popup */
+.tb-presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.tb-preset{padding:6px 14px;border-radius:20px;border:2px solid var(--brd);background:none;font-size:13px;font-weight:700;cursor:pointer;color:var(--text);transition:all .2s}
+.tb-preset.sel{border-color:var(--m);color:var(--m);background:rgba(255,152,0,.1)}
+
+/* CONFIRM delete */
+.confirm-pop{background:var(--card);border-radius:20px;padding:20px 18px;width:100%;max-width:380px;text-align:center}
+.confirm-pop h3{margin-bottom:8px} .confirm-pop p{font-size:13px;color:var(--sub);margin-bottom:16px}
+
+/* responsive */
+@media(max-width:400px){.big-btn{height:64px;font-size:17px}.nav-center{gap:5px}#btnStart{padding:8px 16px;font-size:13px}}
+</style></head>
+<body data-theme="light">
+
+<!-- NAVBAR -->
+<nav>
+  <span class="nav-lamp" id="fbLamp" title="Firebase">💡</span>
+  <div class="nav-center">
+    <button id="btnStart" onclick="onStartClick()">▶ Başla</button>
+    <button id="btnStop"  onclick="onStop()" disabled>⏹</button>
+  </div>
+  <button class="nav-theme" id="btnTheme" onclick="toggleTheme()">🌙</button>
+</nav>
+
+<!-- ÜST: Progress barlar + büyük butonlar -->
+<div class="sec" style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+
+  <!-- Ana ders progress bar -->
+  <div class="pb-wrap">
+    <div class="pb-row">
+      <span class="pb-label" style="color:var(--s)">📚</span>
+      <div class="pb-track" id="studyTrack">
+        <div class="pb-fill left" id="studyFill" style="background:var(--s);width:100%"></div>
+      </div>
+      <span class="pb-time" id="studyPbTime">0:00</span>
+    </div>
+    <!-- Timed break bar (gizli başlar) -->
+    <div class="pb-row" id="timedBreakRow" style="display:none">
+      <span class="pb-label" style="color:var(--m)">☕</span>
+      <div class="pb-track" id="breakTrack">
+        <div class="pb-fill left" id="breakFill" style="background:var(--m);width:100%"></div>
+      </div>
+      <span class="pb-time" id="breakPbTime">0:00</span>
+    </div>
+  </div>
+
+  <!-- 2 büyük buton -->
+  <div class="big-btns">
+    <div style="display:flex;flex-direction:column">
+      <button class="big-btn active-btn" id="bigStudy" onclick="onBigStudy()">
+        📚 Ders<span class="sub" id="studySubLabel">Toplam: 0:00</span>
+      </button>
+      <div class="inline-form" id="studyInlineForm">
+        <div class="if-row">
+          <input type="text"   id="ifTopic"    placeholder="Konu (ör: Fizik)">
+          <input type="number" id="ifGoalHour" placeholder="Hedef saat" step="0.5" min="0">
+        </div>
+        <div class="if-row">
+          <button class="if-btn cancel" onclick="closeInlineForm()">Vazgeç</button>
+          <button class="if-btn"        onclick="confirmInlineForm()">✓ Tamam</button>
+        </div>
+      </div>
+    </div>
+    <button class="big-btn inactive" id="bigBreak" onclick="onBigBreak()">
+      ☕ Mola<span class="sub" id="breakSubLabel">Toplam: 0:00</span>
+    </button>
+  </div>
+</div>
+
+<!-- ORTA: Dinamik PB + Tablo -->
+<div class="sec" style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+
+  <!-- Dinamik progress bar -->
+  <div class="dyn-pb-wrap">
+    <div class="dyn-pb-label">
+      <span id="dynLeft">Dinamik</span>
+      <span id="dynRight">0:00</span>
+    </div>
+    <div class="dyn-pb-track" id="dynTrack">
+      <div class="dyn-seg" id="dynDone"   style="background:var(--brd);flex:0"></div>
+      <div class="dyn-seg" id="dynBreakSeg" style="background:var(--m);flex:0"></div>
+      <div class="dyn-seg" id="dynActive" style="background:var(--s);flex:1"></div>
+      <div class="dyn-seg" id="dynFuture" style="background:var(--brd);opacity:.35;flex:0"></div>
+    </div>
+  </div>
+
+  <!-- Tablo -->
+  <div class="tbl-wrap">
+    <div class="tbl-header">
+      <span class="tbl-title" id="tblTitle">📋 Bugün</span>
+      <div class="tbl-btns">
+        <button class="tbl-btn del" onclick="openDelPopup()">🗑 Sil</button>
+        <button class="tbl-btn add" onclick="openAddPopup()">＋ Ekle</button>
+      </div>
+    </div>
+    <div class="tbl-list" id="tblList"><div class="tbl-empty">Henüz kayıt yok</div></div>
+  </div>
+</div>
+
+<!-- ALT: 4 buton -->
+<div class="bottom-bar">
+  <button class="bot-btn" onclick="openTimedBreak()">⏱<span>Mola</span></button>
+  <button class="bot-btn" onclick="openCalendar()">📅<span>Takvim</span></button>
+  <button class="bot-btn" onclick="openGoal()">🎯<span>Hedef</span></button>
+  <div class="bot-switch">
+    <label class="toggle"><input type="checkbox" id="vibSwitch"><span class="slider"></span></label>
+    <span style="font-size:10px;color:var(--sub)">📳</span>
+  </div>
+</div>
+
+<!-- ═══════════ POPUPS ═══════════ -->
+
+<!-- BAŞLA popup -->
+<div class="ov" id="ovStart"><div class="pop">
+  <h2>▶ Oturumu Başlat</h2>
+  <div class="pop-row"><label>📝 Konu</label><input id="stTopic" type="text" placeholder="Matematik, Fizik..."></div>
+  <div class="pop-row"><label>⏱ Hedef süre (saat)</label><input id="stGoal" type="number" step="0.5" min="0" placeholder="Boş = Serbest mod"></div>
+  <div class="pop-row"><label>⚡ Tolerans (saat, default 1)</label><input id="stTol" type="number" step="0.25" min="0.25" value="1"></div>
+  <div class="pop-btns">
+    <button class="pop-btn pb-cancel" onclick="closeOv('ovStart')">İptal</button>
+    <button class="pop-btn pb-green"  onclick="confirmStart()">▶ Başlat</button>
+  </div>
+</div></div>
+
+<!-- DEVAM MI? popup (yerel hedef bitti) -->
+<div class="ov center" id="ovContinue"><div class="pop" style="border-radius:20px;text-align:center">
+  <h2>⏰ Süre Doldu!</h2>
+  <p class="desc" id="continueDesc">Hedeflediğin süreye ulaştın.</p>
+  <div class="pop-btns">
+    <button class="pop-btn pb-cancel" onclick="onLocalGoalEnd(false)">⏹ Bitir</button>
+    <button class="pop-btn pb-green"  onclick="onLocalGoalEnd(true)">▶ Devam</button>
+  </div>
+</div></div>
+
+<!-- KONU DEĞİŞTİR popup -->
+<div class="ov" id="ovChangeTopic"><div class="pop">
+  <h2>📚 Konu Değiştir</h2>
+  <div class="pop-row"><label>📝 Yeni konu</label><input id="ctTopic" type="text" placeholder="Fizik, Türkçe..."></div>
+  <div class="pop-row"><label>⏱ Yerel hedef (saat)</label><input id="ctGoal" type="number" step="0.5" min="0" placeholder="Boş = süresiz"></div>
+  <div class="pop-btns">
+    <button class="pop-btn pb-cancel" onclick="closeOv('ovChangeTopic')">İptal</button>
+    <button class="pop-btn pb-ok"     onclick="confirmChangeTopic()">✓ Değiştir</button>
+  </div>
+</div></div>
+
+<!-- EKLE popup -->
+<div class="ov" id="ovAdd"><div class="pop">
+  <h2>＋ Kayıt Ekle</h2>
+  <div class="pop-row"><label>🕐 Saat (HH:MM)</label><input id="addTime" type="time"></div>
+  <div class="type-btns">
+    <button class="type-btn" id="tb-start" onclick="selType('start')">▶ Başla</button>
+    <button class="type-btn" id="tb-stop"  onclick="selType('stop')">⏹ Bitir</button>
+    <button class="type-btn" id="tb-study" onclick="selType('study')">📚 Ders</button>
+    <button class="type-btn" id="tb-break" onclick="selType('break')">☕ Mola</button>
+  </div>
+  <div id="addExtra" style="display:none">
+    <div class="pop-row"><label>📝 Konu</label><input id="addTopic" type="text" placeholder="Matematik..."></div>
+    <div class="pop-row"><label>⏱ Hedef (saat)</label><input id="addGoal" type="number" step="0.5" min="0" placeholder="Boş = süresiz"></div>
+  </div>
+  <div class="pop-row"><label>📅 Tarih (boş=bugün)</label><input id="addDate" type="date"></div>
+  <div class="pop-btns">
+    <button class="pop-btn pb-cancel" onclick="closeOv('ovAdd')">Vazgeç</button>
+    <button class="pop-btn pb-ok"     onclick="confirmAdd()">＋ Ekle</button>
+  </div>
+</div></div>
+
+<!-- SİL seçim popup -->
+<div class="ov" id="ovDel"><div class="pop">
+  <h2>🗑 Silinecek Kaydı Seç</h2>
+  <div class="del-list" id="delList"></div>
+  <div class="pop-btns">
+    <button class="pop-btn pb-cancel" onclick="closeOv('ovDel')">Vazgeç</button>
+    <button class="pop-btn pb-red"    onclick="proceedDelete()">Sil →</button>
+  </div>
+</div></div>
+
+<!-- SİL onay popup (üstte çıkar) -->
+<div class="ov center" id="ovDelConfirm"><div class="confirm-pop">
+  <h3>⚠️ Emin misin?</h3>
+  <p id="delConfirmText">Bu kayıt silinecek.</p>
+  <div class="pop-btns">
+    <button class="pop-btn pb-cancel" onclick="closeOv('ovDelConfirm')">Vazgeç</button>
+    <button class="pop-btn pb-red"    onclick="confirmDeleteFinal()">🗑 Sil</button>
+  </div>
+</div></div>
+
+<!-- SÜRELİ MOLA popup -->
+<div class="ov" id="ovTimedBreak"><div class="pop">
+  <h2>⏱ Süreli Mola</h2>
+  <div class="tb-presets">
+    <button class="tb-preset" onclick="setTbPreset(5)">5dk</button>
+    <button class="tb-preset" onclick="setTbPreset(10)">10dk</button>
+    <button class="tb-preset" onclick="setTbPreset(15)">15dk</button>
+    <button class="tb-preset" onclick="setTbPreset(30)">30dk</button>
+    <button class="tb-preset" onclick="setTbPreset(60)">1s</button>
+  </div>
+  <div class="pop-row"><label>⏱ Mola süresi (dakika)</label><input id="tbMins" type="number" min="1" max="180" placeholder="Dakika girin"></div>
+  <div class="pop-btns">
+    <button class="pop-btn pb-cancel" onclick="closeOv('ovTimedBreak')">İptal</button>
+    <button class="pop-btn pb-orange" onclick="confirmTimedBreak()">☕ Molayı Başlat</button>
+  </div>
+</div></div>
+
+<!-- TAKVİM popup -->
+<div class="ov" id="ovCal"><div class="pop">
+  <h2>📅 Takvim</h2>
+  <div class="cal-tabs">
+    <button class="cal-tab active" id="ct-day"   onclick="setCalTab('day')">Gün</button>
+    <button class="cal-tab"        id="ct-month" onclick="setCalTab('month')">Ay</button>
+    <button class="cal-tab"        id="ct-year"  onclick="setCalTab('year')">Yıl</button>
+  </div>
+  <div id="calContent"></div>
+  <div class="pop-btns" style="grid-template-columns:1fr">
+    <button class="pop-btn pb-cancel" onclick="closeOv('ovCal')">Kapat</button>
+  </div>
+</div></div>
+
+<!-- HEDEF popup -->
+<div class="ov" id="ovGoal"><div class="pop">
+  <h2>🎯 Hedef Ayarları</h2>
+  <div class="pop-row"><label>📚 Günlük ders hedefi (saat)</label><input id="goalHour" type="number" step="0.5" min="0.5" max="16" placeholder="6"></div>
+  <div class="pop-row"><label>⚡ Tolerans (saat)</label><input id="goalTol" type="number" step="0.25" min="0.25" value="1"></div>
+  <div class="pop-row"><label>📆 Haftada kaç gün çalışma</label><input id="goalDays" type="number" min="1" max="7" placeholder="5"></div>
+  <div class="pop-row">
+    <label>😴 Dinlenme günleri (yeşil=çalışma, gri=dinlenme)</label>
+    <div class="day-btns" id="restDayBtns"></div>
+  </div>
+  <div class="pop-row">
+    <label>📅 Belirli dinlenme günü yok</label>
+    <label style="display:flex;align-items:center;gap:6px;margin-top:4px;font-size:13px">
+      <input type="checkbox" id="noRestDay"> Her gün esnek
+    </label>
+  </div>
+  <div class="pop-btns">
+    <button class="pop-btn pb-cancel" onclick="closeOv('ovGoal')">İptal</button>
+    <button class="pop-btn pb-ok"     onclick="saveGoal()">💾 Kaydet</button>
+  </div>
+</div></div>
+
+<div class="toast" id="toast" style="position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(50px);background:#222;color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;font-weight:600;opacity:0;transition:transform .3s,opacity .3s;pointer-events:none;z-index:999;white-space:nowrap;max-width:90vw;text-align:center"></div>
+
+<script>
+/* ══════════════════════════════════════════
+   FIREBASE
+══════════════════════════════════════════ */
+firebase.initializeApp({apiKey:"AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",authDomain:"paralayici.firebaseapp.com",projectId:"paralayici",storageBucket:"paralayici.firebasestorage.app",messagingSenderId:"980843550614",appId:"1:980843550614:web:93dd5bda4ddc377b20efb7"});
+const db=firebase.firestore();
+const COL='studyLog2';
+function fbLamp(ok){document.getElementById('fbLamp').textContent=ok?'💡':'🔴'}
+fbLamp(true);
+
+/* ══════════════════════════════════════════
+   STATE
+══════════════════════════════════════════ */
+let S={
+  running:false,      // sayaç çalışıyor mu
+  mode:'study',       // 'study'|'break'
+  startTs:0,          // o anki mod başlangıcı (ms)
+  sessionStartTs:0,   // tüm oturum başlangıcı
+  topic:'',           // anlık konu
+  localGoalSec:0,     // yerel hedef saniye (0=yok)
+  localElapsed:0,     // yerel geçen saniye
+  studyTotal:0,       // bugün toplam ders (s)
+  breakTotal:0,       // bugün toplam mola (s)
+  goalSec:0,          // ana hedef saniye
+  tolSec:3600,        // tolerans saniye
+  timedBreakSec:0,    // süreli mola saniye (0=yok)
+  timedBreakLeft:0,   // süreli mola kalan
+  dynCap:3600,        // dinamik bar kapasitesi (saniye)
+  freeMode:false,     // hedefsiz serbest mod
+};
+let GOAL={hour:0,tol:1,days:5,restDays:[],noRest:false}; // hedef ayarları
+let todayEntries=[]; // [{ts,type,topic,goal}]
+let ticker=null;
+let delSelectIdx=-1;
+let calTab='month', calYear=new Date().getFullYear(), calMonth=new Date().getMonth(), calDay=new Date().getDate();
+
+/* ══════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════ */
+function pad(n){return String(n).padStart(2,'0')}
+function secFmt(s){s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;return h>0?`${h}:${pad(m)}:${pad(sec)}`:`${pad(m)}:${pad(sec)}`}
+function hhmm(ts){const d=new Date(ts);return `${pad(d.getHours())}:${pad(d.getMinutes())}`}
+function todayKey(){const d=new Date();return `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`}
+function dateKey(d){return `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`}
+let toastT;
+function toast(msg,dur=2500){const t=document.getElementById('toast');t.textContent=msg;t.style.transform='translateX(-50%) translateY(0)';t.style.opacity='1';clearTimeout(toastT);toastT=setTimeout(()=>{t.style.transform='translateX(-50%) translateY(50px)';t.style.opacity='0'},dur)}
+function vib(...p){if(S.vib&&navigator.vibrate)navigator.vibrate(p)}
+function closeOv(id){document.getElementById(id).classList.remove('show')}
+document.querySelectorAll('.ov').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('show')}));
+
+/* ══════════════════════════════════════════
+   THEME
+══════════════════════════════════════════ */
+function applyTheme(dark){document.body.setAttribute('data-theme',dark?'dark':'light');document.getElementById('btnTheme').textContent=dark?'☀️':'🌙';localStorage.setItem('theme',dark?'dark':'light')}
+function toggleTheme(){applyTheme(document.body.getAttribute('data-theme')!=='dark')}
+// Otomatik tema (saat + sistem tercihi)
+function autoTheme(){const h=new Date().getHours();const sys=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;const dark=h<6||h>=21||sys;applyTheme(dark)}
+
+/* ══════════════════════════════════════════
+   FIREBASE KAYIT / YÜKLE
+══════════════════════════════════════════ */
+function serializeEntries(arr){return '{('+arr.map(e=>{let s=`${e.time},${e.type}`;if(e.topic)s+=`,${e.topic}`;if(e.goal)s+=`,${e.goal}`;return s}).join('),(')+')}'} 
+function parseEntries(str){if(!str)return[];const m=str.matchAll(/\(([^)]+)\)/g);const res=[];for(const x of m){const p=x[1].split(',');if(p.length<2)continue;res.push({time:p[0],type:p[1],topic:p[2]||'',goal:parseFloat(p[3])||0})}return res}
+
+async function saveToday(){
+  const key=todayKey();
+  const data=serializeEntries(todayEntries);
+  try{await db.collection(COL).doc(key).set({entries:data,studyTotal:S.studyTotal,breakTotal:S.breakTotal,state:JSON.stringify({running:S.running,mode:S.mode,startTs:S.startTs,sessionStartTs:S.sessionStartTs,topic:S.topic,localGoalSec:S.localGoalSec,localElapsed:S.localElapsed,studyTotal:S.studyTotal,breakTotal:S.breakTotal,goalSec:S.goalSec,tolSec:S.tolSec,timedBreakSec:S.timedBreakSec,timedBreakLeft:S.timedBreakLeft,dynCap:S.dynCap,freeMode:S.freeMode})});fbLamp(true)}
+  catch(e){fbLamp(false)}}
+
+async function loadToday(){
+  const key=todayKey();
+  try{
+    const doc=await db.collection(COL).doc(key).get();
+    if(doc.exists){
+      const d=doc.data();
+      todayEntries=parseEntries(d.entries||'');
+      if(d.state){
+        const st=JSON.parse(d.state);
+        Object.assign(S,st);
+        // Eğer çalışıyordu, geçen süreyi hesapla
+        if(S.running&&S.startTs){
+          const elapsed=Math.floor((Date.now()-S.startTs)/1000);
+          if(S.mode==='study'){S.studyTotal+=elapsed;}
+          else{S.breakTotal+=elapsed;if(S.timedBreakLeft>0)S.timedBreakLeft=Math.max(0,S.timedBreakLeft-elapsed);}
+        }
+      }
+    }
+    fbLamp(true);
+  }catch(e){fbLamp(false)}
+  renderTable();updateUI();
+  if(S.running)startTicker();
+}
+
+/* ══════════════════════════════════════════
+   TICKER
+══════════════════════════════════════════ */
+function startTicker(){if(ticker)return;ticker=setInterval(onTick,1000)}
+function stopTicker(){clearInterval(ticker);ticker=null}
+
+function onTick(){
+  const now=Date.now();
+  const elapsed=Math.floor((now-S.startTs)/1000);
+  // Moda göre güncelle
+  if(S.mode==='study'){
+    S.studyTotal=S._studyBase+(elapsed);
+    if(S.localGoalSec>0){
+      S.localElapsed=elapsed;
+      if(S.localElapsed>=S.localGoalSec&&!S._localAlerted){S._localAlerted=true;openContinuePopup()}
+    }
+  } else {
+    S.breakTotal=S._breakBase+elapsed;
+    if(S.timedBreakSec>0){
+      S.timedBreakLeft=Math.max(0,S.timedBreakSec-elapsed);
+      if(S.timedBreakLeft===0&&!S._breakAlerted){S._breakAlerted=true;vib(400,200,400);toast('⏰ Mola süresi doldu!',4000);endTimedBreak();}
+    }
+  }
+  updateProgressBars();updateDynBar();updateSubLabels();
+  if(S.studyTotal%30===0)saveToday(); // Her 30 saniyede bir kaydet
+}
+
+/* ══════════════════════════════════════════
+   START / STOP
+══════════════════════════════════════════ */
+function onStartClick(){
+  if(S.running)return;
+  document.getElementById('stTopic').value='';
+  document.getElementById('stGoal').value='';
+  document.getElementById('stTol').value=GOAL.tol||1;
+  document.getElementById('ovStart').classList.add('show');
+}
+
+function confirmStart(){
+  const topic=document.getElementById('stTopic').value.trim();
+  const goalH=parseFloat(document.getElementById('stGoal').value)||0;
+  const tol  =parseFloat(document.getElementById('stTol').value)||1;
+  closeOv('ovStart');
+  S.topic=topic;S.goalSec=goalH*3600;S.tolSec=tol*3600;
+  S.freeMode=(goalH===0);
+  S.dynCap=S.freeMode?S.tolSec:(S.goalSec||S.tolSec);
+  S.running=true;S.mode='study';S.startTs=Date.now();S.sessionStartTs=S.startTs;
+  S._studyBase=S.studyTotal;S._breakBase=S.breakTotal;
+  S._localAlerted=false;S.localGoalSec=goalH*3600;S.localElapsed=0;
+  S.timedBreakSec=0;S.timedBreakLeft=0;
+  addEntry({time:hhmm(Date.now()),type:'start',topic,goal:goalH||0});
+  updateButtons();updateUI();startTicker();saveToday();
+  toast('▶ Oturum başladı'+(topic?` · ${topic}`:''));
+}
+
+function onStop(){
+  if(!S.running)return;
+  stopTicker();
+  const now=Date.now();
+  const elapsed=Math.floor((now-S.startTs)/1000);
+  if(S.mode==='study')S.studyTotal=S._studyBase+elapsed;
+  else S.breakTotal=S._breakBase+elapsed;
+  S.running=false;S.startTs=0;
+  addEntry({time:hhmm(now),type:'stop'});
+  updateButtons();updateUI();saveToday();
+  toast('⏹ Oturum bitti');
+}
+
+/* ══════════════════════════════════════════
+   DERS / MOLA BUTONLARI
+══════════════════════════════════════════ */
+function onBigStudy(){
+  if(!S.running){
+    // Form aç
+    const f=document.getElementById('studyInlineForm');
+    f.classList.toggle('open');
+    return;
+  }
+  if(S.mode==='study'){
+    // Zaten derste → konu değiştir
+    document.getElementById('ctTopic').value='';
+    document.getElementById('ctGoal').value='';
+    document.getElementById('ovChangeTopic').classList.add('show');
+  } else {
+    // Moladan ders'e geç
+    flushCurrentMode();
+    S.mode='study';S.startTs=Date.now();S._studyBase=S.studyTotal;S._localAlerted=false;
+    S.timedBreakSec=0;S.timedBreakLeft=0;
+    document.getElementById('timedBreakRow').style.display='none';
+    addEntry({time:hhmm(Date.now()),type:'study',topic:S.topic});
+    updateButtons();saveToday();toast('📚 Ders moduna geçildi');
+  }
+}
+
+function onBigBreak(){
+  if(!S.running)return;
+  if(S.mode==='break')return;
+  flushCurrentMode();
+  S.mode='break';S.startTs=Date.now();S._breakBase=S.breakTotal;S._breakAlerted=false;
+  addEntry({time:hhmm(Date.now()),type:'break'});
+  updateButtons();saveToday();toast('☕ Mola moduna geçildi');
+}
+
+function flushCurrentMode(){
+  const elapsed=Math.floor((Date.now()-S.startTs)/1000);
+  if(S.mode==='study')S.studyTotal=S._studyBase+elapsed;
+  else S.breakTotal=S._breakBase+elapsed;
+}
+
+function closeInlineForm(){document.getElementById('studyInlineForm').classList.remove('open')}
+function confirmInlineForm(){
+  const topic=document.getElementById('ifTopic').value.trim();
+  const goalH=parseFloat(document.getElementById('ifGoalHour').value)||0;
+  closeInlineForm();
+  if(S.running&&S.mode==='study'){
+    S.topic=topic;S.localGoalSec=goalH*3600;S.localElapsed=0;S._localAlerted=false;
+    toast(`📚 ${topic||'Ders'} başlandı`+(goalH?` · ${goalH}s`:' · Serbest'));
+  } else {
+    // running değilse sadece kaydet, başlatma burada değil
+    toast('Bilgi güncellendi');
+  }
+  saveToday();
+}
+
+function confirmChangeTopic(){
+  const topic=document.getElementById('ctTopic').value.trim();
+  const goalH=parseFloat(document.getElementById('ctGoal').value)||0;
+  closeOv('ovChangeTopic');
+  flushCurrentMode();
+  S.topic=topic;S.localGoalSec=goalH*3600;S.localElapsed=0;S._localAlerted=false;
+  S.startTs=Date.now();S._studyBase=S.studyTotal;
+  addEntry({time:hhmm(Date.now()),type:'study',topic,goal:goalH||0});
+  saveToday();toast(`📚 Konu değiştirildi: ${topic||'?'}`);
+}
+
+/* ══════════════════════════════════════════
+   YEREL HEDEF SONU
+══════════════════════════════════════════ */
+function openContinuePopup(){
+  vib(300,200,300);
+  document.getElementById('continueDesc').textContent=`"${S.topic||'Ders'}" için hedeflediğin ${secFmt(S.localGoalSec)} doldu. Devam etmek ister misin?`;
+  document.getElementById('ovContinue').classList.add('show');
+}
+function onLocalGoalEnd(cont){
+  closeOv('ovContinue');
+  if(!cont)onStop();
+  else{S.localGoalSec=0;toast('▶ Devam ediliyor...')}
+}
+
+/* ══════════════════════════════════════════
+   SÜRELİ MOLA
+══════════════════════════════════════════ */
+function openTimedBreak(){document.getElementById('ovTimedBreak').classList.add('show')}
+function setTbPreset(m){document.getElementById('tbMins').value=m;document.querySelectorAll('.tb-preset').forEach(b=>{b.classList.toggle('sel',parseInt(b.textContent)===m||(m===60&&b.textContent==='1s'))})}
+function confirmTimedBreak(){
+  const m=parseInt(document.getElementById('tbMins').value)||0;
+  if(!m){toast('⚠️ Süre gir');return}
+  closeOv('ovTimedBreak');
+  S.timedBreakSec=m*60;S.timedBreakLeft=m*60;S._breakAlerted=false;
+  // Molaya geç
+  if(S.running&&S.mode==='study'){
+    flushCurrentMode();S.mode='break';S.startTs=Date.now();S._breakBase=S.breakTotal;S._breakAlerted=false;
+    addEntry({time:hhmm(Date.now()),type:'break'});
+  }
+  document.getElementById('timedBreakRow').style.display='flex';
+  updateButtons();saveToday();toast(`☕ ${m} dk süreli mola başladı`);
+}
+function endTimedBreak(){
+  // Otomatik ders'e dön
+  flushCurrentMode();
+  S.mode='study';S.startTs=Date.now();S._studyBase=S.studyTotal;S._localAlerted=false;
+  S.timedBreakSec=0;S.timedBreakLeft=0;
+  document.getElementById('timedBreakRow').style.display='none';
+  addEntry({time:hhmm(Date.now()),type:'study',topic:S.topic});
+  toast('📚 Mola bitti, ders başladı!');saveToday();
+}
+
+/* ══════════════════════════════════════════
+   PROGRESS BARS
+══════════════════════════════════════════ */
+function updateProgressBars(){
+  // Ana ders bar: hedefli modda sağdan sola azalır, serbest modda sağdan sola artar (0→100 sol→sağ)
+  const studySec=S.studyTotal;
+  const goalSec =S.goalSec||0;
+  const tol=S.tolSec||3600;
+
+  if(goalSec>0){
+    // Hedefli: sağdan sola azalır
+    const pct=Math.max(0,100-(studySec/goalSec*100));
+    const fill=document.getElementById('studyFill');
+    fill.className='pb-fill left';fill.style.width=Math.min(100,pct)+'%';
+    fill.style.background='var(--s)';
+    document.getElementById('studyPbTime').textContent=secFmt(Math.max(0,goalSec-studySec));
+  } else {
+    // Serbest: soldan sağa artar, her tol'de cap uzar
+    if(studySec>=S._studyCap){S._studyCap=(S._studyCap||tol)+tol}
+    const cap=S._studyCap||(tol);
+    const pct=Math.min(100,studySec/cap*100);
+    const fill=document.getElementById('studyFill');
+    fill.className='pb-fill right';fill.style.width=pct+'%';
+    fill.style.background='var(--s)';
+    document.getElementById('studyPbTime').textContent=secFmt(studySec);
+  }
+
+  // Süreli mola bar
+  if(S.timedBreakSec>0){
+    const pct=S.timedBreakLeft/S.timedBreakSec*100;
+    const fill=document.getElementById('breakFill');
+    fill.className='pb-fill left';fill.style.width=Math.max(0,pct)+'%';
+    document.getElementById('breakPbTime').textContent=secFmt(S.timedBreakLeft);
+  } else if(S.mode==='break'&&S.running){
+    // Serbest mola: soldan sağa artar
+    const breakSec=S.breakTotal;
+    const cap=S._breakCap||(S.tolSec||600);
+    if(breakSec>=cap)S._breakCap=cap+(S.tolSec||600);
+    const pct=Math.min(100,breakSec/cap*100);
+    const fill=document.getElementById('breakFill');
+    fill.className='pb-fill right';fill.style.width=pct+'%';
+    document.getElementById('timedBreakRow').style.display='flex';
+    document.getElementById('breakPbTime').textContent=secFmt(breakSec);
+  }
+}
+
+/* ══════════════════════════════════════════
+   DİNAMİK BAR
+══════════════════════════════════════════ */
+function updateDynBar(){
+  const tol=S.tolSec||3600;
+  const total=S.studyTotal+S.breakTotal;
+  
+  // Cap belirleme
+  if(!S._dynCap||S._dynCap===0)S._dynCap=S.goalSec>0?S.goalSec:tol;
+  while(total>S._dynCap)S._dynCap+=tol;
+
+  const cap=S._dynCap;
+  const done=S.studyTotal/cap;  // tamamlanan ders oranı
+  const brk =S.breakTotal/cap;  // mola oranı
+  const active=S.mode==='study'&&S.running?0:0; // zaten dahil
+  const future=Math.max(0,1-done-brk);
+
+  // Segmentler: [tamamlanan ders gri][mola turuncu][kalan mavi][gelecek gri]
+  document.getElementById('dynDone').style.flex=done.toFixed(4);
+  document.getElementById('dynBreakSeg').style.flex=brk.toFixed(4);
+  document.getElementById('dynActive').style.flex=(Math.max(0,1-done-brk)).toFixed(4);
+  document.getElementById('dynFuture').style.flex='0';
+  document.getElementById('dynRight').textContent=secFmt(cap);
+  document.getElementById('dynLeft').textContent=`📚${secFmt(S.studyTotal)} ☕${secFmt(S.breakTotal)}`;
+}
+
+/* ══════════════════════════════════════════
+   SUB LABELS & BUTTONS
+══════════════════════════════════════════ */
+function updateSubLabels(){
+  document.getElementById('studySubLabel').textContent='Toplam: '+secFmt(S.studyTotal);
+  document.getElementById('breakSubLabel').textContent='Toplam: '+secFmt(S.breakTotal);
+}
+
+function updateButtons(){
+  const run=S.running;
+  document.getElementById('btnStart').disabled=run;
+  document.getElementById('btnStop').disabled=!run;
+  document.getElementById('bigStudy').classList.toggle('active-btn',run&&S.mode==='study');
+  document.getElementById('bigStudy').classList.toggle('inactive',!run||S.mode!=='study');
+  document.getElementById('bigBreak').classList.toggle('active-btn',run&&S.mode==='break');
+  document.getElementById('bigBreak').classList.toggle('inactive',!run||S.mode!=='break');
+}
+
+function updateUI(){updateButtons();updateSubLabels();updateProgressBars();updateDynBar()}
+
+/* ══════════════════════════════════════════
+   TABLO
+══════════════════════════════════════════ */
+function addEntry(e){todayEntries.push(e);renderTable();saveToday()}
+
+function renderTable(){
+  const list=document.getElementById('tblList');
+  if(!todayEntries.length){list.innerHTML='<div class="tbl-empty">Henüz kayıt yok</div>';return}
+  list.innerHTML=todayEntries.map((e,i)=>{
+    const tc={start:'tag-start',stop:'tag-stop',study:'tag-study',break:'tag-break'}[e.type]||'tag-study';
+    const lbl={start:'Başla',stop:'Bitir',study:'Ders',break:'Mola'}[e.type]||e.type;
+    const info=(e.topic?e.topic:'')+(e.goal?` ${e.goal}s`:'');
+    return `<div class="tbl-row"><span class="tbl-time">${e.time}</span><span class="tbl-tag ${tc}">[${lbl}]</span>${info?`<span class="tbl-info">{${info}}</span>`:''}</div>`;
+  }).join('');
+  list.scrollTop=list.scrollHeight;
+}
+
+/* ══════════════════════════════════════════
+   EKLE popup
+══════════════════════════════════════════ */
+let addTypeSelected='';
+function openAddPopup(){
+  addTypeSelected='';
+  document.querySelectorAll('.type-btn').forEach(b=>b.className='type-btn');
+  document.getElementById('addExtra').style.display='none';
+  document.getElementById('addTopic').value='';document.getElementById('addGoal').value='';
+  const now=new Date();document.getElementById('addTime').value=`${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  document.getElementById('addDate').value='';
+  document.getElementById('ovAdd').classList.add('show');
+}
+function selType(t){
+  addTypeSelected=t;
+  document.querySelectorAll('.type-btn').forEach(b=>b.className='type-btn');
+  document.getElementById('tb-'+t).className=`type-btn sel-${t}`;
+  document.getElementById('addExtra').style.display=(t==='study'||t==='start')?'block':'none';
+}
+function confirmAdd(){
+  if(!addTypeSelected){toast('⚠️ Tür seç');return}
+  const time=document.getElementById('addTime').value||hhmm(Date.now());
+  const topic=document.getElementById('addTopic').value.trim();
+  const goal =parseFloat(document.getElementById('addGoal').value)||0;
+  const dateStr=document.getElementById('addDate').value;
+  closeOv('ovAdd');
+  const entry={time,type:addTypeSelected,topic,goal};
+  if(dateStr){
+    // Başka güne kaydet
+    saveToDifferentDay(dateStr,entry);
+  } else {
+    todayEntries.push(entry);
+    todayEntries.sort((a,b)=>a.time.localeCompare(b.time));
+    renderTable();saveToday();
+  }
+  toast('✓ Kayıt eklendi');
+}
+
+async function saveToDifferentDay(isoDate,entry){
+  const d=new Date(isoDate);
+  const key=dateKey(d);
+  try{
+    const doc=await db.collection(COL).doc(key).get();
+    let arr=doc.exists?parseEntries(doc.data().entries||''):[];
+    arr.push(entry);arr.sort((a,b)=>a.time.localeCompare(b.time));
+    await db.collection(COL).doc(key).set({entries:serializeEntries(arr)},{merge:true});
+    fbLamp(true);toast('✓ '+key+' tarihine eklendi');
+  }catch(e){fbLamp(false)}
+}
+
+/* ══════════════════════════════════════════
+   SİL popup
+══════════════════════════════════════════ */
+function openDelPopup(){
+  const list=document.getElementById('delList');
+  delSelectIdx=-1;
+  list.innerHTML=todayEntries.map((e,i)=>{
+    const lbl={start:'Başla',stop:'Bitir',study:'Ders',break:'Mola'}[e.type]||e.type;
+    const info=e.topic?` · ${e.topic}`:'';
+    return `<div class="del-item" onclick="selDelItem(${i},this)">${e.time} [${lbl}]${info}</div>`;
+  }).join('')||'<div style="color:var(--sub);text-align:center;padding:12px">Kayıt yok</div>';
+  document.getElementById('ovDel').classList.add('show');
+}
+function selDelItem(i,el){
+  delSelectIdx=i;
+  document.querySelectorAll('.del-item').forEach(x=>x.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function proceedDelete(){
+  if(delSelectIdx<0){toast('⚠️ Önce bir kayıt seç');return}
+  const e=todayEntries[delSelectIdx];
+  const lbl={start:'Başla',stop:'Bitir',study:'Ders',break:'Mola'}[e.type]||e.type;
+  document.getElementById('delConfirmText').textContent=`${e.time} [${lbl}]${e.topic?' · '+e.topic:''} silinecek.`;
+  closeOv('ovDel');
+  document.getElementById('ovDelConfirm').classList.add('show');
+}
+function confirmDeleteFinal(){
+  todayEntries.splice(delSelectIdx,1);
+  delSelectIdx=-1;closeOv('ovDelConfirm');
+  renderTable();saveToday();toast('🗑 Silindi');
+}
+
+/* ══════════════════════════════════════════
+   TAKVİM
+══════════════════════════════════════════ */
+function openCalendar(){
+  calTab='month';
+  document.querySelectorAll('.cal-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('ct-month').classList.add('active');
+  renderCalendar();
+  document.getElementById('ovCal').classList.add('show');
+}
+function setCalTab(t){
+  calTab=t;
+  document.querySelectorAll('.cal-tab').forEach(x=>x.classList.remove('active'));
+  document.getElementById('ct-'+t).classList.add('active');
+  renderCalendar();
+}
+async function renderCalendar(){
+  const c=document.getElementById('calContent');
+  if(calTab==='day'){await renderCalDay(c)}
+  else if(calTab==='month'){await renderCalMonth(c)}
+  else{await renderCalYear(c)}
+}
+
+async function getDayData(key){
+  try{const d=await db.collection(COL).doc(key).get();if(d.exists)return d.data();return null}catch(e){return null}
+}
+
+function dayColor(studyH,goalH,tolH){
+  if(!studyH)return 'c-grey';
+  if(!goalH)return studyH>0?'c-green':'c-grey';
+  const ratio=studyH/goalH;
+  const extra=(studyH-goalH)/(tolH||1);
+  if(extra>=1)return 'c-blue';
+  if(ratio>=1)return 'c-green';
+  if(ratio>=0.8)return 'c-ygreen';
+  if(ratio>=0.5)return 'c-yellow';
+  if(ratio>=0.25)return 'c-orange';
+  return 'c-red';
+}
+
+async function renderCalDay(c){
+  const d=new Date(calYear,calMonth,calDay);
+  const key=dateKey(d);
+  const data=await getDayData(key);
+  const entries=parseEntries(data?.entries||'');
+  const studyH=(data?.studyTotal||0)/3600;
+  const goalH=GOAL.hour;
+  const col=dayColor(studyH,goalH,GOAL.tol);
+
+  let totalBreakSessions=0,maxStreak=0,curStreak=0,lastType='';
+  entries.forEach(e=>{if(e.type==='break')totalBreakSessions++;if(e.type==='study'){curStreak++;maxStreak=Math.max(maxStreak,curStreak);}else curStreak=0;});
+
+  c.innerHTML=`<div class="cal-nav"><button onclick="calShift(-1)">‹</button><span>${d.toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'})}</span><button onclick="calShift(1)">›</button></div>
+  <div class="cal-day-detail">
+    <div class="cd-title" style="color:var(--${col.replace('c-','')==='grey'?'sub':'s'})">Çalışma: ${studyH.toFixed(1)}s · ${goalH?'Hedef: '+goalH+'s':''}</div>
+    ${entries.map(e=>`<div class="cd-stat-row"><span>${e.time} <span class="tbl-tag tag-${e.type}">[${({start:'Başla',stop:'Bitir',study:'Ders',break:'Mola'})[e.type]||e.type}]</span></span><span>${e.topic||''}</span></div>`).join('')}
+    <div class="cd-stat-row"><span>☕ Mola sayısı</span><span>${totalBreakSessions}</span></div>
+    <div class="cd-stat-row"><span>🔥 En uzun kesintisiz</span><span>${maxStreak} ders girdisi</span></div>
+  </div>`;
+}
+
+async function renderCalMonth(c){
+  const firstDay=new Date(calYear,calMonth,1).getDay();
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  const today=new Date();
+  const days=['Pz','Pt','Sa','Ça','Pe','Cu','Ct'];
+
+  // Ay verilerini çek (toplu)
+  const promises=[];
+  for(let i=1;i<=daysInMonth;i++){
+    const d=new Date(calYear,calMonth,i);
+    promises.push(getDayData(dateKey(d)));
+  }
+  const results=await Promise.all(promises);
+
+  let html=`<div class="cal-nav"><button onclick="calShift(-1)">‹</button><span>${new Date(calYear,calMonth).toLocaleDateString('tr-TR',{month:'long',year:'numeric'})}</span><button onclick="calShift(1)">›</button></div>
+  <div class="cal-grid">${days.map(d=>`<div class="cal-day-hdr">${d}</div>`).join('')}`;
+  const start=(firstDay+6)%7; // Pazartesi başlangıç
+  for(let i=0;i<start;i++)html+=`<div class="cal-day empty"></div>`;
+  for(let i=0;i<daysInMonth;i++){
+    const d=i+1;
+    const data=results[i];
+    const studyH=(data?.studyTotal||0)/3600;
+    const col=studyH>0?dayColor(studyH,GOAL.hour,GOAL.tol):'c-grey';
+    const isToday=today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d;
+    html+=`<div class="cal-day ${col}${isToday?' today':''}" onclick="calGoDay(${d})">${d}</div>`;
+  }
+  html+=`</div>`;
+  c.innerHTML=html;
+}
+
+async function renderCalYear(c){
+  const months=['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+  c.innerHTML=`<div class="cal-nav"><button onclick="calShift(-1)">‹</button><span>${calYear}</span><button onclick="calShift(1)">›</button></div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${months.map((m,i)=>`<button style="padding:10px 4px;border:2px solid var(--brd);border-radius:12px;background:none;cursor:pointer;font-size:13px;color:var(--text);font-weight:700" onclick="calGoMonth(${i})">${m}</button>`).join('')}</div>`;
+}
+
+function calShift(d){
+  if(calTab==='day'){const dt=new Date(calYear,calMonth,calDay+d);calYear=dt.getFullYear();calMonth=dt.getMonth();calDay=dt.getDate();}
+  else if(calTab==='month'){const dt=new Date(calYear,calMonth+d,1);calYear=dt.getFullYear();calMonth=dt.getMonth();}
+  else{calYear+=d;}
+  renderCalendar();
+}
+function calGoDay(d){calDay=d;setCalTab('day')}
+function calGoMonth(m){calMonth=m;setCalTab('month')}
+
+/* ══════════════════════════════════════════
+   HEDEF
+══════════════════════════════════════════ */
+function openGoal(){
+  document.getElementById('goalHour').value=GOAL.hour||'';
+  document.getElementById('goalTol').value=GOAL.tol||1;
+  document.getElementById('goalDays').value=GOAL.days||5;
+  document.getElementById('noRestDay').checked=GOAL.noRest||false;
+  renderDayBtns();
+  document.getElementById('ovGoal').classList.add('show');
+}
+function renderDayBtns(){
+  const days=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+  document.getElementById('restDayBtns').innerHTML=days.map((d,i)=>`<button class="day-btn ${GOAL.restDays.includes(i)?'':'on'}" onclick="toggleRestDay(${i},this)">${d}</button>`).join('');
+}
+function toggleRestDay(i,el){
+  const idx=GOAL.restDays.indexOf(i);
+  if(idx>=0){GOAL.restDays.splice(idx,1);el.classList.add('on')}
+  else{GOAL.restDays.push(i);el.classList.remove('on')}
+}
+function saveGoal(){
+  GOAL.hour=parseFloat(document.getElementById('goalHour').value)||0;
+  GOAL.tol =parseFloat(document.getElementById('goalTol').value)||1;
+  GOAL.days=parseInt(document.getElementById('goalDays').value)||5;
+  GOAL.noRest=document.getElementById('noRestDay').checked;
+  S.goalSec=GOAL.hour*3600;S.tolSec=GOAL.tol*3600;
+  localStorage.setItem('goal',JSON.stringify(GOAL));
+  closeOv('ovGoal');toast('🎯 Hedef kaydedildi');
+}
+
+/* ══════════════════════════════════════════
+   INIT
+══════════════════════════════════════════ */
+window.onload=async()=>{
+  const saved=localStorage.getItem('theme');
+  if(saved)applyTheme(saved==='dark');else autoTheme();
+  const g=localStorage.getItem('goal');if(g)GOAL=JSON.parse(g);
+  S._studyCap=S.tolSec||3600;S._breakCap=S.tolSec||3600;
+  await loadToday();
+  renderTable();updateUI();
+};
+window.onbeforeunload=()=>{if(S.running){flushCurrentMode();saveToday()}};
+// Sistem tema değişikliği
+window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(!localStorage.getItem('theme'))autoTheme()});
+</script>
+</body></html>
