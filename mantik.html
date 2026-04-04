@@ -7,334 +7,109 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@300;400;600&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-chtml.min.js"></script>
 <style>
-  :root {
-    --ink: #1a1410;
-    --paper: #f5f0e8;
-    --aged: #e8dfc8;
-    --gold: #c8a84b;
-    --rust: #8b3a2a;
-    --teal: #1e5c5c;
-    --muted: #6b5e4a;
-    --rule: #c8a84b44;
-    --shadow: rgba(26,20,16,0.12);
-  }
+:root {
+  --ink:#1a1410; --paper:#f5f0e8; --aged:#e8dfc8;
+  --gold:#c8a84b; --rust:#8b3a2a; --teal:#1e5c5c;
+  --muted:#6b5e4a; --rule:#c8a84b44; --shadow:rgba(26,20,16,0.12);
+  --ayt:#7b2d8b;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  background:var(--aged);color:var(--ink);
+  font-family:'Crimson Pro',Georgia,serif;font-size:16px;line-height:1.6;
+  min-height:100vh;padding:40px 20px 60px;
+  background-image:repeating-linear-gradient(0deg,transparent,transparent 27px,rgba(200,168,75,0.08) 27px,rgba(200,168,75,0.08) 28px);
+}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse at 30% 20%,rgba(200,168,75,0.06) 0%,transparent 60%),
+             radial-gradient(ellipse at 70% 80%,rgba(139,58,42,0.04) 0%,transparent 50%);}
+.page{max-width:940px;margin:0 auto;position:relative;z-index:1;}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+/* HEADER */
+header{text-align:center;margin-bottom:48px;padding-bottom:32px;border-bottom:2px solid var(--gold);position:relative;}
+header::after{content:'✦';position:absolute;bottom:-13px;left:50%;transform:translateX(-50%);background:var(--aged);padding:0 12px;color:var(--gold);font-size:18px;}
+.konu{font-family:'Crimson Pro',serif;font-style:italic;font-weight:300;font-size:13px;letter-spacing:0.25em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;}
+h1{font-family:'Playfair Display',serif;font-size:clamp(28px,5vw,46px);font-weight:700;color:var(--ink);letter-spacing:-0.01em;line-height:1.15;margin-bottom:8px;}
+h1 em{color:var(--rust);font-style:italic;}
+.subtitle{font-family:'Crimson Pro',serif;font-style:italic;color:var(--muted);font-size:17px;}
+.ayt-legend{display:inline-flex;align-items:center;gap:8px;margin-top:14px;background:rgba(123,45,139,0.08);border:1px solid rgba(123,45,139,0.25);border-radius:20px;padding:5px 16px;font-family:'Crimson Pro',serif;font-size:13px;color:var(--ayt);}
 
-  body {
-    background: var(--aged);
-    color: var(--ink);
-    font-family: 'Crimson Pro', Georgia, serif;
-    font-size: 16px;
-    line-height: 1.6;
-    min-height: 100vh;
-    padding: 40px 20px 60px;
-    background-image:
-      repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 27px,
-        rgba(200,168,75,0.08) 27px,
-        rgba(200,168,75,0.08) 28px
-      );
-  }
+/* SECTIONS */
+.section{margin-bottom:30px;background:var(--paper);border:1px solid var(--rule);border-radius:2px;overflow:hidden;box-shadow:0 2px 16px var(--shadow);animation:fadeUp 0.45s ease both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.section-header{display:flex;align-items:center;gap:12px;padding:14px 22px;background:linear-gradient(90deg,var(--ink) 0%,#2c2318 100%);cursor:pointer;user-select:none;transition:background 0.2s;}
+.section-header:hover{background:linear-gradient(90deg,#2c2318 0%,#3a2e1e 100%);}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);opacity:0.7;min-width:24px;}
+.section-title{font-family:'Playfair Display',serif;font-size:15px;color:var(--paper);font-weight:400;letter-spacing:0.04em;flex:1;}
+.chevron{color:var(--gold);font-size:12px;transition:transform 0.3s ease;opacity:0.7;}
+.section.collapsed .chevron{transform:rotate(-90deg);}
+.section.collapsed .table-wrap{display:none;}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: radial-gradient(ellipse at 30% 20%, rgba(200,168,75,0.06) 0%, transparent 60%),
-                radial-gradient(ellipse at 70% 80%, rgba(139,58,42,0.04) 0%, transparent 50%);
-    pointer-events: none;
-    z-index: 0;
-  }
+/* MAIN TABLE */
+table{width:100%;border-collapse:collapse;font-size:15px;}
+thead th{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);padding:10px 20px;text-align:left;background:rgba(200,168,75,0.06);border-bottom:1px solid var(--rule);font-weight:400;}
+tbody tr{border-bottom:1px solid rgba(200,168,75,0.12);transition:background 0.15s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:rgba(200,168,75,0.07);}
+td{padding:10px 20px;vertical-align:middle;}
+.col-symbol{width:72px;text-align:center;}
+.col-latex{width:185px;}
+.sym{font-size:21px;color:var(--rust);display:flex;align-items:center;justify-content:center;min-height:30px;}
+.sym .MathJax{font-size:19px!important;color:var(--rust);}
+.latex-code{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal);background:rgba(30,92,92,0.07);padding:3px 8px;border-radius:3px;border:1px solid rgba(30,92,92,0.12);display:inline-block;cursor:pointer;transition:all 0.15s;}
+.latex-code:hover{background:rgba(30,92,92,0.14);border-color:rgba(30,92,92,0.25);}
+.latex-code.copied{background:rgba(200,168,75,0.15);border-color:var(--gold);color:#7a5c10;}
+.col-name{font-family:'Crimson Pro',serif;font-size:15px;color:var(--ink);}
+.col-desc{font-family:'Crimson Pro',serif;font-size:14px;color:var(--muted);font-style:italic;}
 
-  .page {
-    max-width: 900px;
-    margin: 0 auto;
-    position: relative;
-    z-index: 1;
-  }
+/* TAGS */
+.tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:8px;padding:1px 5px;border-radius:10px;margin-left:5px;letter-spacing:0.05em;vertical-align:middle;}
+.tag-dig{background:rgba(139,58,42,0.1);color:var(--rust);border:1px solid rgba(139,58,42,0.2);}
+.tag-modal{background:rgba(30,92,92,0.1);color:var(--teal);border:1px solid rgba(30,92,92,0.2);}
+.tag-set{background:rgba(200,168,75,0.15);color:#7a5c10;border:1px solid rgba(200,168,75,0.3);}
+.tag-new{background:rgba(30,92,92,0.08);color:var(--teal);border:1px solid rgba(30,92,92,0.18);}
 
-  header {
-    text-align: center;
-    margin-bottom: 48px;
-    padding-bottom: 32px;
-    border-bottom: 2px solid var(--gold);
-    position: relative;
-  }
+/* AYT BADGE */
+.ayt-badge{display:inline-flex;align-items:center;gap:3px;font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:600;padding:2px 6px;border-radius:10px;margin-left:6px;background:rgba(123,45,139,0.12);color:var(--ayt);border:1px solid rgba(123,45,139,0.28);letter-spacing:0.04em;vertical-align:middle;white-space:nowrap;}
+.ayt-badge::before{content:'★';font-size:9px;}
+tr.ayt-row{background:rgba(123,45,139,0.022);}
+tr.ayt-row:hover{background:rgba(123,45,139,0.055)!important;}
 
-  header::after {
-    content: '✦';
-    position: absolute;
-    bottom: -13px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--aged);
-    padding: 0 12px;
-    color: var(--gold);
-    font-size: 18px;
-  }
+/* TRUTH TABLE */
+.tt-wrapper{margin-top:52px;margin-bottom:48px;animation:fadeUp 0.5s ease 0.55s both;}
+.tt-header-block{text-align:center;margin-bottom:24px;padding-bottom:24px;border-bottom:2px solid var(--gold);position:relative;}
+.tt-header-block::after{content:'✦';position:absolute;bottom:-13px;left:50%;transform:translateX(-50%);background:var(--aged);padding:0 12px;color:var(--gold);font-size:18px;}
+.tt-title{font-family:'Playfair Display',serif;font-size:clamp(22px,4vw,36px);font-weight:700;color:var(--ink);letter-spacing:-0.01em;margin-bottom:6px;}
+.tt-sub{font-family:'Crimson Pro',serif;font-style:italic;color:var(--muted);font-size:15px;}
+.tt-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;background:var(--paper);border:1px solid var(--rule);border-radius:2px;box-shadow:0 2px 16px var(--shadow);}
+table.tt{border-collapse:collapse;width:100%;min-width:680px;}
+table.tt thead th{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--paper);background:var(--ink);padding:11px 15px;text-align:center;border-right:1px solid rgba(255,255,255,0.06);white-space:nowrap;}
+table.tt thead th:nth-child(1),table.tt thead th:nth-child(2){background:#2c2318;color:var(--gold);}
+table.tt thead th.ayt-th{color:#f5d06a;}
+.tt-sub-header th{font-family:'Crimson Pro',serif!important;font-size:10px!important;font-style:italic;font-weight:400!important;color:rgba(245,240,232,0.4)!important;background:var(--ink)!important;padding:2px 15px 8px!important;}
+.tt-sub-header th:nth-child(1),.tt-sub-header th:nth-child(2){background:#2c2318!important;}
+table.tt tbody tr{border-bottom:1px solid rgba(200,168,75,0.12);transition:background 0.12s;}
+table.tt tbody tr:last-child{border-bottom:none;}
+table.tt tbody tr:hover{background:rgba(200,168,75,0.08);}
+table.tt tbody td{text-align:center;padding:12px 15px;font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:600;border-right:1px solid rgba(200,168,75,0.1);vertical-align:middle;}
+table.tt tbody td:nth-child(1),table.tt tbody td:nth-child(2){background:rgba(200,168,75,0.05);font-weight:400;color:var(--muted);border-right:2px solid var(--rule);}
+td.val-1{color:var(--teal);}
+td.val-0{color:var(--rust);opacity:0.75;}
+td.hl{background:rgba(123,45,139,0.07)!important;}
+.tt-legend{display:flex;align-items:center;gap:10px;justify-content:center;margin-top:14px;font-family:'Crimson Pro',serif;font-size:13px;font-style:italic;flex-wrap:wrap;color:var(--muted);}
+.leg-t{color:var(--teal);font-weight:600;}
+.leg-f{color:var(--rust);font-weight:600;}
+.leg-ayt{color:var(--ayt);font-weight:600;}
 
-  .konu {
-    font-family: 'Crimson Pro', serif;
-    font-style: italic;
-    font-weight: 300;
-    font-size: 13px;
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 12px;
-  }
+footer{text-align:center;padding-top:32px;margin-top:8px;border-top:1px solid var(--rule);font-family:'Crimson Pro',serif;font-style:italic;color:var(--muted);font-size:13px;}
+.toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--ink);color:var(--paper);font-family:'JetBrains Mono',monospace;font-size:12px;padding:10px 20px;border-radius:4px;border:1px solid var(--gold);opacity:0;transition:all 0.3s ease;z-index:100;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
-  h1 {
-    font-family: 'Playfair Display', serif;
-    font-size: clamp(28px, 5vw, 46px);
-    font-weight: 700;
-    color: var(--ink);
-    letter-spacing: -0.01em;
-    line-height: 1.15;
-    margin-bottom: 8px;
-  }
-
-  h1 em {
-    color: var(--rust);
-    font-style: italic;
-  }
-
-  .subtitle {
-    font-family: 'Crimson Pro', serif;
-    font-style: italic;
-    color: var(--muted);
-    font-size: 17px;
-  }
-
-  .section {
-    margin-bottom: 36px;
-    background: var(--paper);
-    border: 1px solid var(--rule);
-    border-radius: 2px;
-    overflow: hidden;
-    box-shadow: 0 2px 16px var(--shadow), 0 0 0 1px rgba(200,168,75,0.08);
-    animation: fadeUp 0.5s ease both;
-  }
-
-  .section:nth-child(1) { animation-delay: 0.05s; }
-  .section:nth-child(2) { animation-delay: 0.1s; }
-  .section:nth-child(3) { animation-delay: 0.15s; }
-  .section:nth-child(4) { animation-delay: 0.2s; }
-  .section:nth-child(5) { animation-delay: 0.25s; }
-  .section:nth-child(6) { animation-delay: 0.3s; }
-  .section:nth-child(7) { animation-delay: 0.35s; }
-  .section:nth-child(8) { animation-delay: 0.4s; }
-  .section:nth-child(9) { animation-delay: 0.45s; }
-
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(14px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  .section-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 22px;
-    background: linear-gradient(90deg, var(--ink) 0%, #2c2318 100%);
-    cursor: pointer;
-    user-select: none;
-    transition: background 0.2s;
-  }
-
-  .section-header:hover { background: linear-gradient(90deg, #2c2318 0%, #3a2e1e 100%); }
-
-  .section-num {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--gold);
-    opacity: 0.7;
-    min-width: 24px;
-  }
-
-  .section-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 15px;
-    color: var(--paper);
-    font-weight: 400;
-    letter-spacing: 0.04em;
-    flex: 1;
-  }
-
-  .section-icon {
-    font-size: 16px;
-    color: var(--gold);
-    opacity: 0.8;
-  }
-
-  .chevron {
-    color: var(--gold);
-    font-size: 12px;
-    transition: transform 0.3s ease;
-    opacity: 0.7;
-  }
-
-  .section.collapsed .chevron { transform: rotate(-90deg); }
-  .section.collapsed .table-wrap { display: none; }
-
-  .table-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 15px;
-  }
-
-  thead th {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--muted);
-    padding: 10px 22px;
-    text-align: left;
-    background: rgba(200,168,75,0.06);
-    border-bottom: 1px solid var(--rule);
-    font-weight: 400;
-  }
-
-  tbody tr {
-    border-bottom: 1px solid rgba(200,168,75,0.12);
-    transition: background 0.15s;
-  }
-
-  tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: rgba(200,168,75,0.07); }
-
-  td {
-    padding: 11px 22px;
-    vertical-align: middle;
-  }
-
-  .col-symbol {
-    width: 80px;
-    text-align: center;
-  }
-
-  .col-latex {
-    width: 200px;
-  }
-
-  .sym {
-    font-size: 22px;
-    color: var(--rust);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 32px;
-  }
-
-  .sym .MathJax { font-size: 20px !important; color: var(--rust); }
-
-  .latex-code {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: var(--teal);
-    background: rgba(30,92,92,0.07);
-    padding: 3px 8px;
-    border-radius: 3px;
-    border: 1px solid rgba(30,92,92,0.12);
-    display: inline-block;
-    cursor: pointer;
-    transition: all 0.15s;
-    position: relative;
-  }
-
-  .latex-code:hover {
-    background: rgba(30,92,92,0.14);
-    border-color: rgba(30,92,92,0.25);
-  }
-
-  .latex-code.copied {
-    background: rgba(200,168,75,0.15);
-    border-color: var(--gold);
-    color: #7a5c10;
-  }
-
-  .col-name {
-    font-family: 'Crimson Pro', serif;
-    font-size: 15px;
-    color: var(--ink);
-  }
-
-  .col-desc {
-    font-family: 'Crimson Pro', serif;
-    font-size: 14px;
-    color: var(--muted);
-    font-style: italic;
-  }
-
-  .alt-names {
-    font-size: 12px;
-    color: var(--muted);
-    opacity: 0.7;
-  }
-
-  .tag {
-    display: inline-block;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    padding: 1px 6px;
-    border-radius: 10px;
-    margin-left: 6px;
-    letter-spacing: 0.05em;
-    vertical-align: middle;
-  }
-
-  .tag-dig { background: rgba(139,58,42,0.1); color: var(--rust); border: 1px solid rgba(139,58,42,0.2); }
-  .tag-modal { background: rgba(30,92,92,0.1); color: var(--teal); border: 1px solid rgba(30,92,92,0.2); }
-  .tag-set { background: rgba(200,168,75,0.15); color: #7a5c10; border: 1px solid rgba(200,168,75,0.3); }
-
-  footer {
-    text-align: center;
-    padding-top: 32px;
-    margin-top: 8px;
-    border-top: 1px solid var(--rule);
-    font-family: 'Crimson Pro', serif;
-    font-style: italic;
-    color: var(--muted);
-    font-size: 13px;
-  }
-
-  .toast {
-    position: fixed;
-    bottom: 32px;
-    left: 50%;
-    transform: translateX(-50%) translateY(60px);
-    background: var(--ink);
-    color: var(--paper);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    padding: 10px 20px;
-    border-radius: 4px;
-    border: 1px solid var(--gold);
-    opacity: 0;
-    transition: all 0.3s ease;
-    z-index: 100;
-    white-space: nowrap;
-  }
-
-  .toast.show {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-
-  @media (max-width: 600px) {
-    .col-desc, thead th:last-child, td:last-child { display: none; }
-    td { padding: 10px 14px; }
-    .sym { font-size: 20px; }
-  }
+@media(max-width:620px){
+  .col-desc,thead th:nth-child(4),td:nth-child(4){display:none;}
+  td{padding:9px 12px;}
+}
 </style>
 </head>
 <body>
@@ -344,149 +119,246 @@
   <div class="konu">Mantık &amp; Sembolik Gösterim</div>
   <h1>Mantık <em>Sembolleri</em></h1>
   <div class="subtitle">Kapsamlı Referans Tablosu &mdash; LaTeX Kodları ile</div>
+  <div><span class="ayt-legend">★ AYT işareti: Türkiye lise / AYT sınavında çıkabilecek semboller</span></div>
 </header>
 
 <div id="sections"></div>
 
-<footer>
-  Sembollere tıklayarak LaTeX kodunu panoya kopyalayabilirsiniz &middot; MathJax ile işlenmiştir
-</footer>
-
+<!-- DOĞRULUK TABLOSU -->
+<div class="tt-wrapper">
+  <div class="tt-header-block">
+    <div class="konu" style="margin-bottom:10px;">İki Değişkenli</div>
+    <h2 class="tt-title">Doğruluk Tablosu</h2>
+    <p class="tt-sub">p ve q için tüm temel bağlaç kombinasyonları</p>
+  </div>
+  <div class="tt-scroll">
+    <table class="tt">
+      <thead>
+        <tr>
+          <th>p</th><th>q</th>
+          <th class="ayt-th">p ∧ q ★</th>
+          <th class="ayt-th">p ∨ q ★</th>
+          <th class="ayt-th">¬p ★</th>
+          <th class="ayt-th">¬q ★</th>
+          <th class="ayt-th">p → q ★</th>
+          <th class="ayt-th">p ↔ q ★</th>
+          <th>p ⊕ q</th>
+          <th>p ↑ q</th>
+          <th>p ↓ q</th>
+        </tr>
+        <tr class="tt-sub-header">
+          <th></th><th></th>
+          <th>VE</th><th>VEYA</th><th>DEĞİL p</th><th>DEĞİL q</th>
+          <th>KOŞUL</th><th>BİKOŞUL</th><th>XOR</th><th>NAND</th><th>NOR</th>
+        </tr>
+      </thead>
+      <tbody id="tt-body"></tbody>
+    </table>
+  </div>
+  <div class="tt-legend">
+    <span class="leg-t">1 = Doğru</span> · <span class="leg-f">0 = Yanlış</span> · <span class="leg-ayt">★ sarı başlıklar = AYT kapsamı</span>
+  </div>
 </div>
-<div class="toast" id="toast">Kopyalandı!</div>
+
+<footer>
+  LaTeX koduna tıklayarak panoya kopyalayın &middot; MathJax ile işlenmiştir &middot; ★ AYT / Lise kapsamı
+</footer>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script>
 const DATA = [
   {
-    title: "Temel Bileşenler",
-    icon: "◈",
-    rows: [
-      { sym: "p", latex: "p", name: "Önerme değişkeni p", desc: "Basit mantıksal değişken" },
-      { sym: "q", latex: "q", name: "Önerme değişkeni q", desc: "Basit mantıksal değişken" },
-      { sym: "r", latex: "r", name: "Önerme değişkeni r", desc: "Basit mantıksal değişken" },
-      { sym: "s", latex: "s", name: "Önerme değişkeni s", desc: "Basit mantıksal değişken" },
-      { sym: "1", latex: "1", name: "Doğru (1)", desc: "Boolean 1, Yüksek seviye" },
-      { sym: "0", latex: "0", name: "Yanlış (0)", desc: "Boolean 0, Düşük seviye" },
-      { sym: "D", latex: "D", name: "D değişkeni", desc: "Gecikme / flip-flop girişi" },
-      { sym: "Y", latex: "Y", name: "Y değişkeni", desc: "Çıkış değişkeni" },
-      { sym: "⊤", latex: "\\top", name: "Tautoloji / Doğru", desc: "Her zaman doğru olan sabit" },
-      { sym: "⊥", latex: "\\perp", name: "Çelişki / Yanlış", desc: "Her zaman yanlış olan sabit" },
-      { sym: "≡", latex: "\\equiv", name: "Eşdeğerlik", desc: "Mantıksal eşdeğerlik" },
+    title:"Temel Bileşenler", icon:"◈",
+    rows:[
+      {sym:"p",    latex:"p",        name:"Önerme değişkeni p",  desc:"Basit mantıksal değişken", ayt:true},
+      {sym:"q",    latex:"q",        name:"Önerme değişkeni q",  desc:"Basit mantıksal değişken", ayt:true},
+      {sym:"r",    latex:"r",        name:"Önerme değişkeni r",  desc:"Basit mantıksal değişken", ayt:true},
+      {sym:"s",    latex:"s",        name:"Önerme değişkeni s",  desc:"Basit mantıksal değişken", ayt:true},
+      {sym:"1",    latex:"1",        name:"Doğru (1)",            desc:"Boolean 1 / Yüksek seviye", ayt:true},
+      {sym:"0",    latex:"0",        name:"Yanlış (0)",           desc:"Boolean 0 / Düşük seviye", ayt:true},
+      {sym:"D",    latex:"D",        name:"D değişkeni",          desc:"Gecikme / flip-flop girişi"},
+      {sym:"Y",    latex:"Y",        name:"Y çıkış değişkeni",    desc:"Çıkış değişkeni"},
+      {sym:"⊤",    latex:"\\top",    name:"Tautoloji / Doğru sabit", desc:"Her zaman doğru olan sabit", ayt:true},
+      {sym:"⊥",    latex:"\\perp",   name:"Çelişki / Yanlış sabit", desc:"Her zaman yanlış olan sabit", ayt:true},
+      {sym:"≡",    latex:"\\equiv",  name:"Eşdeğerlik",           desc:"Mantıksal eşdeğerlik", ayt:true},
     ]
   },
   {
-    title: "Mantıksal Bağlaçlar",
-    icon: "⊕",
-    rows: [
-      { sym: "∧", latex: "\\land", name: "Ve (Konjünksiyon)", desc: "p ∧ q : p ve q" },
-      { sym: "∨", latex: "\\lor", name: "Veya (Ayrışım)", desc: "p ∨ q : p veya q" },
-      { sym: "¬", latex: "\\neg", name: "Değil (Negasyon)", desc: "¬p : p değil" },
-      { sym: "p'", latex: "p'", name: "Tümleyen", desc: "p' : p'nin tümleyeni" },
-      { sym: "⇒", latex: "\\Rightarrow", name: "Koşul / İçerim", desc: "p ⇒ q : p ise q" },
-      { sym: "⟺", latex: "\\Leftrightarrow", name: "Çift Koşul", desc: "p ⟺ q : p ancak ve ancak q" },
-      { sym: "p⊻q", latex: "\\underline{\\lor}", name: "Dışlayıcı Veya (XOR)", desc: "Tam olarak biri doğru" },
-      { sym: "⊕", latex: "\\oplus", name: "XOR (Modüler Toplam)", desc: "Dışlayıcı veya operatörü" },
+    title:"Mantıksal Bağlaçlar", icon:"⊕",
+    rows:[
+      {sym:"∧",      latex:"\\land",                          name:"Ve (Konjünksiyon)",       desc:"p ∧ q : p ve q", ayt:true},
+      {sym:"∨",      latex:"\\lor",                           name:"Veya (Ayrışım)",          desc:"p ∨ q : p veya q", ayt:true},
+      {sym:"¬",      latex:"\\neg",                           name:"Değil (Negasyon)",        desc:"¬p : p değil", ayt:true},
+      {sym:"p'",     latex:"p'",                              name:"Tümleyen (apostrof)",     desc:"p' : p'nin tümleyeni", ayt:true},
+      {sym:"→",      latex:"\\rightarrow",                    name:"Koşul / İçerim",          desc:"p → q : eğer p ise q", ayt:true},
+      {sym:"⇒",      latex:"\\Rightarrow",                    name:"Koşul (kalın ok)",        desc:"p ⇒ q : eşdeğer gösterim", ayt:true},
+      {sym:"↔",      latex:"\\leftrightarrow",                name:"Bikoşul",                 desc:"p ↔ q : p ancak ve ancak q", ayt:true},
+      {sym:"⟺",     latex:"\\Leftrightarrow",                name:"Bikoşul (kalın ok)",      desc:"p ⟺ q : eşdeğer gösterim", ayt:true},
+      {sym:"⊕",      latex:"\\oplus",                         name:"XOR (Dışlayıcı Veya)",    desc:"p ⊕ q : tam olarak biri doğru"},
+      {sym:"⊻",      latex:"\\underline{\\lor}",              name:"XOR (altı çizili ∨)",     desc:"Alternatif XOR gösterimi"},
+      {sym:"¬q→¬p",  latex:"\\neg q\\rightarrow\\neg p",      name:"Contrapositive",          desc:"p→q ile mantıksal eşdeğer", ayt:true},
+      {sym:"q→p",    latex:"q\\rightarrow p",                 name:"Ters Koşul (Converse)",   desc:"p→q'nun tersine koşulu; eşdeğer değil"},
+      {sym:"¬p→¬q",  latex:"\\neg p\\rightarrow\\neg q",      name:"Karşıt (Inverse)",        desc:"p→q'nun karşıtı; eşdeğer değil"},
     ]
   },
   {
-    title: "Dijital / Teknik Bağlaçlar",
-    icon: "⊼",
-    tag: "dig",
-    rows: [
-      { sym: "⊼", latex: "\\bar{\\land}", name: "NAND", desc: "p NAND q = ¬(p ∧ q)" },
-      { sym: "⊽", latex: "\\bar{\\lor}", name: "NOR", desc: "p NOR q = ¬(p ∨ q)" },
-      { sym: "↑", latex: "\\uparrow", name: "Sheffer Çizgisi (NAND)", desc: "Sheffer'in NAND operatörü" },
-      { sym: "↓", latex: "\\downarrow", name: "Peirce Oku (NOR)", desc: "Peirce'in NOR operatörü" },
-      { sym: "|", latex: "\\mid", name: "Şart / Orta çizgi", desc: "NAND gösterimi veya koşul" },
-      { sym: "x̄", latex: "\\overline{x}", name: "Komplement (NOT)", desc: "x çubuğu, dijital NOT kapısı" },
+    title:"Dijital / Teknik Bağlaçlar", icon:"⊼", tag:"dig",
+    rows:[
+      {sym:"↑",   latex:"\\uparrow",       name:"NAND (Sheffer)",    desc:"p ↑ q = ¬(p ∧ q)"},
+      {sym:"↓",   latex:"\\downarrow",     name:"NOR (Peirce)",      desc:"p ↓ q = ¬(p ∨ q)"},
+      {sym:"|",   latex:"\\mid",           name:"Sheffer çizgisi",   desc:"Alternatif NAND gösterimi"},
+      {sym:"x̄",   latex:"\\overline{x}",  name:"NOT (komplement)",  desc:"Dijital NOT kapısı"},
+      {sym:"⊼",   latex:"\\barwedge",      name:"NAND (sembol)",     desc:"p ⊼ q = ¬(p ∧ q)"},
+      {sym:"⊽",   latex:"\\barvee",        name:"NOR (sembol)",      desc:"p ⊽ q = ¬(p ∨ q)"},
     ]
   },
   {
-    title: "Nicelikleyiciler",
-    icon: "∀",
-    rows: [
-      { sym: "∀", latex: "\\forall", name: "Evrensel Nicelikleyici", desc: "Her x için / Hepsi için" },
-      { sym: "∃", latex: "\\exists", name: "Varoluşsal Nicelikleyici", desc: "En az bir x vardır ki" },
-      { sym: "∃!", latex: "\\exists!", name: "Tekil Varoluş", desc: "Tam olarak bir x vardır ki" },
-      { sym: "∄", latex: "\\nexists", name: "Yokluk Nicelikleyicisi", desc: "Hiçbir x yoktur ki" },
+    title:"Nicelikleyiciler", icon:"∀",
+    rows:[
+      {sym:"∀",     latex:"\\forall",               name:"Evrensel Nicelikleyici",      desc:"Her x için", ayt:true},
+      {sym:"∃",     latex:"\\exists",               name:"Varoluşsal Nicelikleyici",    desc:"En az bir x vardır ki", ayt:true},
+      {sym:"∃!",    latex:"\\exists!",              name:"Tekil Varoluş",               desc:"Tam olarak bir x vardır ki"},
+      {sym:"∄",     latex:"\\nexists",              name:"Yokluk Nicelikleyicisi",      desc:"Hiçbir x yoktur ki"},
+      {sym:"∀x∈A",  latex:"\\forall x\\in A",       name:"Sınırlı Evrensel",            desc:"A kümesindeki tüm x için"},
+      {sym:"∃x∈A",  latex:"\\exists x\\in A",       name:"Sınırlı Varoluşsal",          desc:"A'da en az bir x vardır ki"},
+      {sym:"∀x<n",  latex:"\\forall x<n",           name:"Sınırlı Evrensel (sayısal)",  desc:"n'den küçük tüm x için"},
     ]
   },
   {
-    title: "İspat ve Çıkarım",
-    icon: "∴",
-    rows: [
-      { sym: "∴", latex: "\\therefore", name: "Sonuç olarak", desc: "Bu nedenle / dolayısıyla" },
-      { sym: "∵", latex: "\\because", name: "Çünkü / Zira", desc: "Nedeni / gerekçesi" },
-      { sym: "⊢", latex: "\\vdash", name: "Sentaktik Türetme", desc: "A, B'yi ispat eder" },
-      { sym: "⊣", latex: "\\dashv", name: "Ters Türetme", desc: "Adjoint / sol türetme" },
-      { sym: "⊨", latex: "\\models", name: "Semantik Sonuç", desc: "A, B'yi gerektirer (modeller)" },
-      { sym: "⊩", latex: "\\Vdash", name: "Kuvvetli Türetme", desc: "Zorla ispat ilişkisi" },
-      { sym: "⊭", latex: "\\nvDash", name: "Model Değil", desc: "Semantik sonuç değil" },
-      { sym: "⊬", latex: "\\nvdash", name: "Türetilemez", desc: "Sentaktik türetme başarısız" },
+    title:"İspat ve Çıkarım", icon:"∴",
+    rows:[
+      {sym:"∴",   latex:"\\therefore",    name:"Sonuç olarak (∴)",          desc:"Bu nedenle / dolayısıyla", ayt:true},
+      {sym:"∵",   latex:"\\because",      name:"Çünkü (∵)",                 desc:"Nedeni / gerekçesi", ayt:true},
+      {sym:"⊢",   latex:"\\vdash",        name:"Sentaktik Türetme",          desc:"A sistemi B'yi ispat eder"},
+      {sym:"⊣",   latex:"\\dashv",        name:"Ters Türetme (Adjoint)",     desc:"Sol türetme ilişkisi"},
+      {sym:"⊨",   latex:"\\models",       name:"Semantik Sonuç",             desc:"A, B'yi gerektirer (modeller)"},
+      {sym:"⊩",   latex:"\\Vdash",        name:"Kuvvetli Türetme",           desc:"Zorla ispat ilişkisi"},
+      {sym:"⊭",   latex:"\\nvDash",       name:"Model Değil",                desc:"Semantik sonuç değil"},
+      {sym:"⊬",   latex:"\\nvdash",       name:"Türetilemez",                desc:"Sentaktik türetme başarısız"},
+      {sym:"MP",  latex:"\\text{MP}",     name:"Modus Ponens",               desc:"p, p→q ⊢ q", ayt:true},
+      {sym:"MT",  latex:"\\text{MT}",     name:"Modus Tollens",              desc:"¬q, p→q ⊢ ¬p", ayt:true},
+      {sym:"HS",  latex:"\\text{HS}",     name:"Hipotetik Silogizm",         desc:"p→q, q→r ⊢ p→r", ayt:true},
+      {sym:"DS",  latex:"\\text{DS}",     name:"Ayrışık Silogizm",           desc:"p∨q, ¬p ⊢ q", ayt:true},
+      {sym:"∧I",  latex:"\\land I",       name:"Ve-Giriş (Doğal Çıkarım)",  desc:"p, q ⊢ p∧q"},
+      {sym:"∧E",  latex:"\\land E",       name:"Ve-Eleme",                   desc:"p∧q ⊢ p"},
+      {sym:"∨I",  latex:"\\lor I",        name:"Veya-Giriş",                 desc:"p ⊢ p∨q"},
+      {sym:"∨E",  latex:"\\lor E",        name:"Veya-Eleme",                 desc:"p∨q, p→r, q→r ⊢ r"},
     ]
   },
   {
-    title: "Modal Mantık",
-    icon: "□",
-    tag: "modal",
-    rows: [
-      { sym: "□", latex: "\\square", name: "Zorunluluk", desc: "□p : p zorunlu olarak doğrudur" },
-      { sym: "◇", latex: "\\lozenge", name: "Olasılık", desc: "◇p : p mümkündür" },
-      { sym: "○", latex: "\\bigcirc", name: "Bir Sonraki (Zaman)", desc: "Temporal mantık: sonraki adım" },
-      { sym: "◆", latex: "\\diamond", name: "Dolu Elmas", desc: "Olasılık / erişilebilirlik" },
+    title:"Modal Mantık", icon:"□", tag:"modal",
+    rows:[
+      {sym:"□",  latex:"\\square",   name:"Zorunluluk (Necessity)",   desc:"□p : p zorunlu olarak doğrudur"},
+      {sym:"◇",  latex:"\\lozenge",  name:"Olasılık (Possibility)",   desc:"◇p : p mümkündür"},
+      {sym:"○",  latex:"\\bigcirc",  name:"Bir Sonraki (Next)",       desc:"Temporal mantık: sonraki adım"},
+      {sym:"◆",  latex:"\\diamond",  name:"Dolu Elmas",               desc:"Erişilebilirlik / olasılık"},
+      {sym:"⟨R⟩p",latex:"\\langle R\\rangle p", name:"Dinamik Modal", desc:"R ilişkisi aracılığıyla p erişilebilir"},
     ]
   },
   {
-    title: "Küme ve İlişki",
-    icon: "∈",
-    tag: "set",
-    rows: [
-      { sym: "∈", latex: "\\in", name: "Eleman", desc: "x ∈ A : x, A'nın elemanı" },
-      { sym: "∉", latex: "\\notin", name: "Eleman Değil", desc: "x ∉ A : x, A'nın elemanı değil" },
-      { sym: "⊂", latex: "\\subset", name: "Öz Alt Küme", desc: "A ⊂ B : A, B'nin öz alt kümesi" },
-      { sym: "⊆", latex: "\\subseteq", name: "Alt Küme veya Eşit", desc: "A ⊆ B : A, B'nin alt kümesi" },
-      { sym: "∪", latex: "\\cup", name: "Birleşim", desc: "A ∪ B : A ve B'nin birleşimi" },
-      { sym: "∩", latex: "\\cap", name: "Kesişim", desc: "A ∩ B : A ve B'nin kesişimi" },
-      { sym: "∖", latex: "\\setminus", name: "Fark", desc: "A ∖ B : A ve B farkı" },
-      { sym: "△", latex: "\\Delta", name: "Simetrik Fark", desc: "A △ B : simetrik fark" },
-      { sym: "∅", latex: "\\varnothing", name: "Boş Küme", desc: "Hiç elemanı olmayan küme" },
-      { sym: "℘", latex: "\\wp", name: "Weierstrass P", desc: "Güç kümesi gösterimi" },
-      { sym: "𝒫", latex: "\\mathcal{P}", desc: "𝒫(A) : A'nın güç kümesi", name: "Güç Kümesi" },
+    title:"Temporal Mantık (LTL / CTL)", icon:"⏱", tag:"new",
+    rows:[
+      {sym:"○p",  latex:"\\bigcirc p",  name:"Next — Bir Sonraki",      desc:"Bir sonraki durumda p doğru"},
+      {sym:"Gp",  latex:"G\\,p",        name:"Globally — Her Zaman",    desc:"Tüm gelecek durumlarda p"},
+      {sym:"Fp",  latex:"F\\,p",        name:"Finally — Eninde Sonunda", desc:"En az bir gelecek durumda p"},
+      {sym:"pUq", latex:"p\\,U\\,q",    name:"Until — Kadar",           desc:"q olana kadar p doğru"},
+      {sym:"pWq", latex:"p\\,W\\,q",    name:"Weak Until",              desc:"Zayıf Until; q gelmeyebilir"},
+      {sym:"pRq", latex:"p\\,R\\,q",    name:"Release",                 desc:"p, q'yu serbest bırakır"},
     ]
   },
   {
-    title: "Tanım ve Sonuç",
-    icon: "≔",
-    rows: [
-      { sym: "≔", latex: "\\coloneqq", name: "Tanımla", desc: "A ≔ B : A, B olarak tanımlanır" },
-      { sym: "⟹", latex: "\\implies", name: "İçerim (Geniş)", desc: "p ⟹ q : p, q'yu içerir" },
-      { sym: "⟺", latex: "\\iff", name: "Bikoşul (Geniş)", desc: "p ⟺ q : p ancak ve ancak q" },
-      { sym: "→", latex: "\\rightarrow", name: "Koşullu Ok", desc: "p → q : eğer p ise q" },
-      { sym: "↔", latex: "\\leftrightarrow", name: "Çift Yönlü Ok", desc: "p ↔ q : bikoşul" },
-      { sym: "■", latex: "\\blacksquare", name: "İspat Sonu (Q.E.D.)", desc: "İspat tamamlandı (dolu)" },
-      { sym: "□", latex: "\\square", name: "İspat Sonu (Açık)", desc: "İspat tamamlandı (açık)" },
-      { sym: "Q.E.D.", latex: "\\text{Q.E.D.}", name: "Quod Erat Demonstrandum", desc: "Gösterilmek istenen bu idi" },
+    title:"Deontic Mantık", icon:"⚖", tag:"new",
+    rows:[
+      {sym:"Op",   latex:"O\\,p",   name:"Obligatory — Zorunlu",   desc:"p yapmak zorunludur"},
+      {sym:"Pp",   latex:"P\\,p",   name:"Permitted — İzinli",     desc:"p yapmak serbesttir"},
+      {sym:"Fp",   latex:"F\\,p",   name:"Forbidden — Yasak",      desc:"p yapmak yasaktır"},
+      {sym:"O¬p",  latex:"O\\neg p",name:"Yapmama Zorunluluğu",    desc:"p'yi yapmamak zorunludur"},
     ]
   },
   {
-    title: "Özel Durumlar",
-    icon: "∶",
-    rows: [
-      { sym: ":", latex: ":", name: "İki Nokta", desc: "Oranlar, tanım veya koşul bağlamı" },
-      { sym: "∶", latex: "\\colon", name: "Kolon (Matematik)", desc: "Fonksiyon gösterimi f : A → B" },
+    title:"Doğrusal Mantık (Linear Logic)", icon:"⊸", tag:"new",
+    rows:[
+      {sym:"⊸",   latex:"\\multimap",  name:"Doğrusal İçerim",      desc:"A ⊸ B : kaynağı tüketerek dönüşüm"},
+      {sym:"⊗",   latex:"\\otimes",    name:"Tensör Çarpım",         desc:"Eş zamanlı bileşen bağlacı"},
+      {sym:"⅋",   latex:"\\parr",      name:"Par (⅋)",               desc:"Çoklu sonuç bağlacı"},
+      {sym:"!A",  latex:"!A",          name:"Bang / Of Course (!)",  desc:"!A : A sınırsız kullanılabilir"},
+      {sym:"?A",  latex:"?A",          name:"Why Not (?)",           desc:"?A : A sınırsız çıkarılabilir"},
+      {sym:"⊕",   latex:"\\oplus",     name:"Additive Or",           desc:"Seçimlik ayrışım"},
+      {sym:"&",   latex:"\\&",         name:"With (Additive And)",   desc:"Seçimlik konjünksiyon"},
     ]
-  }
+  },
+  {
+    title:"Çok-Değerli Mantık", icon:"½", tag:"new",
+    rows:[
+      {sym:"T",   latex:"T",                  name:"Doğru (True)",          desc:"Doğruluk değeri 1"},
+      {sym:"F",   latex:"F",                  name:"Yanlış (False)",        desc:"Doğruluk değeri 0"},
+      {sym:"I",   latex:"I",                  name:"Belirsiz",              desc:"Üçüncü değer (Łukasiewicz L₃)"},
+      {sym:"U",   latex:"U",                  name:"Tanımsız",              desc:"Bochvar sistemindeki belirsiz değer"},
+      {sym:"½",   latex:"\\tfrac{1}{2}",      name:"Orta Doğruluk Değeri", desc:"Łukasiewicz'de belirsizlik"},
+      {sym:"∞",   latex:"\\infty",            name:"Sonsuz Değerli",        desc:"Sonsuz değerli mantık tabanı"},
+    ]
+  },
+  {
+    title:"Küme ve İlişki", icon:"∈", tag:"set",
+    rows:[
+      {sym:"∈",   latex:"\\in",          name:"Eleman",               desc:"x ∈ A : x, A'nın elemanı", ayt:true},
+      {sym:"∉",   latex:"\\notin",       name:"Eleman Değil",         desc:"x ∉ A : eleman değil", ayt:true},
+      {sym:"⊂",   latex:"\\subset",      name:"Öz Alt Küme",          desc:"A ⊂ B : öz alt küme", ayt:true},
+      {sym:"⊆",   latex:"\\subseteq",    name:"Alt Küme veya Eşit",   desc:"A ⊆ B : alt küme", ayt:true},
+      {sym:"⊃",   latex:"\\supset",      name:"Öz Üst Küme",          desc:"A ⊃ B : A, B'yi kapsar"},
+      {sym:"⊇",   latex:"\\supseteq",    name:"Üst Küme veya Eşit",   desc:"A ⊇ B"},
+      {sym:"∪",   latex:"\\cup",         name:"Birleşim",             desc:"A ∪ B", ayt:true},
+      {sym:"∩",   latex:"\\cap",         name:"Kesişim",              desc:"A ∩ B", ayt:true},
+      {sym:"∖",   latex:"\\setminus",    name:"Fark",                 desc:"A ∖ B : A eksi B", ayt:true},
+      {sym:"△",   latex:"\\triangle",    name:"Simetrik Fark",        desc:"A △ B = (A∖B)∪(B∖A)", ayt:true},
+      {sym:"∅",   latex:"\\varnothing",  name:"Boş Küme",             desc:"Hiç elemanı olmayan küme", ayt:true},
+      {sym:"Aᶜ",  latex:"A^{c}",         name:"Tümleyen Küme",        desc:"Evrensel kümede A'nın dışı", ayt:true},
+      {sym:"×",   latex:"\\times",       name:"Kartezyen Çarpım",     desc:"A × B : tüm sıralı çiftler", ayt:true},
+      {sym:"|A|", latex:"|A|",           name:"Kardinalite",          desc:"A kümesinin eleman sayısı", ayt:true},
+      {sym:"𝒫",   latex:"\\mathcal{P}",  name:"Güç Kümesi",           desc:"𝒫(A) : A'nın tüm alt kümeleri", ayt:true},
+      {sym:"℘",   latex:"\\wp",          name:"Güç Kümesi (℘)",       desc:"Weierstrass P alternatif gösterim"},
+      {sym:"∅≠A", latex:"A\\neq\\varnothing", name:"Boş Olmayan Küme", desc:"A en az bir eleman içerir"},
+    ]
+  },
+  {
+    title:"Tanım ve Sonuç Sembolleri", icon:"≔",
+    rows:[
+      {sym:"≔",    latex:"\\coloneqq",     name:"Tanımla (≔)",              desc:"A ≔ B : A, B olarak tanımlanır"},
+      {sym:"⟹",   latex:"\\implies",      name:"İçerim (geniş ok)",        desc:"p ⟹ q", ayt:true},
+      {sym:"⟺",   latex:"\\iff",          name:"Bikoşul (geniş ok)",       desc:"p ⟺ q : tam eşdeğerlik", ayt:true},
+      {sym:"■",    latex:"\\blacksquare",  name:"İspat Sonu — Dolu",        desc:"Q.E.D. (dolu kare)"},
+      {sym:"□",    latex:"\\square",       name:"İspat Sonu — Açık",        desc:"Q.E.D. (açık kare)"},
+      {sym:"Q.E.D.", latex:"\\text{Q.E.D.}", name:"Quod Erat Demonstrandum", desc:"Gösterilmek istenen buydu"},
+      {sym:"∎",    latex:"\\qed",          name:"İspat Sonu (∎)",           desc:"Halmos işareti"},
+    ]
+  },
+  {
+    title:"Notasyonlar ve Özel Durumlar", icon:"∶",
+    rows:[
+      {sym:"( )",  latex:"(\\cdot)",          name:"Parantez — Öncelik",      desc:"Bağlaç önceliğini belirler", ayt:true},
+      {sym:"[ ]",  latex:"[\\cdot]",          name:"Köşeli Parantez",         desc:"Alternatif gruplama notasyonu"},
+      {sym:"⟨ ⟩",  latex:"\\langle\\rangle",  name:"Açısal Parantez",         desc:"Modal / oyun teorisi mantığı"},
+      {sym:"{ }",  latex:"\\{\\}",            name:"Küme Parantezi",          desc:"Küme gösterimi", ayt:true},
+      {sym:"∣",    latex:"\\mid",             name:"Dikey Çizgi — Şart",      desc:"{x ∣ P(x)} koşullu küme", ayt:true},
+      {sym:"∶",    latex:"\\colon",           name:"Kolon — Fonksiyon",       desc:"f : A → B fonksiyon gösterimi", ayt:true},
+      {sym:"∥",    latex:"\\parallel",        name:"Paralel / Bağımsızlık",   desc:"Paralel işlem veya bağımsızlık"},
+      {sym:"#A",   latex:"\\#A",              name:"Kardinalite (#)",          desc:"A kümesinin eleman sayısı"},
+      {sym:"≠",    latex:"\\neq",             name:"Eşit Değil",              desc:"a ≠ b", ayt:true},
+      {sym:"≤",    latex:"\\leq",             name:"Küçük Eşit",              desc:"a ≤ b", ayt:true},
+      {sym:"≥",    latex:"\\geq",             name:"Büyük Eşit",              desc:"a ≥ b", ayt:true},
+    ]
+  },
 ];
 
-function buildSections() {
-  const container = document.getElementById('sections');
-  DATA.forEach((sec, i) => {
-    const div = document.createElement('div');
-    div.className = 'section';
-
-    const tagHTML = sec.tag ? `<span class="tag tag-${sec.tag}">${sec.tag.toUpperCase()}</span>` : '';
-
-    div.innerHTML = `
+function buildSections(){
+  const cont=document.getElementById('sections');
+  DATA.forEach((sec,i)=>{
+    const div=document.createElement('div');
+    div.className='section';
+    const tagHTML=sec.tag?`<span class="tag tag-${sec.tag}">${sec.tag.toUpperCase()}</span>`:'';
+    div.innerHTML=`
       <div class="section-header" onclick="toggleSection(this)">
         <span class="section-num">${String(i+1).padStart(2,'0')}</span>
         <span class="section-title">${sec.icon} ${sec.title}${tagHTML}</span>
@@ -494,58 +366,70 @@ function buildSections() {
       </div>
       <div class="table-wrap">
         <table>
-          <thead>
-            <tr>
-              <th class="col-symbol">Sembol</th>
-              <th class="col-latex">LaTeX Kodu</th>
-              <th class="col-name">Ad</th>
-              <th class="col-desc">Açıklama</th>
-            </tr>
-          </thead>
+          <thead><tr>
+            <th class="col-symbol">Sembol</th>
+            <th class="col-latex">LaTeX</th>
+            <th class="col-name">Ad</th>
+            <th class="col-desc">Açıklama</th>
+          </tr></thead>
           <tbody>
-            ${sec.rows.map(r => `
-              <tr>
-                <td class="col-symbol">
-                  <div class="sym">\\(${r.latex.replace(/\\/g,'\\').replace(/'/g, "'")}\\)</div>
-                </td>
-                <td class="col-latex">
-                  <code class="latex-code" onclick="copyLatex(this,'${r.latex.replace(/'/g,"\\'")}')">${r.latex}</code>
-                </td>
-                <td class="col-name">${r.name}</td>
+            ${sec.rows.map(r=>{
+              const safe=r.latex.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+              const badge=r.ayt?'<span class="ayt-badge">AYT</span>':'';
+              return `<tr class="${r.ayt?'ayt-row':''}">
+                <td class="col-symbol"><div class="sym">\\(${r.latex}\\)</div></td>
+                <td class="col-latex"><code class="latex-code" onclick="copyLatex(this,'${safe}')">${r.latex}</code></td>
+                <td class="col-name">${r.name}${badge}</td>
                 <td class="col-desc">${r.desc}</td>
-              </tr>
-            `).join('')}
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>
-      </div>
-    `;
-    container.appendChild(div);
+      </div>`;
+    cont.appendChild(div);
   });
 }
 
-function toggleSection(header) {
-  header.parentElement.classList.toggle('collapsed');
-}
+function toggleSection(h){h.parentElement.classList.toggle('collapsed');}
 
 let toastTimer;
-function copyLatex(el, code) {
-  const full = '$' + code + '$';
-  navigator.clipboard.writeText(full).catch(() => {});
-  el.classList.add('copied');
-  el.textContent = '✓ kopyalandı';
-  setTimeout(() => {
-    el.classList.remove('copied');
-    el.textContent = code;
-  }, 1600);
-
-  const toast = document.getElementById('toast');
-  toast.textContent = full + ' kopyalandı';
-  toast.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+function copyLatex(el,code){
+  const full='$'+code+'$';
+  navigator.clipboard.writeText(full).catch(()=>{});
+  el.classList.add('copied');el.textContent='✓ kopyalandı';
+  setTimeout(()=>{el.classList.remove('copied');el.textContent=code;},1600);
+  const t=document.getElementById('toast');
+  t.textContent=full+' kopyalandı';t.classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
 }
 
 buildSections();
+
+(function buildTT(){
+  const rows=[[0,0],[0,1],[1,0],[1,1]];
+  const ops=[
+    (p,q)=>p&q,
+    (p,q)=>p|q,
+    (p,q)=>p^1,
+    (p,q)=>q^1,
+    (p,q)=>(!p||q)?1:0,
+    (p,q)=>(p===q)?1:0,
+    (p,q)=>p^q,
+    (p,q)=>(p&q)^1,
+    (p,q)=>(p|q)^1,
+  ];
+  const aytCols=new Set([0,1,2,3,4,5]);
+  const tbody=document.getElementById('tt-body');
+  rows.forEach(([p,q])=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="val-${p}">${p}</td><td class="val-${q}">${q}</td>`;
+    ops.forEach((op,i)=>{
+      const v=op(p,q);
+      tr.innerHTML+=`<td class="val-${v}${aytCols.has(i)?' hl':''}">${v}</td>`;
+    });
+    tbody.appendChild(tr);
+  });
+})();
 </script>
 </body>
 </html>
