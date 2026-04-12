@@ -1,0 +1,2433 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Paralayıcı</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0d0d0f;
+  --bg2:      #141416;
+  --bg3:      #1c1c20;
+  --bg4:      #242428;
+  --border:   rgba(255,255,255,0.07);
+  --border2:  rgba(255,255,255,0.12);
+  --text:     #f0f0f4;
+  --text2:    #8888a0;
+  --text3:    #44445a;
+
+  --basla:    #22c55e;
+  --basla-d:  #16a34a;
+  --bitis:    #ef4444;
+  --bitis-d:  #dc2626;
+  --ders:     #60a5fa;
+  --ders-d:   #1d4ed8;
+  --mola:     #fb923c;
+  --mola-d:   #c2410c;
+  --yol:      #2dd4bf;
+  --yol-d:    #0f766e;
+  --uyku:     #a78bfa;
+  --uyku-d:   #6d28d9;
+  --dinlenme: #fbbf24;
+  --dinlenme-d:#b45309;
+
+  --top-h:    54px;
+  --bot-h:    64px;
+  --mono: 'DM Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+  --display: 'Bebas Neue', sans-serif;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+  display:flex;
+  flex-direction:column;
+}
+
+/* ═══════════════════════════════════════════
+   TOP NAVBAR
+═══════════════════════════════════════════ */
+#topNav{
+  height:var(--top-h);
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  padding:0 12px;
+  gap:8px;
+  flex-shrink:0;
+  position:relative;
+  z-index:50;
+}
+
+.top-brand{
+  font-family:var(--display);
+  font-size:22px;
+  letter-spacing:1px;
+  color:var(--text);
+  flex:1;
+  line-height:1;
+}
+
+.top-date{
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text3);
+  letter-spacing:0.05em;
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+}
+
+#btnBasla, #btnBitis{
+  height:36px;
+  padding:0 16px;
+  border:none;
+  border-radius:7px;
+  font-family:var(--mono);
+  font-size:11px;
+  font-weight:500;
+  letter-spacing:0.08em;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  transition:all 0.15s;
+  text-transform:uppercase;
+}
+#btnBasla{background:var(--basla);color:#000;}
+#btnBasla:hover{background:var(--basla-d);}
+#btnBasla.active{background:var(--bg3);color:var(--basla);border:1px solid var(--basla);}
+#btnBitis{background:transparent;border:1px solid var(--border2);color:var(--text2);}
+#btnBitis:hover{border-color:var(--bitis);color:var(--bitis);}
+#btnBitis.active{background:var(--bitis);color:#fff;border-color:var(--bitis);}
+
+/* ═══════════════════════════════════════════
+   MAIN SCROLL AREA
+═══════════════════════════════════════════ */
+#mainArea{
+  flex:1;
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  padding-bottom:8px;
+}
+
+/* ═══════════════════════════════════════════
+   PROGRESS BAR SECTION
+═══════════════════════════════════════════ */
+#progressSection{
+  padding:10px 12px 4px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.pbar-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  animation:slideIn 0.3s ease;
+}
+@keyframes slideIn{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:none;}}
+
+.pbar-label{
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text2);
+  width:52px;
+  flex-shrink:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.pbar-wrap{
+  flex:1;
+  height:6px;
+  background:var(--bg4);
+  border-radius:3px;
+  overflow:hidden;
+  position:relative;
+}
+
+.pbar-fill{
+  height:100%;
+  border-radius:3px;
+  transition:width 1s linear, background 0.5s;
+  position:absolute;
+  top:0;
+}
+/* direction: ltr=countdown(right→left), rtl=overtime */
+.pbar-fill.countdown{right:0;}
+.pbar-fill.overtime{left:0;}
+
+.pbar-timer{
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text2);
+  width:52px;
+  flex-shrink:0;
+  text-align:right;
+  white-space:nowrap;
+}
+.pbar-timer.over{color:var(--text);}
+
+/* ═══════════════════════════════════════════
+   INSTANT BUTTONS
+═══════════════════════════════════════════ */
+#instantRow{
+  display:flex;
+  gap:8px;
+  padding:8px 12px;
+  flex-shrink:0;
+}
+
+.instant-btn{
+  flex:1;
+  height:52px;
+  border:none;
+  border-radius:10px;
+  font-family:var(--mono);
+  font-size:13px;
+  font-weight:500;
+  letter-spacing:0.05em;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  transition:all 0.15s;
+  position:relative;
+  overflow:hidden;
+}
+.instant-btn::after{
+  content:'';position:absolute;inset:0;
+  background:rgba(255,255,255,0);
+  transition:background 0.15s;
+}
+.instant-btn:active::after{background:rgba(255,255,255,0.1);}
+
+#iDers{background:rgba(96,165,250,0.15);color:var(--ders);border:1px solid rgba(96,165,250,0.25);}
+#iDers:hover{background:rgba(96,165,250,0.22);}
+#iMola{background:rgba(251,146,60,0.15);color:var(--mola);border:1px solid rgba(251,146,60,0.25);}
+#iMola:hover{background:rgba(251,146,60,0.22);}
+
+/* ═══════════════════════════════════════════
+   LOG LIST (saat listesi)
+═══════════════════════════════════════════ */
+#logSection{
+  padding:0 12px;
+}
+
+.log-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:6px 0 4px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:4px;
+}
+.log-header-title{
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text3);
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+}
+.log-header-date{
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text3);
+}
+
+.log-entry-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:7px 0;
+  border-bottom:1px solid var(--border);
+  position:relative;
+  cursor:pointer;
+  transition:background 0.1s;
+  border-radius:4px;
+  margin:0 -4px;
+  padding-left:4px;
+  padding-right:4px;
+}
+.log-entry-row:hover{background:var(--bg3);}
+.log-entry-row:last-child{border-bottom:none;}
+
+.log-time-col{
+  font-family:var(--mono);
+  font-size:11px;
+  color:var(--text3);
+  width:38px;
+  flex-shrink:0;
+}
+
+.log-tag-dot{
+  width:7px;height:7px;
+  border-radius:50%;
+  flex-shrink:0;
+}
+
+.log-content{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+  min-width:0;
+}
+.log-main-text{
+  font-size:13px;
+  color:var(--text);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.log-sub-text{
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text2);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.log-duration{
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text3);
+  flex-shrink:0;
+}
+
+.log-actions{
+  display:flex;
+  gap:4px;
+  flex-shrink:0;
+  opacity:0;
+  transition:opacity 0.15s;
+}
+.log-entry-row:hover .log-actions{opacity:1;}
+.log-act-btn{
+  width:24px;height:24px;
+  border:1px solid var(--border2);
+  background:var(--bg3);
+  border-radius:5px;
+  color:var(--text2);
+  font-size:11px;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.15s;
+}
+.log-act-btn:hover{border-color:var(--border2);color:var(--text);}
+.log-act-btn.del:hover{border-color:var(--bitis);color:var(--bitis);}
+
+.log-warning{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:5px 8px;
+  background:rgba(251,191,36,0.08);
+  border:1px solid rgba(251,191,36,0.2);
+  border-radius:5px;
+  font-family:var(--mono);
+  font-size:10px;
+  color:#fbbf24;
+  margin:4px 0;
+}
+
+.log-empty{
+  padding:24px 0;
+  text-align:center;
+  font-family:var(--mono);
+  font-size:12px;
+  color:var(--text3);
+}
+
+/* ═══════════════════════════════════════════
+   BOTTOM NAVBAR
+═══════════════════════════════════════════ */
+#botNav{
+  height:var(--bot-h);
+  background:var(--bg2);
+  border-top:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  padding:0 8px;
+  padding-bottom:env(safe-area-inset-bottom);
+  gap:4px;
+  flex-shrink:0;
+  position:relative;
+  z-index:50;
+}
+
+.bot-btn{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  height:48px;
+  border:none;
+  background:transparent;
+  border-radius:8px;
+  cursor:pointer;
+  color:var(--text3);
+  transition:all 0.15s;
+  font-family:var(--sans);
+  font-size:9px;
+  letter-spacing:0.05em;
+  text-transform:uppercase;
+}
+.bot-btn:hover{color:var(--text2);background:var(--bg3);}
+.bot-btn.active{color:var(--ders);}
+.bot-btn .icon{font-size:18px;line-height:1;}
+
+/* ADD button — rightmost, special */
+#botAdd{
+  width:52px;
+  height:48px;
+  flex:none;
+  background:var(--ders);
+  border-radius:12px;
+  border:none;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:24px;
+  color:#000;
+  transition:all 0.15s;
+  box-shadow:0 4px 16px rgba(96,165,250,0.3);
+}
+#botAdd:hover{background:#93c5fd;}
+#botAdd:active{transform:scale(0.95);}
+
+/* ═══════════════════════════════════════════
+   SHEETS / MODALS
+═══════════════════════════════════════════ */
+.overlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,0.6);
+  backdrop-filter:blur(3px);
+  z-index:100;
+  opacity:0;pointer-events:none;
+  transition:opacity 0.25s;
+}
+.overlay.open{opacity:1;pointer-events:all;}
+
+.sheet{
+  position:fixed;
+  bottom:0;left:0;right:0;
+  background:var(--bg2);
+  border-top:1px solid var(--border2);
+  border-radius:18px 18px 0 0;
+  z-index:101;
+  transform:translateY(100%);
+  transition:transform 0.3s cubic-bezier(0.32,0.72,0,1);
+  max-height:92vh;
+  display:flex;
+  flex-direction:column;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.sheet.open{transform:translateY(0);}
+
+.sheet-handle{
+  width:36px;height:4px;
+  background:var(--border2);
+  border-radius:2px;
+  margin:10px auto 0;
+  flex-shrink:0;
+}
+
+.sheet-title{
+  font-family:var(--display);
+  font-size:24px;
+  letter-spacing:1px;
+  padding:12px 16px 8px;
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.sheet-close{
+  width:32px;height:32px;
+  border:1px solid var(--border2);
+  background:var(--bg3);
+  border-radius:8px;
+  color:var(--text2);
+  font-size:16px;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+
+.sheet-body{
+  flex:1;
+  overflow-y:auto;
+  padding:0 16px 16px;
+}
+
+/* ── Chip selector ── */
+.chip-label{
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text3);
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  margin:14px 0 6px;
+  display:block;
+}
+
+.chip-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+
+.chip{
+  padding:7px 14px;
+  border-radius:8px;
+  border:1px solid var(--border2);
+  background:var(--bg3);
+  color:var(--text2);
+  font-family:var(--mono);
+  font-size:12px;
+  cursor:pointer;
+  transition:all 0.15s;
+  white-space:nowrap;
+}
+.chip:hover{border-color:var(--border2);color:var(--text);}
+.chip.selected{
+  background:rgba(96,165,250,0.15);
+  border-color:var(--ders);
+  color:var(--ders);
+}
+.chip.col-basla.selected{background:rgba(34,197,94,0.15);border-color:var(--basla);color:var(--basla);}
+.chip.col-ders.selected{background:rgba(96,165,250,0.15);border-color:var(--ders);color:var(--ders);}
+.chip.col-mola.selected{background:rgba(251,146,60,0.15);border-color:var(--mola);color:var(--mola);}
+.chip.col-uyku.selected{background:rgba(167,139,250,0.15);border-color:var(--uyku);color:var(--uyku);}
+.chip.col-yol.selected{background:rgba(45,212,191,0.15);border-color:var(--yol);color:var(--yol);}
+.chip.col-dinlenme.selected{background:rgba(251,191,36,0.15);border-color:var(--dinlenme);color:var(--dinlenme);}
+.chip.col-bitis.selected{background:rgba(239,68,68,0.15);border-color:var(--bitis);color:var(--bitis);}
+
+/* ── Step sections (collapsible in add form) ── */
+.form-step{
+  background:var(--bg3);
+  border:1px solid var(--border);
+  border-radius:10px;
+  margin-top:10px;
+  overflow:hidden;
+  transition:all 0.2s;
+}
+.form-step.hidden-step{display:none;}
+
+.form-step-inner{padding:10px 12px 14px;}
+
+/* ── Text input ── */
+.text-input{
+  width:100%;
+  background:var(--bg4);
+  border:1px solid var(--border2);
+  border-radius:8px;
+  padding:10px 12px;
+  color:var(--text);
+  font-family:var(--mono);
+  font-size:13px;
+  outline:none;
+  transition:border-color 0.2s;
+  margin-top:6px;
+}
+.text-input:focus{border-color:var(--ders);}
+.text-input::placeholder{color:var(--text3);}
+
+/* ── Number stepper ── */
+.stepper{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-top:6px;
+}
+.stepper-btn{
+  width:34px;height:34px;
+  border:1px solid var(--border2);
+  background:var(--bg4);
+  border-radius:7px;
+  color:var(--text2);
+  font-size:18px;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.15s;
+  font-family:var(--mono);
+}
+.stepper-btn:hover{border-color:var(--ders);color:var(--ders);}
+.stepper-val{
+  font-family:var(--mono);
+  font-size:18px;
+  color:var(--text);
+  min-width:50px;
+  text-align:center;
+}
+
+/* ── Time picker ── */
+.time-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  margin-top:6px;
+}
+.time-input{
+  width:70px;
+  background:var(--bg4);
+  border:1px solid var(--border2);
+  border-radius:8px;
+  padding:8px 10px;
+  color:var(--text);
+  font-family:var(--mono);
+  font-size:16px;
+  text-align:center;
+  outline:none;
+  transition:border-color 0.2s;
+}
+.time-input:focus{border-color:var(--ders);}
+.time-sep{font-family:var(--mono);font-size:18px;color:var(--text2);}
+
+/* ── Action button ── */
+.action-btn{
+  width:100%;
+  height:48px;
+  border:none;
+  border-radius:10px;
+  font-family:var(--mono);
+  font-size:13px;
+  font-weight:500;
+  letter-spacing:0.05em;
+  cursor:pointer;
+  margin-top:14px;
+  transition:all 0.15s;
+  text-transform:uppercase;
+}
+.action-btn.primary{background:var(--ders);color:#000;}
+.action-btn.primary:hover{background:#93c5fd;}
+.action-btn.danger{background:rgba(239,68,68,0.15);color:var(--bitis);border:1px solid var(--bitis);}
+.action-btn.secondary{background:var(--bg4);color:var(--text2);border:1px solid var(--border2);}
+
+/* ── Konu tree in form ── */
+.konu-search{
+  margin-top:6px;
+  width:100%;
+  background:var(--bg4);
+  border:1px solid var(--border2);
+  border-radius:8px;
+  padding:8px 12px;
+  color:var(--text);
+  font-family:var(--mono);
+  font-size:12px;
+  outline:none;
+}
+.konu-search:focus{border-color:var(--ders);}
+
+.konu-list{
+  margin-top:6px;
+  max-height:160px;
+  overflow-y:auto;
+  border:1px solid var(--border);
+  border-radius:8px;
+}
+.konu-item{
+  padding:8px 12px;
+  font-family:var(--mono);
+  font-size:11px;
+  color:var(--text2);
+  cursor:pointer;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  transition:background 0.1s;
+}
+.konu-item:last-child{border-bottom:none;}
+.konu-item:hover{background:var(--bg3);}
+.konu-item.selected{color:var(--ders);background:rgba(96,165,250,0.08);}
+.konu-item .konu-code{color:var(--text3);font-size:10px;flex-shrink:0;}
+.konu-group{
+  padding:5px 12px;
+  font-family:var(--mono);
+  font-size:9px;
+  color:var(--text3);
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;
+}
+
+/* ═══════════════════════════════════════════
+   TAKVIM SHEET
+═══════════════════════════════════════════ */
+.cal-nav{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 0 10px;
+}
+.cal-nav-btn{
+  width:32px;height:32px;
+  border:1px solid var(--border2);
+  background:var(--bg3);
+  border-radius:7px;
+  color:var(--text2);
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;
+}
+.cal-month{
+  font-family:var(--display);
+  font-size:20px;
+  letter-spacing:1px;
+}
+.cal-mode-switch{
+  display:flex;
+  gap:4px;
+  margin-bottom:10px;
+}
+.cal-mode-btn{
+  flex:1;
+  padding:6px;
+  border:1px solid var(--border);
+  background:var(--bg3);
+  border-radius:6px;
+  color:var(--text3);
+  font-family:var(--mono);
+  font-size:10px;
+  cursor:pointer;
+  text-align:center;
+  transition:all 0.15s;
+}
+.cal-mode-btn.active{border-color:var(--ders);color:var(--ders);}
+
+.cal-week-grid{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:2px;
+}
+.cal-dow{
+  text-align:center;
+  font-family:var(--mono);
+  font-size:9px;
+  color:var(--text3);
+  padding:4px 0;
+  letter-spacing:0.05em;
+}
+.cal-day{
+  aspect-ratio:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  border-radius:7px;
+  cursor:pointer;
+  position:relative;
+  transition:background 0.15s;
+  gap:2px;
+}
+.cal-day:hover{background:var(--bg3);}
+.cal-day.today{background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.3);}
+.cal-day.other-month .cal-day-num{color:var(--text3);}
+.cal-day-num{
+  font-family:var(--mono);
+  font-size:12px;
+  color:var(--text2);
+}
+.cal-day.today .cal-day-num{color:var(--ders);}
+.cal-day-bar{
+  width:70%;
+  height:3px;
+  border-radius:2px;
+  background:var(--ders);
+  opacity:0.5;
+}
+
+/* ═══════════════════════════════════════════
+   HEDEFLER SHEET
+═══════════════════════════════════════════ */
+.hedef-toggle{
+  display:flex;
+  gap:6px;
+  margin-bottom:12px;
+}
+.hedef-toggle-btn{
+  flex:1;
+  padding:8px;
+  border:1px solid var(--border);
+  background:var(--bg3);
+  border-radius:8px;
+  color:var(--text3);
+  font-family:var(--mono);
+  font-size:11px;
+  cursor:pointer;
+  text-align:center;
+  transition:all 0.15s;
+}
+.hedef-toggle-btn.active{
+  border-color:var(--ders);
+  color:var(--ders);
+  background:rgba(96,165,250,0.1);
+}
+
+.hedef-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 0;
+  border-bottom:1px solid var(--border);
+}
+.hedef-item:last-child{border-bottom:none;}
+
+.hedef-status{
+  width:28px;height:28px;
+  border-radius:7px;
+  border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);
+  font-size:11px;
+  cursor:pointer;
+  flex-shrink:0;
+  transition:all 0.15s;
+}
+.hedef-status[data-s="?"]{background:var(--bg4);color:var(--text3);}
+.hedef-status[data-s="H"]{background:rgba(251,191,36,0.15);border-color:var(--dinlenme);color:var(--dinlenme);}
+.hedef-status[data-s="T"]{background:rgba(251,146,60,0.15);border-color:var(--mola);color:var(--mola);}
+.hedef-status[data-s="0"]{background:rgba(239,68,68,0.1);border-color:var(--bitis);color:var(--bitis);}
+.hedef-status[data-s="1"]{background:rgba(34,197,94,0.15);border-color:var(--basla);color:var(--basla);}
+
+.hedef-body{flex:1;min-width:0;}
+.hedef-ders{font-size:11px;color:var(--text3);font-family:var(--mono);}
+.hedef-konu{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+.hedef-del{
+  width:24px;height:24px;
+  border:1px solid var(--border);
+  background:transparent;
+  border-radius:5px;
+  color:var(--text3);
+  cursor:pointer;
+  font-size:12px;
+  display:flex;align-items:center;justify-content:center;
+}
+.hedef-del:hover{border-color:var(--bitis);color:var(--bitis);}
+
+/* ═══════════════════════════════════════════
+   YOKLAMA MODAL
+═══════════════════════════════════════════ */
+.yoklama-overlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,0.8);
+  z-index:200;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:16px;
+  opacity:0;pointer-events:none;
+  transition:opacity 0.25s;
+}
+.yoklama-overlay.open{opacity:1;pointer-events:all;}
+
+.yoklama-card{
+  background:var(--bg2);
+  border:1px solid var(--border2);
+  border-radius:16px;
+  padding:24px;
+  width:100%;
+  max-width:400px;
+  transform:scale(0.95);
+  transition:transform 0.25s;
+}
+.yoklama-overlay.open .yoklama-card{transform:scale(1);}
+
+.yoklama-title{
+  font-family:var(--display);
+  font-size:22px;
+  letter-spacing:1px;
+  margin-bottom:6px;
+}
+.yoklama-sub{
+  font-family:var(--mono);
+  font-size:11px;
+  color:var(--text2);
+  margin-bottom:16px;
+}
+.yoklama-konu{
+  background:var(--bg3);
+  border:1px solid var(--border2);
+  border-radius:10px;
+  padding:14px;
+  margin-bottom:14px;
+}
+.yoklama-konu-ders{font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:2px;}
+.yoklama-konu-name{font-size:16px;color:var(--text);}
+.yoklama-choices{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.yoklama-choice{
+  padding:10px;
+  border:1px solid var(--border2);
+  background:var(--bg3);
+  border-radius:8px;
+  cursor:pointer;
+  text-align:center;
+  font-family:var(--mono);
+  font-size:12px;
+  transition:all 0.15s;
+}
+.yoklama-choice:hover{border-color:var(--ders);color:var(--ders);}
+.yoklama-skip{
+  width:100%;
+  margin-top:8px;
+  padding:8px;
+  border:none;
+  background:transparent;
+  color:var(--text3);
+  font-family:var(--mono);
+  font-size:11px;
+  cursor:pointer;
+  text-align:center;
+}
+.yoklama-skip:hover{color:var(--text2);}
+
+/* ═══════════════════════════════════════════
+   DELETE CONFIRM
+═══════════════════════════════════════════ */
+.del-confirm{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,0.75);
+  z-index:300;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  padding-bottom:env(safe-area-inset-bottom);
+  opacity:0;pointer-events:none;
+  transition:opacity 0.2s;
+}
+.del-confirm.open{opacity:1;pointer-events:all;}
+.del-confirm-box{
+  background:var(--bg2);
+  border-top:1px solid var(--border2);
+  border-radius:16px 16px 0 0;
+  padding:20px 16px 24px;
+  width:100%;
+  max-width:500px;
+  transform:translateY(20px);
+  transition:transform 0.2s;
+}
+.del-confirm.open .del-confirm-box{transform:none;}
+.del-confirm-title{
+  font-family:var(--display);
+  font-size:20px;
+  letter-spacing:1px;
+  margin-bottom:6px;
+  color:var(--bitis);
+}
+.del-confirm-sub{font-size:12px;color:var(--text2);font-family:var(--mono);margin-bottom:14px;}
+.del-step2-warn{
+  background:rgba(239,68,68,0.1);
+  border:1px solid rgba(239,68,68,0.3);
+  border-radius:8px;
+  padding:10px 12px;
+  font-family:var(--mono);
+  font-size:11px;
+  color:var(--bitis);
+  margin-bottom:14px;
+}
+
+/* ═══════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════ */
+#toast{
+  position:fixed;
+  top:calc(var(--top-h) + 8px);
+  left:50%;
+  transform:translateX(-50%) translateY(-10px);
+  background:var(--bg3);
+  border:1px solid var(--border2);
+  border-radius:8px;
+  padding:8px 16px;
+  font-family:var(--mono);
+  font-size:12px;
+  color:var(--text);
+  z-index:500;
+  opacity:0;
+  transition:all 0.25s;
+  white-space:nowrap;
+  pointer-events:none;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════ */
+@media(min-width:600px){
+  .sheet{max-width:480px;left:50%;right:auto;transform:translate(-50%,100%);border-radius:16px 16px 0 0;}
+  .sheet.open{transform:translate(-50%,0);}
+  .yoklama-card{max-width:420px;}
+}
+@media(min-width:900px){
+  body{flex-direction:row;}
+  #topNav{
+    width:220px;flex-direction:column;height:100vh;
+    border-right:1px solid var(--border);border-bottom:none;
+    padding:20px 12px;align-items:stretch;gap:12px;
+  }
+  .top-brand{font-size:28px;margin-bottom:8px;}
+  .top-date{position:static;transform:none;font-size:10px;}
+  #btnBasla,#btnBitis{width:100%;justify-content:center;height:40px;}
+  #mainArea{flex:1;}
+  #botNav{
+    width:220px;flex-direction:column;height:100vh;order:-1;
+    border-right:1px solid var(--border);border-top:none;
+    padding:20px 8px;justify-content:flex-start;gap:6px;
+  }
+  .bot-btn{flex:none;width:100%;flex-direction:row;gap:8px;justify-content:flex-start;padding-left:12px;height:40px;font-size:11px;}
+  .bot-btn .icon{font-size:16px;}
+  #botAdd{width:100%;flex-direction:row;gap:8px;border-radius:10px;justify-content:center;height:40px;font-size:20px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     TOP NAVBAR
+═══════════════════════════════════════════ -->
+<nav id="topNav">
+  <div class="top-brand">PARALAYICI</div>
+  <div class="top-date" id="topDate">—</div>
+  <button id="btnBasla" onclick="handleBasla()">▶ BAŞLA</button>
+  <button id="btnBitis" onclick="handleBitis()">■ BİTİR</button>
+</nav>
+
+<!-- ═══════════════════════════════════════════
+     MAIN SCROLL AREA
+═══════════════════════════════════════════ -->
+<div id="mainArea">
+
+  <!-- Progress Bars -->
+  <div id="progressSection"></div>
+
+  <!-- Instant Buttons -->
+  <div id="instantRow">
+    <button class="instant-btn" id="iDers" onclick="handleInstantDers()">
+      📘 DERS
+    </button>
+    <button class="instant-btn" id="iMola" onclick="handleInstantMola()">
+      ☕ MOLA
+    </button>
+  </div>
+
+  <!-- Log List -->
+  <div id="logSection">
+    <div class="log-header">
+      <span class="log-header-title" id="logHeaderTitle">BUGÜN</span>
+      <span class="log-header-date" id="logHeaderDate">—</span>
+    </div>
+    <div id="logList">
+      <div class="log-empty">Henüz kayıt yok.<br>Başlamak için ▶ BAŞLA veya 📘 DERS'e bas.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════
+     BOTTOM NAVBAR
+═══════════════════════════════════════════ -->
+<nav id="botNav">
+  <button class="bot-btn active" onclick="openSheet('sheetMain')" id="botHome">
+    <span class="icon">◉</span>
+    <span>Panel</span>
+  </button>
+  <button class="bot-btn" onclick="openSheet('sheetTakvim')" id="botCal">
+    <span class="icon">▦</span>
+    <span>Takvim</span>
+  </button>
+  <button class="bot-btn" onclick="openSheet('sheetHedef')" id="botHedef">
+    <span class="icon">◎</span>
+    <span>Hedefler</span>
+  </button>
+  <button id="botAdd" onclick="openAddSheet()">＋</button>
+</nav>
+
+<!-- ═══════════════════════════════════════════
+     OVERLAY
+═══════════════════════════════════════════ -->
+<div class="overlay" id="overlay" onclick="closeAllSheets()"></div>
+
+<!-- ═══════════════════════════════════════════
+     SHEET: EKLE / DÜZENLE
+═══════════════════════════════════════════ -->
+<div class="sheet" id="sheetAdd">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">
+    <span id="addSheetTitle">EKLE</span>
+    <button class="sheet-close" onclick="closeAllSheets()">✕</button>
+  </div>
+  <div class="sheet-body" id="addSheetBody">
+    <!-- injected by JS -->
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SHEET: TAKVİM
+═══════════════════════════════════════════ -->
+<div class="sheet" id="sheetTakvim">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">
+    TAKVİM
+    <button class="sheet-close" onclick="closeAllSheets()">✕</button>
+  </div>
+  <div class="sheet-body" id="calBody">
+    <!-- injected by JS -->
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SHEET: HEDEFLER
+═══════════════════════════════════════════ -->
+<div class="sheet" id="sheetHedef">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">
+    HEDEFLER
+    <button class="sheet-close" onclick="closeAllSheets()">✕</button>
+  </div>
+  <div class="sheet-body" id="hedefBody">
+    <!-- injected by JS -->
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     YOKLAMA MODAL
+═══════════════════════════════════════════ -->
+<div class="yoklama-overlay" id="yoklamaOverlay">
+  <div class="yoklama-card" id="yoklamaCard">
+    <!-- injected by JS -->
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     DELETE CONFIRM
+═══════════════════════════════════════════ -->
+<div class="del-confirm" id="delConfirm">
+  <div class="del-confirm-box" id="delConfirmBox">
+    <!-- injected by JS -->
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ═══════════════════════════════════════════
+     FIREBASE + APP LOGIC
+═══════════════════════════════════════════ -->
+<script type="module">
+import { initializeApp }       from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc,
+  collection, getDocs, serverTimestamp
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+// ════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════
+const FB_CFG = {
+  apiKey:"AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc",
+  authDomain:"paralayici.firebaseapp.com",
+  projectId:"paralayici",
+  storageBucket:"paralayici.firebasestorage.app",
+  messagingSenderId:"980843550614",
+  appId:"1:980843550614:web:93dd5bda4ddc377b20efb7"
+};
+const app = initializeApp(FB_CFG);
+const db  = getFirestore(app);
+
+// ════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════
+let STATE = {
+  today: dateKey(new Date()),       // "DD.MM.YYYY"
+  viewingDate: dateKey(new Date()), // currently displayed date
+  logA: {},                         // { "HH:MM": {tag,durumTag?,aciklama?,hedefSure?} }
+  logB: [],                         // [{tag,icerik}]
+  settings: {},
+  konular: null,
+  bars: [],                         // active progress bars
+  calMode: 'hafta',
+  calDate: new Date(),
+  hedefMode: 'gun',
+  weekData: {},                     // cache for calendar
+  deleteStep: 0,
+  deletePending: null,
+};
+
+let timerHandle = null;
+
+// ════════════════════════════════════════════
+// DATE UTILS
+// ════════════════════════════════════════════
+function dateKey(d){ return `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`; }
+function weekKey(d){
+  const jan1=new Date(d.getFullYear(),0,1);
+  const wk=Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7);
+  return `${d.getFullYear()}-W${pad(wk)}`;
+}
+function pad(n){return String(n).padStart(2,'0');}
+function nowHHMM(){const n=new Date();return `${pad(n.getHours())}:${pad(n.getMinutes())}`;}
+function fmtDur(sec){
+  if(sec<0)sec=0;
+  const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;
+  if(h>0)return `${h}:${pad(m)}:${pad(s)}`;
+  return `${pad(m)}:${pad(s)}`;
+}
+function hhmm2min(hhmm){const[h,m]=hhmm.split(':').map(Number);return h*60+m;}
+function nowMin(){const n=new Date();return n.getHours()*60+n.getMinutes();}
+
+// ════════════════════════════════════════════
+// FIRESTORE HELPERS — CLEAN WRITES
+// ════════════════════════════════════════════
+function cleanEntry(obj){
+  // Only store fields that have actual values
+  const out={tag:obj.tag};
+  if(obj.durumTag)  out.durumTag=obj.durumTag;
+  if(obj.aciklama)  out.aciklama=obj.aciklama;
+  if(obj.hedefSure) out.hedefSure=obj.hedefSure;
+  return out;
+}
+
+async function saveDayLogA(){
+  const ref=doc(db,'gunler',STATE.viewingDate);
+  const snap=await getDoc(ref);
+  const existing=snap.exists()?snap.data():{tarih:STATE.viewingDate,logA:{},logB:[]};
+  existing.logA=STATE.logA;
+  await setDoc(ref,existing);
+}
+
+async function saveDayLogB(){
+  const ref=doc(db,'gunler',STATE.viewingDate);
+  const snap=await getDoc(ref);
+  const existing=snap.exists()?snap.data():{tarih:STATE.viewingDate,logA:{},logB:[]};
+  existing.logB=STATE.logB;
+  await setDoc(ref,existing);
+}
+
+async function saveSettings(){
+  await setDoc(doc(db,'system','settings'),STATE.settings,{merge:true});
+}
+
+// ════════════════════════════════════════════
+// LOAD
+// ════════════════════════════════════════════
+async function loadAll(){
+  // Settings
+  try{
+    const s=await getDoc(doc(db,'system','settings'));
+    if(s.exists()){
+      STATE.settings=s.data();
+      STATE.konular=STATE.settings.konular||null;
+    }
+  }catch(e){console.warn('settings load err',e);}
+
+  // Today's log
+  await loadDay(STATE.today);
+
+  // Update header
+  updateHeader();
+
+  // Check yoklama
+  checkYoklama();
+
+  // Start timer loop
+  startTimerLoop();
+}
+
+async function loadDay(dateStr){
+  STATE.viewingDate=dateStr;
+  try{
+    const ref=doc(db,'gunler',dateStr);
+    const snap=await getDoc(ref);
+    if(snap.exists()){
+      const d=snap.data();
+      STATE.logA=d.logA||{};
+      STATE.logB=d.logB||[];
+    }else{
+      STATE.logA={};
+      STATE.logB=[];
+    }
+  }catch(e){STATE.logA={};STATE.logB=[];}
+
+  reconstructBars();
+  renderLogList();
+  checkWarnings();
+}
+
+// ════════════════════════════════════════════
+// STATE RECONSTRUCTION FROM LOGA
+// ════════════════════════════════════════════
+function reconstructBars(){
+  const entries=sortedLogA();
+  const nowM=nowMin();
+  STATE.bars=[];
+
+  for(let i=0;i<entries.length;i++){
+    const [saat,data]=entries[i];
+    const startM=hhmm2min(saat);
+    const nextSaat=i+1<entries.length?entries[i+1][0]:null;
+    const endM=nextSaat?hhmm2min(nextSaat):null;
+
+    const tag=data.tag;
+    // Only show bars for active/ongoing tags
+    // A bar is "active" if it started and hasn't been superseded
+    if(endM!==null && endM<=nowM){
+      // This entry is fully done — but başla bar persists
+      if(tag==='basla'){
+        // basla bar: check if ended
+        const ended=isBaslaEnded(entries,i);
+        if(ended) continue;
+      } else { continue; }
+    }
+    if(startM>nowM) continue; // future entry
+
+    // Build bar
+    const bar=buildBar(saat,data,entries,i,nowM);
+    if(bar) STATE.bars.push(bar);
+  }
+}
+
+function isBaslaEnded(entries,baslaIdx){
+  for(let j=baslaIdx+1;j<entries.length;j++){
+    const t=entries[j][1].tag;
+    if(t==='bitis'||t==='uyku'||t==='basla') return true;
+  }
+  return false;
+}
+
+function buildBar(saat,data,entries,idx,nowM){
+  const tag=data.tag;
+  const startM=hhmm2min(saat);
+  const nowSec=(nowM-startM)*60;
+
+  // Duration until next tag
+  const nextEntry=entries[idx+1];
+  const nextM=nextEntry?hhmm2min(nextEntry[0]):null;
+  const durationSec=nextM?(nextM-startM)*60:null; // null = still running
+
+  const hedefSec=data.hedefSure?Math.round(data.hedefSure*3600):null;
+
+  // Is this bar paused? (ders bar pauses during mola)
+  let paused=false;
+  let pausedSec=0;
+  if(tag==='ders'||tag==='basla'){
+    // find mola/dinlenme after this start, sum up their durations
+    for(let j=idx+1;j<entries.length;j++){
+      const e=entries[j][1];
+      const eM=hhmm2min(entries[j][0]);
+      if(eM>nowM) break;
+      if(e.tag==='mola'||e.tag==='dinlenme'){
+        const nxt=entries[j+1];
+        const nxtM=nxt?hhmm2min(entries[j+1][0]):nowM;
+        const dur=Math.min(nxtM,nowM)-eM;
+        if(dur>0) pausedSec+=dur*60;
+        // check if currently in mola
+        if(!nxt||hhmm2min(entries[j+1][0])>nowM){
+          paused=true;
+        }
+      }
+    }
+  }
+
+  // elapsed = nowSec - pausedSec (for net bar of başla)
+  const elapsedNet=tag==='basla'?(nowSec-pausedSec):nowSec;
+  const elapsedFull=nowSec;
+
+  return {
+    id:`${tag}-${saat}`,
+    tag,saat,data,
+    startM,hedefSec,
+    elapsedNet,elapsedFull,
+    paused,
+    durationSec, // null if still running
+    running: durationSec===null
+  };
+}
+
+function sortedLogA(){
+  return Object.entries(STATE.logA).sort((a,b)=>hhmm2min(a[0])-hhmm2min(b[0]));
+}
+
+// ════════════════════════════════════════════
+// TIMER LOOP
+// ════════════════════════════════════════════
+function startTimerLoop(){
+  if(timerHandle) clearInterval(timerHandle);
+  timerHandle=setInterval(()=>{
+    updateBarsLive();
+    checkAutoEnd();
+  },1000);
+}
+
+function updateBarsLive(){
+  const nowM=nowMin();
+  const nowSec=new Date().getSeconds();
+  const curMin=new Date().getMinutes();
+
+  // Recompute elapsed for running bars
+  STATE.bars.forEach(bar=>{
+    if(!bar.running) return;
+    const totalSec=(nowM-bar.startM)*60+nowSec;
+    // recompute pause
+    let pausedSec=0;
+    if(bar.tag==='basla'||bar.tag==='ders'){
+      const entries=sortedLogA();
+      const idx=entries.findIndex(e=>e[0]===bar.saat);
+      if(idx>=0){
+        for(let j=idx+1;j<entries.length;j++){
+          const e=entries[j][1];
+          const eM=hhmm2min(entries[j][0]);
+          if(eM>nowM) break;
+          if(e.tag==='mola'||e.tag==='dinlenme'){
+            const nxt=entries[j+1];
+            const nxtM=nxt?hhmm2min(entries[j+1][0]):nowM;
+            const dur=Math.min(nxtM,nowM)-eM;
+            if(dur>0) pausedSec+=dur*60;
+          }
+        }
+      }
+      bar.elapsedNet=totalSec-pausedSec;
+    }
+    bar.elapsedFull=totalSec;
+  });
+
+  renderProgressBars();
+}
+
+function checkAutoEnd(){
+  // Auto-end basla after 14 hours
+  const baslaBar=STATE.bars.find(b=>b.tag==='basla'&&b.running);
+  if(baslaBar && baslaBar.elapsedFull>=14*3600){
+    addLogAEntry(nowHHMM(),{tag:'bitis'},false);
+  }
+}
+
+// ════════════════════════════════════════════
+// RENDER PROGRESS BARS
+// ════════════════════════════════════════════
+const TAG_COLOR={
+  basla:'var(--basla)',ders:'var(--ders)',mola:'var(--mola)',
+  uyku:'var(--uyku)',yol:'var(--yol)',dinlenme:'var(--dinlenme)',
+  bitis:'var(--bitis)'
+};
+const TAG_COLOR_DARK={
+  basla:'var(--basla-d)',ders:'var(--ders-d)',mola:'var(--mola-d)',
+  uyku:'var(--uyku-d)',yol:'var(--yol-d)',dinlenme:'var(--dinlenme-d)',
+  bitis:'var(--bitis-d)'
+};
+
+function renderProgressBars(){
+  const sec=document.getElementById('progressSection');
+  if(!sec) return;
+
+  // Only show bars for today
+  if(STATE.viewingDate!==STATE.today){
+    sec.innerHTML='';
+    return;
+  }
+
+  const activeBars=STATE.bars.filter(b=>b.running);
+  if(activeBars.length===0){sec.innerHTML='';return;}
+
+  // Başla gets TWO rows (net + full)
+  const rows=[];
+  activeBars.forEach(bar=>{
+    if(bar.tag==='basla'){
+      rows.push({bar,which:'net',label:'NET'});
+      rows.push({bar,which:'full',label:'TAM'});
+    } else {
+      rows.push({bar,which:'full',label:barLabel(bar)});
+    }
+  });
+
+  sec.innerHTML=rows.map(r=>renderPBarHTML(r)).join('');
+}
+
+function barLabel(bar){
+  const TAG_ICON={basla:'▶',ders:'📘',mola:'☕',uyku:'😴',yol:'🚗',dinlenme:'🌙',bitis:'⏹'};
+  const icon=TAG_ICON[bar.tag]||'';
+  if(bar.data.durumTag) return `${icon}${bar.data.durumTag}`;
+  return icon||bar.tag.toUpperCase();
+}
+
+function renderPBarHTML({bar,which,label}){
+  const elapsed=which==='net'?bar.elapsedNet:bar.elapsedFull;
+  const hedef=bar.hedefSec;
+  const color=TAG_COLOR[bar.tag]||'var(--ders)';
+  const colorD=TAG_COLOR_DARK[bar.tag]||'var(--ders-d)';
+  const paused=bar.paused&&which==='net';
+
+  let pct,overtime,timerTxt,fillColor;
+
+  if(!hedef){
+    // No target — just count up
+    overtime=true;
+    pct=Math.min(100,(elapsed/3600)*20); // visual scale: 5h=100%
+    timerTxt='+'+fmtDur(elapsed);
+    fillColor=colorD;
+  } else {
+    overtime=elapsed>=hedef;
+    if(!overtime){
+      pct=(elapsed/hedef)*100;
+      const remain=hedef-elapsed;
+      timerTxt=fmtDur(remain);
+      fillColor=color;
+    } else {
+      // Overtime: show how far into next period
+      const period=hedef; // each period = one hedef
+      const extra=elapsed-hedef;
+      const inPeriod=extra%period;
+      const periodsDone=Math.floor(extra/period)+1;
+      pct=(inPeriod/period)*100;
+      timerTxt=`+${fmtDur(extra)} (${periodsDone+1}h)`;
+      fillColor=colorD;
+    }
+  }
+
+  const pausedStyle=paused?'opacity:0.4;':'';
+  const fillDir=overtime?'left':'right'; // overtime grows left→right, countdown shrinks from left
+
+  // For countdown: width represents remaining (right side), so fill is at RIGHT
+  // CSS: .pbar-fill.countdown { right:0 } — fill starts from right
+  // For overtime: fill starts from left
+  const dirClass=overtime?'overtime':'countdown';
+
+  return `<div class="pbar-row" style="${pausedStyle}">
+    <div class="pbar-label" title="${bar.data.aciklama||label}">${label}</div>
+    <div class="pbar-wrap">
+      <div class="pbar-fill ${dirClass}"
+        style="width:${pct.toFixed(1)}%;background:${fillColor};">
+      </div>
+    </div>
+    <div class="pbar-timer${overtime?' over':''}">${paused?'⏸ ':''} ${timerTxt}</div>
+  </div>`;
+}
+
+// ════════════════════════════════════════════
+// RENDER LOG LIST
+// ════════════════════════════════════════════
+function renderLogList(){
+  const list=document.getElementById('logList');
+  const entries=sortedLogA();
+  const warnings=detectWarnings(entries);
+
+  if(entries.length===0){
+    list.innerHTML='<div class="log-empty">Henüz kayıt yok.<br>Başlamak için ▶ BAŞLA veya 📘 DERS\'e bas.</div>';
+    return;
+  }
+
+  const TAG_COLOR_VAR={
+    basla:'var(--basla)',ders:'var(--ders)',mola:'var(--mola)',
+    uyku:'var(--uyku)',yol:'var(--yol)',dinlenme:'var(--dinlenme)',
+    bitis:'var(--bitis)',
+  };
+  const TAG_ICON={basla:'▶',ders:'📘',mola:'☕',uyku:'😴',yol:'🚗',dinlenme:'🌙',bitis:'⏹'};
+
+  let html='';
+  entries.forEach(([saat,data],idx)=>{
+    const color=TAG_COLOR_VAR[data.tag]||'var(--text3)';
+    const nextSaat=idx+1<entries.length?entries[idx+1][0]:null;
+    const dur=nextSaat?durStr(hhmm2min(saat),hhmm2min(nextSaat)):'';
+
+    // warn?
+    const warn=warnings.find(w=>w.saat===saat);
+
+    const main=buildMainText(data);
+    const sub=buildSubText(data);
+
+    const isViewing=STATE.viewingDate===STATE.today;
+    const actionsBtns=isViewing?`
+      <div class="log-actions">
+        <button class="log-act-btn" onclick="editEntry('${saat}')" title="Düzenle">✎</button>
+        <button class="log-act-btn del" onclick="deleteEntry('${saat}')" title="Sil">✕</button>
+      </div>`:
+      `<div class="log-actions">
+        <button class="log-act-btn" onclick="editEntry('${saat}')" title="Düzenle">✎</button>
+        <button class="log-act-btn del" onclick="deleteEntry('${saat}')" title="Sil">✕</button>
+      </div>`;
+
+    html+=`
+      ${warn?`<div class="log-warning">⚠ ${warn.msg}</div>`:''}
+      <div class="log-entry-row" onclick="editEntry('${saat}')">
+        <span class="log-time-col">${saat}</span>
+        <span class="log-tag-dot" style="background:${color}"></span>
+        <div class="log-content">
+          <div class="log-main-text">${TAG_ICON[data.tag]||''} ${main}</div>
+          ${sub?`<div class="log-sub-text">${sub}</div>`:''}
+        </div>
+        <span class="log-duration">${dur}</span>
+        ${actionsBtns}
+      </div>`;
+  });
+  list.innerHTML=html;
+}
+
+function buildMainText(data){
+  const parts=[];
+  if(data.tag==='ders'){
+    if(data.durumTag) parts.push(data.durumTag);
+    else parts.push('Ders');
+  } else if(data.tag==='mola'){
+    parts.push(data.durumTag||'Mola');
+  } else if(data.tag==='uyku'){
+    parts.push(data.durumTag||'Uyku');
+  } else if(data.tag==='yol'){
+    parts.push(data.durumTag||'Yol');
+  } else if(data.tag==='dinlenme'){
+    parts.push('Dinlenme');
+  } else if(data.tag==='basla'){
+    parts.push('Oturum Başladı');
+  } else if(data.tag==='bitis'){
+    parts.push('Oturum Bitti');
+  } else {
+    parts.push(data.tag);
+  }
+  return parts.join(' · ');
+}
+
+function buildSubText(data){
+  const parts=[];
+  if(data.aciklama) parts.push(data.aciklama);
+  if(data.hedefSure) parts.push(`Hedef: ${data.hedefSure}s`);
+  return parts.join(' · ');
+}
+
+function durStr(startM,endM){
+  const diff=endM-startM;
+  if(diff<0) return '';
+  const h=Math.floor(diff/60),m=diff%60;
+  if(h>0&&m>0) return `${h}s ${m}dk`;
+  if(h>0) return `${h}s`;
+  return `${m}dk`;
+}
+
+function detectWarnings(entries){
+  const warns=[];
+  // Multiple basla without bitis
+  let baslaCount=0;
+  entries.forEach(([s,d])=>{
+    if(d.tag==='basla') baslaCount++;
+  });
+  if(baslaCount>1) warns.push({saat:entries.find(([s,d])=>d.tag==='basla')?.[0]||'00:00',msg:'Birden fazla Başla girişi var'});
+  return warns;
+}
+
+function checkWarnings(){
+  // placeholder — called after load
+}
+
+// ════════════════════════════════════════════
+// HEADER
+// ════════════════════════════════════════════
+function updateHeader(){
+  const d=new Date();
+  const days=['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
+  const months=['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+  document.getElementById('topDate').textContent=
+    `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
+  document.getElementById('logHeaderDate').textContent=STATE.viewingDate;
+  document.getElementById('logHeaderTitle').textContent=
+    STATE.viewingDate===STATE.today?'BUGÜN':STATE.viewingDate;
+}
+
+// ════════════════════════════════════════════
+// BAŞLA / BİTİŞ HANDLERS
+// ════════════════════════════════════════════
+window.handleBasla=async()=>{
+  // Check if basla already active
+  const entries=sortedLogA();
+  const hasActiveBasla=entries.some(([s,d])=>d.tag==='basla')&&
+    !entries.some(([s,d])=>d.tag==='bitis');
+
+  if(hasActiveBasla){
+    toast('Oturum zaten aktif!');
+    return;
+  }
+
+  // Open sheet to set daily target
+  openAddSheet('basla');
+};
+
+window.handleBitis=async()=>{
+  const saat=nowHHMM();
+  await addLogAEntry(saat,{tag:'bitis'});
+  document.getElementById('btnBasla').classList.remove('active');
+  document.getElementById('btnBitis').classList.remove('active');
+  reconstructBars();
+  renderProgressBars();
+  renderLogList();
+
+  // Trigger günlük yoklama
+  setTimeout(()=>startYoklama('gun'),500);
+};
+
+// ════════════════════════════════════════════
+// INSTANT BUTTONS
+// ════════════════════════════════════════════
+window.handleInstantDers=()=>{
+  // Quick add ders — open sheet with ders pre-selected
+  openAddSheet('ders');
+};
+
+window.handleInstantMola=()=>{
+  openAddSheet('mola');
+};
+
+// ════════════════════════════════════════════
+// ADD LOGA ENTRY
+// ════════════════════════════════════════════
+async function addLogAEntry(saat, data, doRender=true){
+  const clean=cleanEntry(data);
+  STATE.logA[saat]=clean;
+  await saveDayLogA();
+  if(doRender){
+    reconstructBars();
+    renderProgressBars();
+    renderLogList();
+  }
+  updateBaslaBitisButtons();
+}
+
+async function deleteLogAEntry(saat){
+  delete STATE.logA[saat];
+  await saveDayLogA();
+  reconstructBars();
+  renderProgressBars();
+  renderLogList();
+  updateBaslaBitisButtons();
+}
+
+function updateBaslaBitisButtons(){
+  const entries=sortedLogA();
+  const hasBasla=entries.some(([s,d])=>d.tag==='basla');
+  const hasBitis=entries.some(([s,d])=>d.tag==='bitis');
+  document.getElementById('btnBasla').classList.toggle('active',hasBasla&&!hasBitis);
+  document.getElementById('btnBitis').classList.toggle('active',hasBasla&&!hasBitis);
+}
+
+// ════════════════════════════════════════════
+// EDIT / DELETE ENTRY
+// ════════════════════════════════════════════
+window.editEntry=(saat)=>{
+  const data=STATE.logA[saat];
+  if(!data) return;
+  openAddSheet(data.tag,saat,data);
+};
+
+window.deleteEntry=(saat)=>{
+  showDeleteConfirm(saat);
+};
+
+function showDeleteConfirm(saat){
+  STATE.deleteStep=1;
+  STATE.deletePending=saat;
+  const box=document.getElementById('delConfirmBox');
+  box.innerHTML=`
+    <div class="del-confirm-title">SİL</div>
+    <div class="del-confirm-sub">${saat} — ${STATE.logA[saat]?.tag||''} kaydını silmek istiyor musun?</div>
+    <div style="display:flex;gap:8px;">
+      <button class="action-btn danger" style="margin:0;flex:1;" onclick="confirmDelete()">Evet, sil</button>
+      <button class="action-btn secondary" style="margin:0;flex:1;" onclick="closeDeleteConfirm()">İptal</button>
+    </div>`;
+  document.getElementById('delConfirm').classList.add('open');
+}
+
+window.confirmDelete=()=>{
+  if(STATE.deleteStep===1){
+    STATE.deleteStep=2;
+    const box=document.getElementById('delConfirmBox');
+    box.innerHTML=`
+      <div class="del-confirm-title">EMİN MİSİN?</div>
+      <div class="del-step2-warn">⚠ Bu işlem geri alınamaz. Kayıt kalıcı olarak silinecek.</div>
+      <div style="display:flex;gap:8px;">
+        <button class="action-btn danger" style="margin:0;flex:1;" onclick="finalDelete()">Kesinlikle Sil</button>
+        <button class="action-btn secondary" style="margin:0;flex:1;" onclick="closeDeleteConfirm()">Vazgeç</button>
+      </div>`;
+    return;
+  }
+};
+
+window.finalDelete=async()=>{
+  if(STATE.deletePending){
+    await deleteLogAEntry(STATE.deletePending);
+    toast('Kayıt silindi');
+  }
+  closeDeleteConfirm();
+};
+
+window.closeDeleteConfirm=()=>{
+  document.getElementById('delConfirm').classList.remove('open');
+  STATE.deleteStep=0;
+  STATE.deletePending=null;
+};
+
+// ════════════════════════════════════════════
+// ADD SHEET — MAIN FORM BUILDER
+// ════════════════════════════════════════════
+let addForm={tag:null,durumTag:null,aciklama:null,hedefSure:null,saat:null,editingSaat:null};
+
+window.openAddSheet=(preTag=null,editSaat=null,editData=null)=>{
+  addForm={tag:preTag,durumTag:null,aciklama:null,hedefSure:null,saat:editSaat||nowHHMM(),editingSaat:editSaat};
+  if(editData){
+    addForm.durumTag=editData.durumTag||null;
+    addForm.aciklama=editData.aciklama||null;
+    addForm.hedefSure=editData.hedefSure||null;
+  }
+
+  document.getElementById('addSheetTitle').textContent=editSaat?'DÜZENLE':'EKLE';
+  renderAddForm();
+  openSheet('sheetAdd');
+};
+
+function renderAddForm(){
+  const body=document.getElementById('addSheetBody');
+
+  const tags=[
+    {k:'basla',label:'▶ Başla'},
+    {k:'ders',label:'📘 Ders'},
+    {k:'mola',label:'☕ Mola'},
+    {k:'yol',label:'🚗 Yol'},
+    {k:'dinlenme',label:'🌙 Dinlenme'},
+    {k:'uyku',label:'😴 Uyku'},
+    {k:'bitis',label:'⏹ Bitiş'},
+  ];
+
+  let html=`
+    <span class="chip-label">SAAT</span>
+    <div class="time-row">
+      <input class="time-input" id="af-hh" maxlength="2" placeholder="09" value="${addForm.saat.split(':')[0]}" oninput="afTimeChange()">
+      <span class="time-sep">:</span>
+      <input class="time-input" id="af-mm" maxlength="2" placeholder="30" value="${addForm.saat.split(':')[1]}" oninput="afTimeChange()">
+    </div>
+
+    <span class="chip-label">TAG</span>
+    <div class="chip-row">
+      ${tags.map(t=>`<div class="chip col-${t.k}${addForm.tag===t.k?' selected':''}" onclick="afSelectTag('${t.k}')">${t.label}</div>`).join('')}
+    </div>
+
+    <div id="af-dynamic"></div>
+    <div id="af-actions"></div>`;
+
+  body.innerHTML=html;
+  renderDynamicFields();
+}
+
+window.afTimeChange=()=>{
+  const h=document.getElementById('af-hh')?.value||'00';
+  const m=document.getElementById('af-mm')?.value||'00';
+  addForm.saat=`${h.padStart(2,'0')}:${m.padStart(2,'0')}`;
+};
+
+window.afSelectTag=(tag)=>{
+  addForm.tag=tag;
+  addForm.durumTag=null;
+  addForm.aciklama=null;
+  // re-render chips
+  document.querySelectorAll('.chip[onclick^="afSelectTag"]').forEach(c=>{
+    const t=c.getAttribute('onclick').replace("afSelectTag('","").replace("')","");
+    c.classList.toggle('selected',t===tag);
+  });
+  renderDynamicFields();
+};
+
+function renderDynamicFields(){
+  const dyn=document.getElementById('af-dynamic');
+  const acts=document.getElementById('af-actions');
+  if(!dyn||!acts) return;
+  if(!addForm.tag){dyn.innerHTML='';acts.innerHTML='';return;}
+
+  let html='';
+
+  // ── DERS ──
+  if(addForm.tag==='ders'||addForm.tag==='basla'){
+    // Ders seçimi (sadece ders için)
+    if(addForm.tag==='ders'){
+      const dersler=STATE.konular?.dersler||{};
+      const dersKeys=Object.keys(dersler);
+      if(dersKeys.length){
+        html+=`<span class="chip-label">DERS</span>
+        <div class="chip-row">
+          ${dersKeys.map(k=>`<div class="chip${addForm.durumTag===k?' selected':''}" onclick="afSelectDurum('${k}')">${dersler[k].ad}</div>`).join('')}
+        </div>`;
+        // Konu seçimi
+        if(addForm.durumTag&&dersler[addForm.durumTag]){
+          html+=buildKonuPicker(dersler[addForm.durumTag],addForm.durumTag);
+        }
+      } else {
+        // No konular loaded, free text
+        html+=`<span class="chip-label">DERS / KONU</span>
+        <input class="text-input" id="af-acik" placeholder="Mat, olasılık..." value="${addForm.aciklama||''}" oninput="addForm.aciklama=this.value">`;
+      }
+    }
+
+    // Hedef süre
+    html+=`<span class="chip-label">HEDEF SÜRE <span style="color:var(--text3)">(opsiyonel)</span></span>
+    <div class="stepper">
+      <button class="stepper-btn" onclick="afStepSure(-0.5)">−</button>
+      <div class="stepper-val" id="af-sure-val">${addForm.hedefSure||'—'}</div>
+      <button class="stepper-btn" onclick="afStepSure(0.5)">+</button>
+      ${addForm.hedefSure?`<button class="stepper-btn" onclick="afClearSure()" style="font-size:12px;">✕</button>`:''}
+    </div>`;
+
+    if(addForm.tag==='basla'){
+      html+=`<span class="chip-label" style="margin-top:14px;">AÇIKLAMA <span style="color:var(--text3)">(opsiyonel)</span></span>
+      <input class="text-input" id="af-acik" placeholder="Not..." value="${addForm.aciklama||''}" oninput="addForm.aciklama=this.value">`;
+    }
+  }
+
+  // ── MOLA ──
+  else if(addForm.tag==='mola'){
+    const molaTypes=['Yemek','Ara Mola','Boş','Tuvalet','Telefon','Diğer'];
+    html+=`<span class="chip-label">TÜR</span>
+    <div class="chip-row">
+      ${molaTypes.map(t=>`<div class="chip${addForm.durumTag===t?' selected':''}" onclick="afSelectDurum('${t}')">${t}</div>`).join('')}
+    </div>
+    <span class="chip-label">AÇIKLAMA <span style="color:var(--text3)">(opsiyonel)</span></span>
+    <input class="text-input" id="af-acik" placeholder="Ne yapıyorsun..." value="${addForm.aciklama||''}" oninput="addForm.aciklama=this.value">
+    <span class="chip-label">SÜRE <span style="color:var(--text3)">(opsiyonel)</span></span>
+    <div class="stepper">
+      <button class="stepper-btn" onclick="afStepSure(-0.25)">−</button>
+      <div class="stepper-val" id="af-sure-val">${addForm.hedefSure||'—'}</div>
+      <button class="stepper-btn" onclick="afStepSure(0.25)">+</button>
+      ${addForm.hedefSure?`<button class="stepper-btn" onclick="afClearSure()" style="font-size:12px;">✕</button>`:''}
+    </div>`;
+  }
+
+  // ── UYKU ──
+  else if(addForm.tag==='uyku'){
+    const uyType=['Uyuma','Uyanma'];
+    const uyAcik=['Erteleme','Uyku tamamlandı','Telefon','Proje','Normal'];
+    html+=`<span class="chip-label">DURUM</span>
+    <div class="chip-row">
+      ${uyType.map(t=>`<div class="chip${addForm.durumTag===t?' selected':''}" onclick="afSelectDurum('${t}')">${t}</div>`).join('')}
+    </div>
+    <span class="chip-label">AÇIKLAMA <span style="color:var(--text3)">(opsiyonel)</span></span>
+    <div class="chip-row" style="margin-bottom:6px;">
+      ${uyAcik.map(t=>`<div class="chip" onclick="afSetAciklama('${t}')">${t}</div>`).join('')}
+    </div>
+    <input class="text-input" id="af-acik" placeholder="Veya serbest yaz..." value="${addForm.aciklama||''}" oninput="addForm.aciklama=this.value">
+    <span class="chip-label">HEDEF SÜRE (saat) <span style="color:var(--text3)">(opsiyonel)</span></span>
+    <div class="stepper">
+      <button class="stepper-btn" onclick="afStepSure(-0.5)">−</button>
+      <div class="stepper-val" id="af-sure-val">${addForm.hedefSure||'—'}</div>
+      <button class="stepper-btn" onclick="afStepSure(0.5)">+</button>
+      ${addForm.hedefSure?`<button class="stepper-btn" onclick="afClearSure()" style="font-size:12px;">✕</button>`:''}
+    </div>`;
+  }
+
+  // ── YOL ──
+  else if(addForm.tag==='yol'){
+    const yolType=['Otobüs','Araba','Yürüme','Metro','Gezinti','Taksi','Diğer'];
+    html+=`<span class="chip-label">ULAŞIM</span>
+    <div class="chip-row">
+      ${yolType.map(t=>`<div class="chip${addForm.durumTag===t?' selected':''}" onclick="afSelectDurum('${t}')">${t}</div>`).join('')}
+    </div>
+    <span class="chip-label">DURUM <span style="color:var(--text3)">(opsiyonel)</span></span>
+    <input class="text-input" id="af-acik" placeholder="Kütüphaneye gidiyorum..." value="${addForm.aciklama||''}" oninput="addForm.aciklama=this.value">
+    <span class="chip-label">SÜRE <span style="color:var(--text3)">(opsiyonel)</span></span>
+    <div class="stepper">
+      <button class="stepper-btn" onclick="afStepSure(-0.25)">−</button>
+      <div class="stepper-val" id="af-sure-val">${addForm.hedefSure||'—'}</div>
+      <button class="stepper-btn" onclick="afStepSure(0.25)">+</button>
+      ${addForm.hedefSure?`<button class="stepper-btn" onclick="afClearSure()" style="font-size:12px;">✕</button>`:''}
+    </div>`;
+  }
+
+  // ── DİNLENME ──
+  else if(addForm.tag==='dinlenme'){
+    html+=`<span class="chip-label">AÇIKLAMA <span style="color:var(--text3)">(opsiyonel)</span></span>
+    <input class="text-input" id="af-acik" placeholder="Film, müzik, dışarı..." value="${addForm.aciklama||''}" oninput="addForm.aciklama=this.value">`;
+  }
+
+  // ── BİTİŞ ──
+  else if(addForm.tag==='bitis'){
+    const bitisTypes=['Yol','Mola','Dinlenme','Uyku','Gün Bitti'];
+    html+=`<span class="chip-label">NEDEN <span style="color:var(--text3)">(opsiyonel)</span></span>
+    <div class="chip-row">
+      ${bitisTypes.map(t=>`<div class="chip${addForm.durumTag===t?' selected':''}" onclick="afSelectDurum('${t}')">${t}</div>`).join('')}
+    </div>`;
+  }
+
+  dyn.innerHTML=html;
+
+  // Actions
+  acts.innerHTML=`
+    <button class="action-btn primary" onclick="afSave()">
+      ${addForm.editingSaat?'💾 Güncelle':'➕ Ekle'}
+    </button>
+    ${addForm.editingSaat?`<button class="action-btn danger" onclick="deleteEntry('${addForm.editingSaat}');closeAllSheets()">🗑 Bu Kaydı Sil</button>`:''}
+    <button class="action-btn secondary" onclick="closeAllSheets()">Vazgeç</button>`;
+}
+
+function buildKonuPicker(ders,dersKey){
+  let html=`<span class="chip-label">KONU <span style="color:var(--text3)">(opsiyonel)</span></span>
+  <input class="konu-search" placeholder="Konu ara..." oninput="filterKonular(this.value,'${dersKey}')">
+  <div class="konu-list" id="konu-list-${dersKey}">`;
+
+  Object.entries(ders.bolumler||{}).forEach(([bolumKey,bolum])=>{
+    html+=`<div class="konu-group">${bolum.ad}</div>`;
+    Object.entries(bolum.konular||{}).forEach(([kod,ad])=>{
+      const sel=addForm.aciklama===kod;
+      html+=`<div class="konu-item${sel?' selected':''}" onclick="afSelectKonu('${kod}','${ad.replace(/'/g,"\\'")}')">
+        <span>${ad}</span>
+        <span class="konu-code">${kod}</span>
+      </div>`;
+    });
+  });
+  html+='</div>';
+  return html;
+}
+
+window.filterKonular=(q,dersKey)=>{
+  const items=document.querySelectorAll(`#konu-list-${dersKey} .konu-item`);
+  const groups=document.querySelectorAll(`#konu-list-${dersKey} .konu-group`);
+  q=q.toLowerCase();
+  items.forEach(el=>{
+    el.style.display=el.textContent.toLowerCase().includes(q)?'':'none';
+  });
+};
+
+window.afSelectKonu=(kod,ad)=>{
+  addForm.aciklama=kod;
+  document.querySelectorAll('.konu-item').forEach(el=>{
+    el.classList.toggle('selected',el.querySelector('.konu-code')?.textContent===kod);
+  });
+};
+
+window.afSelectDurum=(val)=>{
+  addForm.durumTag=val;
+  // Update chip UI
+  document.querySelectorAll('.chip[onclick^="afSelectDurum"]').forEach(c=>{
+    const v=c.getAttribute('onclick').replace("afSelectDurum('","").replace("')","");
+    c.classList.toggle('selected',v===val);
+  });
+  // Re-render if ders (to show konu picker)
+  if(addForm.tag==='ders') renderDynamicFields();
+};
+
+window.afSetAciklama=(val)=>{
+  addForm.aciklama=val;
+  const inp=document.getElementById('af-acik');
+  if(inp) inp.value=val;
+};
+
+window.afStepSure=(delta)=>{
+  const cur=addForm.hedefSure||0;
+  addForm.hedefSure=Math.max(0,Math.round((cur+delta)*4)/4)||null;
+  const el=document.getElementById('af-sure-val');
+  if(el) el.textContent=addForm.hedefSure||'—';
+  // re-render to show/hide clear btn
+  renderDynamicFields();
+};
+
+window.afClearSure=()=>{
+  addForm.hedefSure=null;
+  renderDynamicFields();
+};
+
+window.afSave=async()=>{
+  if(!addForm.tag){toast('Tag seç!');return;}
+  const h=document.getElementById('af-hh')?.value||'00';
+  const m=document.getElementById('af-mm')?.value||'00';
+  const saat=`${h.padStart(2,'0')}:${m.padStart(2,'0')}`;
+  const acikInp=document.getElementById('af-acik');
+  if(acikInp) addForm.aciklama=acikInp.value||addForm.aciklama;
+
+  // If editing and saat changed, remove old
+  if(addForm.editingSaat && addForm.editingSaat!==saat){
+    delete STATE.logA[addForm.editingSaat];
+  }
+
+  const entry={tag:addForm.tag};
+  if(addForm.durumTag) entry.durumTag=addForm.durumTag;
+  if(addForm.aciklama) entry.aciklama=addForm.aciklama;
+  if(addForm.hedefSure) entry.hedefSure=addForm.hedefSure;
+
+  await addLogAEntry(saat,entry);
+  closeAllSheets();
+  toast(addForm.editingSaat?'Güncellendi':'Eklendi ✓');
+};
+
+// ════════════════════════════════════════════
+// TAKVIM SHEET
+// ════════════════════════════════════════════
+window.openSheet=(id)=>{
+  closeAllSheets();
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById(id).classList.add('open');
+  if(id==='sheetTakvim') renderCalendar();
+  if(id==='sheetHedef') renderHedefler();
+};
+
+function renderCalendar(){
+  const body=document.getElementById('calBody');
+  const d=STATE.calDate;
+  const y=d.getFullYear(),mo=d.getMonth();
+
+  const monthNames=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
+    'Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+
+  let html=`
+  <div class="cal-nav">
+    <button class="cal-nav-btn" onclick="calShift(-1)">◀</button>
+    <div class="cal-month">${monthNames[mo]} ${y}</div>
+    <button class="cal-nav-btn" onclick="calShift(1)">▶</button>
+  </div>`;
+
+  // Days of week
+  const dow=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+  html+=`<div class="cal-week-grid">${dow.map(d=>`<div class="cal-dow">${d}</div>`).join('')}`;
+
+  const first=new Date(y,mo,1);
+  const last=new Date(y,mo+1,0);
+  let start=first.getDay();
+  start=start===0?6:start-1; // Mon=0
+
+  const today=new Date();
+  const todayStr=dateKey(today);
+
+  for(let i=0;i<start;i++){
+    const dd=new Date(y,mo,1-start+i);
+    html+=`<div class="cal-day other-month"><div class="cal-day-num" style="color:var(--text3)">${dd.getDate()}</div></div>`;
+  }
+  for(let dd=1;dd<=last.getDate();dd++){
+    const dayDate=new Date(y,mo,dd);
+    const key=dateKey(dayDate);
+    const isToday=key===todayStr;
+    const hasData=STATE.weekData[key];
+    html+=`<div class="cal-day${isToday?' today':''}" onclick="calSelectDay('${key}')">
+      <div class="cal-day-num">${dd}</div>
+      ${hasData?`<div class="cal-day-bar" style="opacity:${Math.min(1,hasData/5)}"></div>`:''}
+    </div>`;
+  }
+  html+='</div>';
+  body.innerHTML=html;
+}
+
+window.calShift=(dir)=>{
+  const d=STATE.calDate;
+  STATE.calDate=new Date(d.getFullYear(),d.getMonth()+dir,1);
+  renderCalendar();
+};
+
+window.calSelectDay=async(key)=>{
+  closeAllSheets();
+  await loadDay(key);
+  updateHeader();
+};
+
+// ════════════════════════════════════════════
+// HEDEFLER SHEET
+// ════════════════════════════════════════════
+function renderHedefler(){
+  const body=document.getElementById('hedefBody');
+  const mode=STATE.hedefMode;
+
+  let hedefler=[];
+  if(mode==='gun'){
+    const logBEntry=STATE.logB.find(e=>e.tag==='gunHedefleri');
+    hedefler=logBEntry?.icerik||[];
+  } else {
+    hedefler=STATE.settings?.haftaHedefleri||[];
+  }
+
+  let html=`
+  <div class="hedef-toggle">
+    <button class="hedef-toggle-btn${mode==='gun'?' active':''}" onclick="setHedefMode('gun')">Günlük</button>
+    <button class="hedef-toggle-btn${mode==='hafta'?' active':''}" onclick="setHedefMode('hafta')">Haftalık</button>
+  </div>`;
+
+  if(hedefler.length===0){
+    html+=`<div class="log-empty">Hedef yok.<br>Eklemek için aşağıyı kullan.</div>`;
+  } else {
+    html+=hedefler.map((h,i)=>`
+    <div class="hedef-item">
+      <div class="hedef-status" data-s="${h.sonuc||'?'}" onclick="cycleHedefStatus(${i})">${h.sonuc||'?'}</div>
+      <div class="hedef-body">
+        <div class="hedef-ders">${h.ders||''} ${h.kod||''}</div>
+        <div class="hedef-konu">${h.konu||h.aciklama||'—'}</div>
+      </div>
+      <button class="hedef-del" onclick="deleteHedef(${i})">✕</button>
+    </div>`).join('');
+  }
+
+  // Add new hedef
+  html+=`
+  <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
+    <span class="chip-label">YENİ HEDEF EKLE</span>
+    <div id="hedefAddArea">
+      ${buildHedefAddForm()}
+    </div>
+  </div>`;
+
+  body.innerHTML=html;
+}
+
+function buildHedefAddForm(){
+  const dersler=STATE.konular?.dersler||{};
+  const keys=Object.keys(dersler);
+  let html=`<div class="chip-row" id="hedef-ders-chips">`;
+  html+=keys.map(k=>`<div class="chip" onclick="hedefPickDers('${k}')">${dersler[k].ad||k}</div>`).join('');
+  html+=`</div>
+  <div id="hedef-konu-area"></div>
+  <input class="text-input" id="hedef-acik" placeholder="veya serbest yaz..." style="margin-top:6px;">
+  <div class="chip-row" style="margin-top:8px;">
+    <span class="chip-label" style="width:100%;margin-top:0;">DURUM</span>
+    ${['H','T','0','1'].map(s=>`<div class="chip" onclick="hedefPickStatus('${s}')" id="hst-${s}">${s}</div>`).join('')}
+  </div>
+  <button class="action-btn primary" onclick="addHedef()" style="margin-top:10px;">➕ Hedef Ekle</button>`;
+  return html;
+}
+
+let hedefForm={ders:null,kod:null,konu:null,sonuc:'?'};
+
+window.hedefPickDers=(k)=>{
+  hedefForm.ders=k;hedefForm.kod=null;hedefForm.konu=null;
+  document.querySelectorAll('#hedef-ders-chips .chip').forEach(c=>{
+    const v=c.getAttribute('onclick').replace("hedefPickDers('","").replace("')","");
+    c.classList.toggle('selected',v===k);
+  });
+  const dersler=STATE.konular?.dersler||{};
+  const ders=dersler[k];
+  if(!ders){document.getElementById('hedef-konu-area').innerHTML='';return;}
+
+  let html=`<div class="konu-list" style="margin-top:6px;max-height:120px;">`;
+  Object.entries(ders.bolumler||{}).forEach(([bk,b])=>{
+    html+=`<div class="konu-group">${b.ad}</div>`;
+    Object.entries(b.konular||{}).forEach(([kod,ad])=>{
+      html+=`<div class="konu-item" onclick="hedefPickKonu('${kod}','${ad.replace(/'/g,"\\'")}')">
+        <span>${ad}</span><span class="konu-code">${kod}</span>
+      </div>`;
+    });
+  });
+  html+='</div>';
+  document.getElementById('hedef-konu-area').innerHTML=html;
+};
+
+window.hedefPickKonu=(kod,ad)=>{
+  hedefForm.kod=kod;hedefForm.konu=ad;
+  document.querySelectorAll('#hedef-konu-area .konu-item').forEach(el=>{
+    el.classList.toggle('selected',el.querySelector('.konu-code')?.textContent===kod);
+  });
+};
+
+window.hedefPickStatus=(s)=>{
+  hedefForm.sonuc=s;
+  ['H','T','0','1'].forEach(x=>{
+    document.getElementById('hst-'+x)?.classList.toggle('selected',x===s);
+  });
+};
+
+window.addHedef=async()=>{
+  const acik=document.getElementById('hedef-acik')?.value||'';
+  const hedef={
+    ders:hedefForm.ders||null,
+    kod:hedefForm.kod||null,
+    konu:hedefForm.konu||acik||null,
+    durum:hedefForm.sonuc||'?',
+    sonuc:'?'
+  };
+  if(!hedef.konu&&!hedef.ders){toast('En az ders veya konu gir');return;}
+
+  if(STATE.hedefMode==='gun'){
+    let entry=STATE.logB.find(e=>e.tag==='gunHedefleri');
+    if(!entry){entry={tag:'gunHedefleri',icerik:[]};STATE.logB.push(entry);}
+    if(!Array.isArray(entry.icerik)) entry.icerik=[];
+    entry.icerik.push(hedef);
+    await saveDayLogB();
+  } else {
+    if(!STATE.settings.haftaHedefleri) STATE.settings.haftaHedefleri=[];
+    STATE.settings.haftaHedefleri.push(hedef);
+    await saveSettings();
+  }
+  hedefForm={ders:null,kod:null,konu:null,sonuc:'?'};
+  toast('Hedef eklendi ✓');
+  renderHedefler();
+};
+
+window.cycleHedefStatus=async(idx)=>{
+  const cycle=['?','H','T','1','0'];
+  if(STATE.hedefMode==='gun'){
+    const entry=STATE.logB.find(e=>e.tag==='gunHedefleri');
+    if(!entry||!entry.icerik[idx]) return;
+    const cur=entry.icerik[idx].sonuc||'?';
+    entry.icerik[idx].sonuc=cycle[(cycle.indexOf(cur)+1)%cycle.length];
+    await saveDayLogB();
+  } else {
+    const arr=STATE.settings.haftaHedefleri||[];
+    if(!arr[idx]) return;
+    const cur=arr[idx].sonuc||'?';
+    arr[idx].sonuc=cycle[(cycle.indexOf(cur)+1)%cycle.length];
+    await saveSettings();
+  }
+  renderHedefler();
+};
+
+window.deleteHedef=async(idx)=>{
+  if(STATE.hedefMode==='gun'){
+    const entry=STATE.logB.find(e=>e.tag==='gunHedefleri');
+    if(entry?.icerik) entry.icerik.splice(idx,1);
+    await saveDayLogB();
+  } else {
+    STATE.settings.haftaHedefleri?.splice(idx,1);
+    await saveSettings();
+  }
+  renderHedefler();
+};
+
+window.setHedefMode=(m)=>{
+  STATE.hedefMode=m;
+  renderHedefler();
+};
+
+// ════════════════════════════════════════════
+// YOKLAMA
+// ════════════════════════════════════════════
+function checkYoklama(){
+  const s=STATE.settings;
+  if(!s) return;
+  const today=STATE.today;
+
+  if(s.sonSorguTarihi!==today){
+    // New day — reset params
+    const dun=s.gunlukSorguYapildi===0;
+    STATE.settings.sonSorguTarihi=today;
+    STATE.settings.gunlukSorguYapildi=0;
+    saveSettings();
+    if(dun) setTimeout(()=>startYoklama('gun'),1000);
+  }
+}
+
+function getPendingYoklama(mode){
+  let hedefler=[];
+  if(mode==='gun'){
+    const entry=STATE.logB.find(e=>e.tag==='gunHedefleri');
+    hedefler=entry?.icerik||[];
+  } else {
+    hedefler=STATE.settings?.haftaHedefleri||[];
+  }
+  return hedefler.filter(h=>h.sonuc==='?');
+}
+
+let yoklamaQueue=[];
+let yoklamaIdx=0;
+let yoklamaMode='gun';
+
+function startYoklama(mode){
+  const pending=getPendingYoklama(mode);
+  if(!pending.length) return;
+  yoklamaQueue=pending;
+  yoklamaIdx=0;
+  yoklamaMode=mode;
+  showYoklamaCard();
+}
+
+function showYoklamaCard(){
+  if(yoklamaIdx>=yoklamaQueue.length){
+    closeYoklama();
+    return;
+  }
+  const h=yoklamaQueue[yoklamaIdx];
+  const card=document.getElementById('yoklamaCard');
+  card.innerHTML=`
+    <div class="yoklama-title">YOKLAMA</div>
+    <div class="yoklama-sub">${yoklamaIdx+1} / ${yoklamaQueue.length} · Bu konuya ne oldu?</div>
+    <div class="yoklama-konu">
+      <div class="yoklama-konu-ders">${h.ders||''} ${h.kod||''}</div>
+      <div class="yoklama-konu-name">${h.konu||h.aciklama||'—'}</div>
+    </div>
+    <div class="yoklama-choices">
+      <div class="yoklama-choice" onclick="answerYoklama('1')">✅ Tamamlandı</div>
+      <div class="yoklama-choice" onclick="answerYoklama('T')">🔄 Tekrar Gerek</div>
+      <div class="yoklama-choice" onclick="answerYoklama('H')">💡 Hatırlanmalı</div>
+      <div class="yoklama-choice" onclick="answerYoklama('0')">❓ Bilinmiyor</div>
+    </div>
+    <button class="yoklama-skip" onclick="skipYoklama()">Şimdi değil — atla (? kalır)</button>`;
+  document.getElementById('yoklamaOverlay').classList.add('open');
+}
+
+window.answerYoklama=async(sonuc)=>{
+  const h=yoklamaQueue[yoklamaIdx];
+  // Update in logB or settings
+  if(yoklamaMode==='gun'){
+    const entry=STATE.logB.find(e=>e.tag==='gunHedefleri');
+    if(entry?.icerik){
+      const real=entry.icerik.find(x=>x.konu===h.konu&&x.ders===h.ders);
+      if(real) real.sonuc=sonuc;
+      await saveDayLogB();
+    }
+  } else {
+    const arr=STATE.settings?.haftaHedefleri||[];
+    const real=arr.find(x=>x.konu===h.konu&&x.ders===h.ders);
+    if(real){real.sonuc=sonuc;await saveSettings();}
+  }
+  yoklamaIdx++;
+  if(yoklamaIdx>=yoklamaQueue.length){
+    closeYoklama();
+    STATE.settings.gunlukSorguYapildi=1;
+    await saveSettings();
+  } else {
+    showYoklamaCard();
+  }
+};
+
+window.skipYoklama=()=>{
+  yoklamaIdx++;
+  if(yoklamaIdx>=yoklamaQueue.length){closeYoklama();}
+  else showYoklamaCard();
+};
+
+function closeYoklama(){
+  document.getElementById('yoklamaOverlay').classList.remove('open');
+}
+
+// ════════════════════════════════════════════
+// SHEET OPEN/CLOSE
+// ════════════════════════════════════════════
+window.closeAllSheets=()=>{
+  document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('open'));
+  document.getElementById('overlay').classList.remove('open');
+};
+
+// ════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════
+let toastTimer=null;
+window.toast=(msg)=>{
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),2200);
+};
+
+// ════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════
+loadAll();
+</script>
+</body>
+</html>
