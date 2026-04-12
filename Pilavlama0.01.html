@@ -1,0 +1,1695 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Firebase Kurucu — Çalışma Takip Sistemi</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #111118;
+    --bg3: #1a1a24;
+    --border: #2a2a3a;
+    --border2: #3a3a50;
+    --text: #e8e8f0;
+    --text2: #9090b0;
+    --text3: #5a5a7a;
+    --accent: #5b8fff;
+    --accent2: #3d6ee0;
+    --green: #3ecf8e;
+    --red: #ff5a5a;
+    --orange: #ff9f43;
+    --yellow: #ffd93d;
+    --purple: #a78bfa;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* GRID BG */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(91,143,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(91,143,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 0 24px 80px; }
+
+  /* HEADER */
+  header {
+    padding: 40px 0 32px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 40px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .header-left h1 {
+    font-family: var(--sans);
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 6px;
+  }
+
+  .header-left p {
+    font-size: 12px;
+    color: var(--text3);
+    letter-spacing: 0.05em;
+  }
+
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid;
+    transition: all 0.3s;
+  }
+  .status-badge.disconnected { border-color: var(--border); color: var(--text3); }
+  .status-badge.connecting { border-color: var(--yellow); color: var(--yellow); }
+  .status-badge.connected { border-color: var(--green); color: var(--green); }
+  .status-badge .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor;
+  }
+  .status-badge.connected .dot { animation: pulse 2s infinite; }
+  @keyframes pulse {
+    0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    margin-bottom: 32px;
+    overflow-x: auto;
+  }
+
+  .tab-btn {
+    flex-shrink: 0;
+    padding: 8px 20px;
+    border: none;
+    background: transparent;
+    color: var(--text3);
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+  .tab-btn:hover { color: var(--text2); background: var(--bg3); }
+  .tab-btn.active { background: var(--bg3); color: var(--accent); border: 1px solid var(--border2); }
+
+  /* PANELS */
+  .panel { display: none; }
+  .panel.active { display: block; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* SECTION */
+  .section {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+
+  .section-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+  }
+  .section-header:hover { background: var(--bg3); }
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .section-title .icon { font-size: 16px; }
+  .section-title .badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text3);
+  }
+
+  .section-arrow {
+    color: var(--text3);
+    font-size: 12px;
+    transition: transform 0.3s;
+  }
+  .section.collapsed .section-arrow { transform: rotate(-90deg); }
+  .section.collapsed .section-body { display: none; }
+
+  .section-body { padding: 20px; }
+
+  /* FORM ELEMENTS */
+  .field-group { margin-bottom: 16px; }
+  .field-label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 6px;
+  }
+
+  input, textarea, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; }
+  select option { background: var(--bg2); }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--accent2); border-color: var(--accent2); }
+
+  .btn-success {
+    background: transparent;
+    border-color: var(--green);
+    color: var(--green);
+  }
+  .btn-success:hover { background: rgba(62,207,142,0.1); }
+
+  .btn-danger {
+    background: transparent;
+    border-color: var(--red);
+    color: var(--red);
+  }
+  .btn-danger:hover { background: rgba(255,90,90,0.1); }
+
+  .btn-ghost {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text2);
+  }
+  .btn-ghost:hover { border-color: var(--border2); color: var(--text); }
+
+  .btn-warning {
+    background: transparent;
+    border-color: var(--orange);
+    color: var(--orange);
+  }
+  .btn-warning:hover { background: rgba(255,159,67,0.1); }
+
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+
+  /* LOG */
+  .log-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    font-size: 11px;
+    line-height: 1.8;
+    max-height: 280px;
+    overflow-y: auto;
+    font-family: var(--mono);
+  }
+
+  .log-entry { display: flex; gap: 10px; align-items: flex-start; }
+  .log-time { color: var(--text3); flex-shrink: 0; }
+  .log-ok { color: var(--green); }
+  .log-err { color: var(--red); }
+  .log-info { color: var(--accent); }
+  .log-warn { color: var(--yellow); }
+
+  /* TREE VIEW */
+  .tree { font-size: 12px; line-height: 2; }
+  .tree-node { padding-left: 20px; border-left: 1px solid var(--border); margin-left: 8px; }
+  .tree-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .tree-item:hover { background: var(--bg3); }
+  .tree-item.selected { background: rgba(91,143,255,0.12); color: var(--accent); }
+  .tree-key { color: var(--accent); font-weight: 500; }
+  .tree-val { color: var(--text2); }
+  .tree-type { color: var(--text3); font-size: 10px; }
+
+  /* EDITOR */
+  .editor-wrap {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 16px;
+    min-height: 400px;
+  }
+
+  @media (max-width: 700px) {
+    .editor-wrap { grid-template-columns: 1fr; }
+  }
+
+  .editor-sidebar {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-y: auto;
+    max-height: 500px;
+    padding: 12px;
+  }
+
+  .editor-main {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .editor-path {
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.05em;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .editor-path span { color: var(--accent); }
+
+  .json-area {
+    flex: 1;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    resize: none;
+    min-height: 200px;
+    outline: none;
+  }
+  .json-area:focus { border-color: var(--accent); }
+
+  /* GRID */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 600px) { .grid2 { grid-template-columns: 1fr; } }
+
+  /* STATS */
+  .stat-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .stat-label { font-size: 10px; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; }
+  .stat-val { font-size: 24px; font-family: var(--sans); font-weight: 700; color: var(--accent); }
+  .stat-sub { font-size: 11px; color: var(--text3); }
+
+  /* COLLECTION LIST */
+  .col-list { display: flex; flex-direction: column; gap: 8px; }
+  .col-item {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    transition: border-color 0.2s;
+  }
+  .col-item:hover { border-color: var(--border2); }
+  .col-item-left { display: flex; align-items: center; gap: 12px; }
+  .col-icon { font-size: 20px; }
+  .col-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .col-desc { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .col-status {
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .col-status.ok { background: rgba(62,207,142,0.1); color: var(--green); border: 1px solid rgba(62,207,142,0.3); }
+  .col-status.pending { background: rgba(255,159,67,0.1); color: var(--orange); border: 1px solid rgba(255,159,67,0.3); }
+  .col-status.empty { background: rgba(90,90,122,0.1); color: var(--text3); border: 1px solid var(--border); }
+
+  /* PROGRESS */
+  .progress-wrap { margin: 8px 0; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text3); margin-bottom: 6px; }
+  .progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.5s ease; }
+
+  /* DIVIDER */
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  /* INLINE TAGS */
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    border: 1px solid;
+  }
+
+  /* SCHEMA TABLE */
+  .schema-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .schema-table th {
+    text-align: left;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .schema-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .schema-table tr:last-child td { border-bottom: none; }
+  .schema-table tr:hover td { background: var(--bg3); }
+  .td-key { color: var(--accent); font-weight: 500; }
+  .td-type { color: var(--purple); }
+  .td-req { color: var(--green); font-size: 10px; }
+  .td-opt { color: var(--text3); font-size: 10px; }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    padding: 28px;
+    width: 100%;
+    max-width: 500px;
+    transform: translateY(10px);
+    transition: transform 0.2s;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-title { font-family: var(--sans); font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* CONN PANEL */
+  .conn-step {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    margin-bottom: 10px;
+    background: var(--bg);
+  }
+  .conn-step-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--accent);
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+  .conn-step-body { flex: 1; }
+  .conn-step-title { font-size: 12px; font-weight: 500; margin-bottom: 4px; }
+  .conn-step-desc { font-size: 11px; color: var(--text3); line-height: 1.6; }
+
+  .alert {
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 12px 0;
+  }
+  .alert-info { background: rgba(91,143,255,0.08); border: 1px solid rgba(91,143,255,0.2); color: var(--accent); }
+  .alert-success { background: rgba(62,207,142,0.08); border: 1px solid rgba(62,207,142,0.2); color: var(--green); }
+  .alert-warn { background: rgba(255,159,67,0.08); border: 1px solid rgba(255,159,67,0.2); color: var(--orange); }
+  .alert-error { background: rgba(255,90,90,0.08); border: 1px solid rgba(255,90,90,0.2); color: var(--red); }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-left">
+      <h1>⚡ Firebase Kurucu</h1>
+      <p>ÇALIŞMA TAKİP SİSTEMİ — VERİTABANI YÖNETİCİSİ v1.0</p>
+    </div>
+    <div id="statusBadge" class="status-badge disconnected">
+      <div class="dot"></div>
+      <span id="statusText">Bağlı Değil</span>
+    </div>
+  </header>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('baglanti')">🔌 Bağlantı</button>
+    <button class="tab-btn" onclick="switchTab('kurulum')">🏗️ Kurulum</button>
+    <button class="tab-btn" onclick="switchTab('browser')">🗂️ Tarayıcı</button>
+    <button class="tab-btn" onclick="switchTab('editor')">✏️ Editör</button>
+    <button class="tab-btn" onclick="switchTab('schema')">📐 Şema</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       TAB: BAĞLANTI
+  ══════════════════════════════════════════ -->
+  <div id="tab-baglanti" class="panel active">
+
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <div class="section-title">
+          <span class="icon">🔐</span>
+          Firebase Yapılandırma
+        </div>
+        <span class="section-arrow">▼</span>
+      </div>
+      <div class="section-body">
+
+        <div class="conn-step">
+          <div class="conn-step-num">1</div>
+          <div class="conn-step-body">
+            <div class="conn-step-title">Firebase config bilgilerini gir</div>
+            <div class="conn-step-desc">Firebase Console → Project Settings → Your Apps → SDK setup and configuration</div>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="field-group">
+            <label class="field-label">API Key</label>
+            <input type="text" id="cfg-apiKey" placeholder="AIzaSy..." value="AIzaSyAIGzwmEB9F7K7KQzsEU5etVWejZ3oSluc">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Auth Domain</label>
+            <input type="text" id="cfg-authDomain" placeholder="project.firebaseapp.com" value="paralayici.firebaseapp.com">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Project ID</label>
+            <input type="text" id="cfg-projectId" placeholder="my-project" value="paralayici">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Storage Bucket</label>
+            <input type="text" id="cfg-storageBucket" placeholder="project.appspot.com" value="paralayici.firebasestorage.app">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Messaging Sender ID</label>
+            <input type="text" id="cfg-messagingSenderId" placeholder="123456789" value="980843550614">
+          </div>
+          <div class="field-group">
+            <label class="field-label">App ID</label>
+            <input type="text" id="cfg-appId" placeholder="1:xxx:web:xxx" value="1:980843550614:web:93dd5bda4ddc377b20efb7">
+          </div>
+        </div>
+
+        <div class="alert alert-warn">
+          ⚠️ Firebase Console'da <strong>Firestore Database</strong> oluşturulmuş ve test modunda açık olmalı. Ayrıca <strong>Authentication</strong> → <strong>Anonymous</strong> açık olmalı.
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="connectFirebase()">🔌 Bağlan</button>
+          <button class="btn btn-ghost" onclick="clearLog()">🗑️ Logu Temizle</button>
+        </div>
+
+        <div style="margin-top: 16px;">
+          <div class="field-label" style="margin-bottom: 8px;">Bağlantı Logu</div>
+          <div class="log-box" id="connLog">
+            <div class="log-entry"><span class="log-time">--:--:--</span><span class="log-info">Bağlantı bekleniyor...</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       TAB: KURULUM
+  ══════════════════════════════════════════ -->
+  <div id="tab-kurulum" class="panel">
+
+    <div class="alert alert-info">
+      ℹ️ Bu panel Firebase'de başlangıç yapısını oluşturur. Önce <strong>Bağlantı</strong> sekmesinden bağlan.
+    </div>
+
+    <!-- Koleksiyon durumu -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <div class="section-title">
+          <span class="icon">📦</span>
+          Koleksiyon Durumu
+          <span class="badge" id="colBadge">kontrol edilmedi</span>
+        </div>
+        <span class="section-arrow">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="col-list" id="colList">
+          <div class="col-item">
+            <div class="col-item-left">
+              <span class="col-icon">⚙️</span>
+              <div>
+                <div class="col-name">settings</div>
+                <div class="col-desc">Genel ayarlar, günlük parametreler, ders listesi</div>
+              </div>
+            </div>
+            <span class="col-status empty" id="col-settings">Kontrol Et</span>
+          </div>
+          <div class="col-item">
+            <div class="col-item-left">
+              <span class="col-icon">📅</span>
+              <div>
+                <div class="col-name">günler (dinamik)</div>
+                <div class="col-desc">DD.MM.YYYY formatında dökümanlar · LogA + LogB</div>
+              </div>
+            </div>
+            <span class="col-status empty" id="col-gunler">Dinamik</span>
+          </div>
+          <div class="col-item">
+            <div class="col-item-left">
+              <span class="col-icon">📆</span>
+              <div>
+                <div class="col-name">haftalar (dinamik)</div>
+                <div class="col-desc">YYYY-WNN formatında dökümanlar · Hedefler + Değerlendirme</div>
+              </div>
+            </div>
+            <span class="col-status empty" id="col-haftalar">Dinamik</span>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="checkCollections()">🔍 Durumu Kontrol Et</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings kurulumu -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <div class="section-title">
+          <span class="icon">⚙️</span>
+          Settings Dökümanı Oluştur
+        </div>
+        <span class="section-arrow">▼</span>
+      </div>
+      <div class="section-body">
+        <p style="font-size:12px; color:var(--text2); margin-bottom:16px; line-height:1.7;">
+          Settings dökümanı tüm sistemin çekirdeğidir. İçinde günlük yoklama durumu, ders/konu listesi ve kullanıcı tercihleri bulunur.
+        </p>
+
+        <div class="grid2">
+          <div class="field-group">
+            <label class="field-label">Kullanıcı Adı (opsiyonel)</label>
+            <input type="text" id="set-userName" placeholder="örn: Ahmet">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Günlük Hedef Çalışma Saati</label>
+            <input type="number" id="set-dailyTarget" placeholder="8" value="8" min="1" max="16" step="0.5">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Haftalık Hedef Çalışma Saati</label>
+            <input type="number" id="set-weeklyTarget" placeholder="50" value="50" min="1" max="100" step="1">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Sınav Türü</label>
+            <select id="set-examType">
+              <option value="tyt+ayt">TYT + AYT</option>
+              <option value="tyt">Sadece TYT</option>
+              <option value="ayt">Sadece AYT</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-success" onclick="createSettings()">✅ Settings Oluştur / Güncelle</button>
+          <button class="btn btn-ghost" onclick="loadSettings()">📖 Mevcut Settings'i Yükle</button>
+        </div>
+
+        <div style="margin-top:16px;">
+          <div class="field-label" style="margin-bottom:8px;">Önizleme (JSON)</div>
+          <div class="log-box" id="settingsPreview" style="max-height:160px; color: var(--text2);">
+            Settings henüz yüklenmedi.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Konu listesi yükleme -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <div class="section-title">
+          <span class="icon">📚</span>
+          Konu Listesini Firebase'e Yükle
+        </div>
+        <span class="section-arrow">▼</span>
+      </div>
+      <div class="section-body">
+        <p style="font-size:12px; color:var(--text2); margin-bottom:12px; line-height:1.7;">
+          Oluşturduğumuz <strong>konular.json</strong> içeriğini settings dökümanına yükler. Bu sayede uygulama ders ve konu listesini Firebase'den okur.
+        </p>
+
+        <div class="progress-wrap" id="uploadProgress" style="display:none;">
+          <div class="progress-label">
+            <span>Yükleniyor...</span>
+            <span id="uploadPct">0%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="uploadFill" style="width:0%"></div></div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="uploadKonular()">⬆️ Konu Listesini Yükle</button>
+          <button class="btn btn-ghost" onclick="checkKonular()">🔍 Firebase'deki Listeyi Kontrol Et</button>
+        </div>
+
+        <div style="margin-top:16px;" id="konularResult"></div>
+      </div>
+    </div>
+
+    <!-- Kurulum logu -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <div class="section-title"><span class="icon">📋</span> Kurulum Logu</div>
+        <span class="section-arrow">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="log-box" id="setupLog">
+          <div class="log-entry"><span class="log-time">--:--:--</span><span class="log-info">Kurulum logu burada görünecek...</span></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="clearSetupLog()">🗑️ Temizle</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       TAB: TARAYICI
+  ══════════════════════════════════════════ -->
+  <div id="tab-browser" class="panel">
+
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <div class="section-title"><span class="icon">🗂️</span> Firestore Tarayıcı</div>
+        <span class="section-arrow">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="field-group" style="display:flex; gap:10px; align-items:flex-end;">
+          <div style="flex:1;">
+            <label class="field-label">Döküman Yolu</label>
+            <input type="text" id="browserPath" placeholder="settings  veya  12.04.2026  veya  haftalar/2026-W15" value="settings">
+          </div>
+          <button class="btn btn-primary" onclick="browseDoc()" style="margin-bottom:0; flex-shrink:0;">🔍 Getir</button>
+        </div>
+
+        <div class="btn-row" style="margin-top:8px; flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px;">
+          <button class="btn btn-ghost" style="font-size:10px; padding:6px 12px;" onclick="quickBrowse('settings')">settings</button>
+          <button class="btn btn-ghost" style="font-size:10px; padding:6px 12px;" onclick="quickBrowse(todayKey())">bugün</button>
+          <button class="btn btn-ghost" style="font-size:10px; padding:6px 12px;" onclick="quickBrowse(weekKey())">bu hafta</button>
+          <button class="btn btn-ghost" style="font-size:10px; padding:6px 12px;" onclick="listAllDocs()">tüm günler</button>
+        </div>
+
+        <div id="browserResult" style="margin-top:16px;">
+          <div class="alert alert-info">Bir döküman yolu gir ve Getir'e bas.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       TAB: EDİTÖR
+  ══════════════════════════════════════════ -->
+  <div id="tab-editor" class="panel">
+
+    <div class="alert alert-warn" id="editorAlert">
+      ⚠️ Editör doğrudan Firestore'a yazar. Değişiklikler geri alınamaz.
+    </div>
+
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <div class="section-title"><span class="icon">✏️</span> Döküman Editörü</div>
+        <span class="section-arrow">▼</span>
+      </div>
+      <div class="section-body">
+
+        <div class="field-group" style="display:flex; gap:10px; align-items:flex-end;">
+          <div style="flex:1;">
+            <label class="field-label">Döküman Yolu</label>
+            <input type="text" id="editorPath" placeholder="settings  veya  12.04.2026" value="settings">
+          </div>
+          <button class="btn btn-ghost" onclick="loadToEditor()" style="flex-shrink:0;">📂 Yükle</button>
+        </div>
+
+        <div class="editor-wrap" style="margin-top:16px;">
+          <div class="editor-sidebar">
+            <div style="font-size:10px; color:var(--text3); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:10px;">Hızlı Erişim</div>
+            <div id="sidebarTree" class="tree" style="font-size:11px; color:var(--text2);">
+              Döküman yükle →
+            </div>
+          </div>
+          <div class="editor-main">
+            <div class="editor-path">Yol: <span id="editorPathDisplay">—</span></div>
+            <textarea class="json-area" id="jsonEditor" placeholder="Döküman JSON içeriği burada görünecek..."></textarea>
+            <div class="btn-row" style="margin-top:0;">
+              <button class="btn btn-success" onclick="saveDoc()">💾 Kaydet</button>
+              <button class="btn btn-warning" onclick="mergeDoc()">🔀 Merge Et</button>
+              <button class="btn btn-danger" onclick="deleteDoc()">🗑️ Sil</button>
+              <button class="btn btn-ghost" onclick="formatJSON()">{ } Formatla</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <div class="log-box" id="editorLog" style="max-height:120px;">
+            <div class="log-entry"><span class="log-time">--:--:--</span><span class="log-info">Editör hazır.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Manuel LogA Ekle -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <div class="section-title"><span class="icon">➕</span> Manuel LogA Girişi Ekle</div>
+        <span class="section-arrow">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="grid2">
+          <div class="field-group">
+            <label class="field-label">Tarih (DD.MM.YYYY)</label>
+            <input type="text" id="logA-date" id="logA-date">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Saat (HH:MM)</label>
+            <input type="text" id="logA-time" placeholder="09:30">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Tag</label>
+            <select id="logA-tag" onchange="updateLogAFields()">
+              <option value="">— Seç —</option>
+              <option value="ders">📘 Ders</option>
+              <option value="mola">☕ Mola</option>
+              <option value="uyku">😴 Uyku</option>
+              <option value="yol">🚗 Yol</option>
+              <option value="dinlenme">🌙 Dinlenme</option>
+              <option value="basla">▶️ Başla</option>
+              <option value="bitis">⏹️ Bitiş</option>
+            </select>
+          </div>
+          <div class="field-group" id="logA-durumField">
+            <label class="field-label">Durum Tagı <span style="color:var(--text3)">(opsiyonel)</span></label>
+            <input type="text" id="logA-durum" placeholder="Mat, Fiz, Yemek, Uyuma...">
+          </div>
+          <div class="field-group" style="grid-column: 1/-1;">
+            <label class="field-label">Açıklama <span style="color:var(--text3)">(opsiyonel)</span></label>
+            <input type="text" id="logA-aciklama" placeholder="Serbest not veya konu kodu...">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Hedef Süre (saat) <span style="color:var(--text3)">(opsiyonel)</span></label>
+            <input type="number" id="logA-sure" placeholder="2" min="0.25" step="0.25">
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-success" onclick="addLogAEntry()">➕ LogA Girişi Ekle</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Manuel LogB Ekle -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <div class="section-title"><span class="icon">📝</span> Manuel LogB Girişi Ekle</div>
+        <span class="section-arrow">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="grid2">
+          <div class="field-group">
+            <label class="field-label">Tarih (DD.MM.YYYY)</label>
+            <input type="text" id="logB-date">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Tag</label>
+            <select id="logB-tag" onchange="updateLogBFields()">
+              <option value="">— Seç —</option>
+              <option value="gunNotu">📓 Günün Notu</option>
+              <option value="gunHedefleri">🎯 Günün Hedefleri</option>
+            </select>
+          </div>
+          <div class="field-group" style="grid-column:1/-1;" id="logB-notField">
+            <label class="field-label">Not (string)</label>
+            <textarea id="logB-not" placeholder="Bugün verimliydi..."></textarea>
+          </div>
+          <div class="field-group" style="grid-column:1/-1;" id="logB-hedefField" class="hidden">
+            <label class="field-label">Hedef (JSON array)</label>
+            <textarea id="logB-hedef" placeholder='[{"ders":"MAT","kod":"MAT-1-1","durum":"H","sonuc":"?"}]' style="min-height:100px;"></textarea>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-success" onclick="addLogBEntry()">➕ LogB Girişi Ekle</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       TAB: ŞEMA
+  ══════════════════════════════════════════ -->
+  <div id="tab-schema" class="panel">
+
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <div class="section-title"><span class="icon">📐</span> Firestore Veri Şeması</div>
+        <span class="section-arrow">▼</span>
+      </div>
+      <div class="section-body">
+
+        <div style="font-size:12px; color:var(--text2); line-height:2; font-family:var(--mono); background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:20px;">
+<pre style="white-space:pre-wrap; color:var(--text2);">
+<span style="color:var(--accent)">collection/</span>  <span style="color:var(--text3)">← ana koleksiyon (tek koleksiyon)</span>
+  ├── <span style="color:var(--green)">settings</span>          <span style="color:var(--text3)">döküman</span>
+  ├── <span style="color:var(--yellow)">12.04.2026</span>        <span style="color:var(--text3)">döküman (gün)</span>
+  ├── <span style="color:var(--yellow)">13.04.2026</span>        <span style="color:var(--text3)">döküman (gün)</span>
+  ├── <span style="color:var(--purple)">haftalar/2026-W15</span> <span style="color:var(--text3)">döküman (hafta)</span>
+  └── <span style="color:var(--purple)">haftalar/2026-W16</span> <span style="color:var(--text3)">döküman (hafta)</span>
+</pre>
+        </div>
+
+        <!-- Settings şeması -->
+        <div style="margin-bottom:20px;">
+          <div style="font-size:11px; color:var(--accent); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:10px; font-weight:600;">⚙️ settings dökümanı</div>
+          <table class="schema-table">
+            <tr><th>Alan</th><th>Tip</th><th>Zorunlu</th><th>Açıklama</th></tr>
+            <tr><td class="td-key">userName</td><td class="td-type">string</td><td class="td-opt">opsiyonel</td><td>Kullanıcı adı</td></tr>
+            <tr><td class="td-key">dailyTargetHours</td><td class="td-type">number</td><td class="td-opt">opsiyonel</td><td>Günlük hedef saat (ör: 8)</td></tr>
+            <tr><td class="td-key">weeklyTargetHours</td><td class="td-type">number</td><td class="td-opt">opsiyonel</td><td>Haftalık hedef saat (ör: 50)</td></tr>
+            <tr><td class="td-key">examType</td><td class="td-type">string</td><td class="td-opt">opsiyonel</td><td>tyt / ayt / tyt+ayt</td></tr>
+            <tr><td class="td-key">konular</td><td class="td-type">object</td><td class="td-req">önerilen</td><td>Tüm ders/konu listesi (konular.json)</td></tr>
+            <tr><td class="td-key">gunlukSorguYapildi</td><td class="td-type">0 | 1</td><td class="td-req">zorunlu</td><td>Günlük yoklama yapıldı mı</td></tr>
+            <tr><td class="td-key">haftalikSorguYapildi</td><td class="td-type">0 | 1</td><td class="td-req">zorunlu</td><td>Haftalık yoklama yapıldı mı</td></tr>
+            <tr><td class="td-key">sonSorguTarihi</td><td class="td-type">string</td><td class="td-req">zorunlu</td><td>Son yoklama tarihi (DD.MM.YYYY)</td></tr>
+            <tr><td class="td-key">createdAt</td><td class="td-type">timestamp</td><td class="td-req">zorunlu</td><td>Oluşturulma zamanı</td></tr>
+          </table>
+        </div>
+
+        <!-- Gün şeması -->
+        <div style="margin-bottom:20px;">
+          <div style="font-size:11px; color:var(--yellow); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:10px; font-weight:600;">📅 DD.MM.YYYY dökümanı (gün)</div>
+          <table class="schema-table">
+            <tr><th>Alan</th><th>Tip</th><th>Zorunlu</th><th>Açıklama</th></tr>
+            <tr><td class="td-key">tarih</td><td class="td-type">string</td><td class="td-req">zorunlu</td><td>DD.MM.YYYY formatı</td></tr>
+            <tr><td class="td-key">logA</td><td class="td-type">object</td><td class="td-opt">opsiyonel</td><td>Saat damgalı giriş kayıtları</td></tr>
+            <tr><td class="td-key">logA["HH:MM"]</td><td class="td-type">object</td><td class="td-opt">—</td><td>{tag, durumTag?, aciklama?, hedefSure?}</td></tr>
+            <tr><td class="td-key">logA[...].tag</td><td class="td-type">string</td><td class="td-req">zorunlu</td><td>ders|mola|uyku|yol|dinlenme|basla|bitis</td></tr>
+            <tr><td class="td-key">logA[...].durumTag</td><td class="td-type">string</td><td class="td-opt">opsiyonel</td><td>Mat, Fiz, Yemek, Uyuma, Otobüs...</td></tr>
+            <tr><td class="td-key">logA[...].aciklama</td><td class="td-type">string</td><td class="td-opt">opsiyonel</td><td>Serbest metin veya konu kodu</td></tr>
+            <tr><td class="td-key">logA[...].hedefSure</td><td class="td-type">number</td><td class="td-opt">opsiyonel</td><td>Hedef saat (0.25, 1, 2...)</td></tr>
+            <tr><td class="td-key">logB</td><td class="td-type">array</td><td class="td-opt">opsiyonel</td><td>Günün notu ve hedefleri listesi</td></tr>
+            <tr><td class="td-key">logB[i].tag</td><td class="td-type">string</td><td class="td-req">zorunlu</td><td>gunNotu | gunHedefleri</td></tr>
+            <tr><td class="td-key">logB[i].icerik</td><td class="td-type">any</td><td class="td-req">zorunlu</td><td>string (not) veya array (hedefler)</td></tr>
+          </table>
+        </div>
+
+        <!-- Hedef formatı -->
+        <div style="margin-bottom:20px;">
+          <div style="font-size:11px; color:var(--green); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:10px; font-weight:600;">🎯 Hedef objesi formatı</div>
+          <table class="schema-table">
+            <tr><th>Alan</th><th>Tip</th><th>Açıklama</th></tr>
+            <tr><td class="td-key">ders</td><td class="td-type">string</td><td>Ders kodu (MAT, FIZ...)</td></tr>
+            <tr><td class="td-key">bolum</td><td class="td-type">string</td><td>Bölüm kodu (MAT-1) — opsiyonel</td></tr>
+            <tr><td class="td-key">konu</td><td class="td-type">string</td><td>Konu kodu (MAT-1-1) veya serbest string</td></tr>
+            <tr><td class="td-key">durum</td><td class="td-type">string</td><td>H: hatırlanmalı / T: tekrar / 0: bilinmiyor / 1: tamamlandı</td></tr>
+            <tr><td class="td-key">sonuc</td><td class="td-type">string</td><td>? (henüz) / H / T / 1 — yoklama sonrası dolar</td></tr>
+          </table>
+        </div>
+
+        <!-- Hafta şeması -->
+        <div>
+          <div style="font-size:11px; color:var(--purple); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:10px; font-weight:600;">📆 haftalar/YYYY-WNN dökümanı</div>
+          <table class="schema-table">
+            <tr><th>Alan</th><th>Tip</th><th>Açıklama</th></tr>
+            <tr><td class="td-key">yil</td><td class="td-type">number</td><td>Yıl (2026)</td></tr>
+            <tr><td class="td-key">haftaNo</td><td class="td-type">number</td><td>Yılın kaçıncı haftası (1-53)</td></tr>
+            <tr><td class="td-key">baslangic</td><td class="td-type">string</td><td>Haftanın başlangıç tarihi (DD.MM.YYYY)</td></tr>
+            <tr><td class="td-key">bitis</td><td class="td-type">string</td><td>Haftanın bitiş tarihi (DD.MM.YYYY)</td></tr>
+            <tr><td class="td-key">hedefler</td><td class="td-type">array</td><td>Hedef objeleri listesi</td></tr>
+            <tr><td class="td-key">degerlendirme</td><td class="td-type">string</td><td>Haftalık genel değerlendirme notu</td></tr>
+            <tr><td class="td-key">haftalikSorguYapildi</td><td class="td-type">0|1</td><td>Bu haftanın yoklaması yapıldı mı</td></tr>
+          </table>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- /wrap -->
+
+<!-- MODAL: SİLME ONAY -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <div class="modal-title">🗑️ Silme Onayı</div>
+    <p style="font-size:13px; color:var(--text2); margin-bottom:20px;" id="deleteModalMsg">Bu dökümanı silmek istediğinden emin misin?</p>
+    <div class="btn-row">
+      <button class="btn btn-danger" id="deleteConfirmBtn">Evet, Sil</button>
+      <button class="btn btn-ghost" onclick="closeDeleteModal()">İptal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import {
+    getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc,
+    collection, getDocs, serverTimestamp, writeBatch
+  } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  // ── GLOBALS ──────────────────────────────────────────
+  window._fb = { app: null, db: null, connected: false };
+  window._pendingDelete = null;
+
+  // ── HELPERS ──────────────────────────────────────────
+  function ts() {
+    return new Date().toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  }
+
+  function log(boxId, msg, type='info') {
+    const box = document.getElementById(boxId);
+    if (!box) return;
+    const cls = { ok:'log-ok', err:'log-err', info:'log-info', warn:'log-warn' }[type] || 'log-info';
+    const icon = { ok:'✓', err:'✗', info:'›', warn:'⚠' }[type] || '›';
+    box.innerHTML += `<div class="log-entry"><span class="log-time">${ts()}</span><span class="${cls}">${icon} ${msg}</span></div>`;
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function setStatus(state) {
+    const badge = document.getElementById('statusBadge');
+    const text  = document.getElementById('statusText');
+    const map = {
+      disconnected: ['disconnected','Bağlı Değil'],
+      connecting:   ['connecting','Bağlanıyor...'],
+      connected:    ['connected','Bağlandı']
+    };
+    const [cls, label] = map[state] || map.disconnected;
+    badge.className = `status-badge ${cls}`;
+    text.textContent = label;
+  }
+
+  // ── TAB SWITCH ────────────────────────────────────────
+  window.switchTab = (name) => {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`tab-${name}`)?.classList.add('active');
+    [...document.querySelectorAll('.tab-btn')].find(b => b.textContent.toLowerCase().includes(name.slice(0,4)))?.classList.add('active');
+    // Fix tab button matching
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      if (b.getAttribute('onclick')?.includes(name)) b.classList.add('active');
+    });
+  };
+
+  // ── SECTION TOGGLE ────────────────────────────────────
+  window.toggleSection = (header) => {
+    header.parentElement.classList.toggle('collapsed');
+  };
+
+  // ── CONNECT ───────────────────────────────────────────
+  window.connectFirebase = async () => {
+    setStatus('connecting');
+    log('connLog','Firebase bağlantısı başlatılıyor...','info');
+
+    const cfg = {
+      apiKey:            document.getElementById('cfg-apiKey').value.trim(),
+      authDomain:        document.getElementById('cfg-authDomain').value.trim(),
+      projectId:         document.getElementById('cfg-projectId').value.trim(),
+      storageBucket:     document.getElementById('cfg-storageBucket').value.trim(),
+      messagingSenderId: document.getElementById('cfg-messagingSenderId').value.trim(),
+      appId:             document.getElementById('cfg-appId').value.trim(),
+    };
+
+    if (!cfg.projectId || !cfg.apiKey) {
+      log('connLog','Eksik bilgi: apiKey ve projectId zorunlu','err');
+      setStatus('disconnected');
+      return;
+    }
+
+    try {
+      if (window._fb.app) {
+        log('connLog','Mevcut bağlantı yenileniyor...','warn');
+      }
+      const app = initializeApp(cfg, `app-${Date.now()}`);
+      const db  = getFirestore(app);
+
+      // Test bağlantı: settings dökümanını okumayı dene
+      log('connLog','Firestore bağlantısı test ediliyor...','info');
+      const testRef = doc(db, 'system', 'settings');
+      await getDoc(testRef).catch(() => {}); // 404 olsa bile bağlantı var
+
+      window._fb = { app, db, connected: true };
+      setStatus('connected');
+      log('connLog','✓ Firebase bağlantısı başarılı','ok');
+      log('connLog',`Project: ${cfg.projectId}`,'ok');
+    } catch (e) {
+      setStatus('disconnected');
+      log('connLog',`Hata: ${e.message}`,'err');
+    }
+  };
+
+  window.clearLog = () => { document.getElementById('connLog').innerHTML = ''; };
+  window.clearSetupLog = () => { document.getElementById('setupLog').innerHTML = ''; };
+
+  // ── CHECK CONNECTED ───────────────────────────────────
+  function requireConn(logId='setupLog') {
+    if (!window._fb.connected) {
+      log(logId,'Önce Bağlantı sekmesinden Firebase\'e bağlan!','err');
+      return false;
+    }
+    return true;
+  }
+
+  // ── COLLECTIONS CHECK ─────────────────────────────────
+  window.checkCollections = async () => {
+    if (!requireConn()) return;
+    const { db } = window._fb;
+    log('setupLog','Koleksiyonlar kontrol ediliyor...','info');
+
+    // settings
+    try {
+      const snap = await getDoc(doc(db, 'system', 'settings'));
+      const el = document.getElementById('col-settings');
+      if (snap.exists()) {
+        el.textContent = 'Mevcut'; el.className = 'col-status ok';
+        log('setupLog','settings dökümanı mevcut','ok');
+      } else {
+        el.textContent = 'Yok'; el.className = 'col-status pending';
+        log('setupLog','settings dökümanı bulunamadı — oluşturulması önerilir','warn');
+      }
+    } catch(e) { log('setupLog','settings kontrol hatası: '+e.message,'err'); }
+
+    // günler: birkaç örnek tarih dene
+    const today = todayKey();
+    try {
+      const snap = await getDoc(doc(db, 'gunler', today));
+      const el = document.getElementById('col-gunler');
+      el.textContent = snap.exists() ? 'Bugün var' : 'Boş';
+      el.className = 'col-status ' + (snap.exists() ? 'ok' : 'empty');
+    } catch(e) {}
+
+    document.getElementById('colBadge').textContent = 'kontrol edildi';
+  };
+
+  // ── CREATE SETTINGS ───────────────────────────────────
+  window.createSettings = async () => {
+    if (!requireConn()) return;
+    const { db } = window._fb;
+    log('setupLog','Settings dökümanı oluşturuluyor...','info');
+
+    const data = {
+      userName:            document.getElementById('set-userName').value.trim() || null,
+      dailyTargetHours:    parseFloat(document.getElementById('set-dailyTarget').value) || 8,
+      weeklyTargetHours:   parseFloat(document.getElementById('set-weeklyTarget').value) || 50,
+      examType:            document.getElementById('set-examType').value,
+      gunlukSorguYapildi:  0,
+      haftalikSorguYapildi:0,
+      sonSorguTarihi:      todayKey(),
+      konular:             null,
+      createdAt:           serverTimestamp(),
+      updatedAt:           serverTimestamp(),
+    };
+
+    try {
+      await setDoc(doc(db, 'system', 'settings'), data, { merge: true });
+      log('setupLog','settings dökümanı oluşturuldu / güncellendi','ok');
+      document.getElementById('settingsPreview').textContent = JSON.stringify(data, null, 2);
+      document.getElementById('col-settings').textContent = 'Mevcut';
+      document.getElementById('col-settings').className = 'col-status ok';
+    } catch(e) {
+      log('setupLog','Hata: '+e.message,'err');
+    }
+  };
+
+  window.loadSettings = async () => {
+    if (!requireConn()) return;
+    const { db } = window._fb;
+    try {
+      const snap = await getDoc(doc(db, 'system', 'settings'));
+      if (snap.exists()) {
+        const data = snap.data();
+        document.getElementById('settingsPreview').textContent = JSON.stringify(data, null, 2);
+        log('setupLog','Settings yüklendi','ok');
+      } else {
+        log('setupLog','settings dökümanı bulunamadı','warn');
+      }
+    } catch(e) { log('setupLog','Hata: '+e.message,'err'); }
+  };
+
+  // ── UPLOAD KONULAR ────────────────────────────────────
+  window.uploadKonular = async () => {
+    if (!requireConn()) return;
+    const { db } = window._fb;
+    log('setupLog','Konu listesi yükleniyor...','info');
+
+    document.getElementById('uploadProgress').style.display = 'block';
+    setProgress(20);
+
+    const konular = getKonularData();
+    setProgress(50);
+
+    try {
+      await updateDoc(doc(db, 'system', 'settings'), { konular, updatedAt: serverTimestamp() });
+      setProgress(100);
+      log('setupLog','Konu listesi Firebase\'e yüklendi ✓','ok');
+
+      const dersCount = Object.keys(konular.dersler).length;
+      let topicCount  = 0;
+      Object.values(konular.dersler).forEach(d =>
+        Object.values(d.bolumler).forEach(b =>
+          topicCount += Object.keys(b.konular).length
+        )
+      );
+
+      document.getElementById('konularResult').innerHTML = `
+        <div class="alert alert-success">
+          ✓ ${dersCount} ders, ${topicCount} konu başarıyla yüklendi.
+        </div>`;
+    } catch(e) {
+      log('setupLog','Hata (önce settings oluştur): '+e.message,'err');
+      document.getElementById('konularResult').innerHTML = `<div class="alert alert-error">✗ ${e.message}</div>`;
+    }
+
+    setTimeout(() => {
+      document.getElementById('uploadProgress').style.display = 'none';
+      setProgress(0);
+    }, 2000);
+  };
+
+  window.checkKonular = async () => {
+    if (!requireConn()) return;
+    const { db } = window._fb;
+    try {
+      const snap = await getDoc(doc(db, 'system', 'settings'));
+      if (!snap.exists()) { log('setupLog','settings yok','err'); return; }
+      const data = snap.data();
+      if (data.konular) {
+        const dersCount = Object.keys(data.konular.dersler||{}).length;
+        log('setupLog',`Firebase'de konu listesi mevcut: ${dersCount} ders`,'ok');
+      } else {
+        log('setupLog','Konu listesi henüz yüklenmemiş','warn');
+      }
+    } catch(e) { log('setupLog','Hata: '+e.message,'err'); }
+  };
+
+  function setProgress(pct) {
+    document.getElementById('uploadFill').style.width = pct+'%';
+    document.getElementById('uploadPct').textContent = pct+'%';
+  }
+
+  // ── BROWSER ───────────────────────────────────────────
+  window.browseDoc = async () => {
+    if (!requireConn('setupLog')) { return; }
+    const path = document.getElementById('browserPath').value.trim();
+    if (!path) return;
+    await fetchAndDisplay(path, 'browserResult');
+  };
+
+  window.quickBrowse = (path) => {
+    document.getElementById('browserPath').value = path;
+    window.browseDoc();
+  };
+
+  window.listAllDocs = async () => {
+    if (!window._fb.connected) return;
+    const { db } = window._fb;
+    try {
+      const snap = await getDocs(collection(db, 'gunler'));
+      let html = '<div class="col-list">';
+      snap.forEach(d => {
+        html += `<div class="col-item" onclick="quickBrowse('${d.id}')" style="cursor:pointer;">
+          <div class="col-item-left"><span class="col-icon">📅</span><div><div class="col-name">${d.id}</div></div></div>
+          <span class="col-status ok">Var</span>
+        </div>`;
+      });
+      if (snap.empty) html += '<div class="alert alert-info">Henüz gün kaydı yok.</div>';
+      html += '</div>';
+      document.getElementById('browserResult').innerHTML = html;
+    } catch(e) {
+      document.getElementById('browserResult').innerHTML = `<div class="alert alert-error">Hata: ${e.message}</div>`;
+    }
+  };
+
+  async function fetchAndDisplay(path, targetId) {
+    const { db } = window._fb;
+    const parts = path.split('/');
+    let ref;
+    if (parts.length === 1) {
+      ref = doc(db, 'system', parts[0]);
+    } else if (parts.length === 2) {
+      ref = doc(db, parts[0], parts[1]);
+    } else {
+      ref = doc(db, ...parts);
+    }
+
+    try {
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const data = snap.data();
+        const json = JSON.stringify(data, null, 2);
+        document.getElementById(targetId).innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <div style="font-size:11px; color:var(--text3);">📄 ${path}</div>
+            <button class="btn btn-ghost" style="font-size:10px; padding:5px 10px;" onclick="loadPathToEditor('${path}')">✏️ Editörde Aç</button>
+          </div>
+          <div class="log-box" style="max-height:400px; white-space:pre-wrap; color:var(--text2);">${syntaxHL(json)}</div>`;
+      } else {
+        document.getElementById(targetId).innerHTML = `<div class="alert alert-warn">⚠️ "${path}" bulunamadı.</div>`;
+      }
+    } catch(e) {
+      document.getElementById(targetId).innerHTML = `<div class="alert alert-error">✗ ${e.message}</div>`;
+    }
+  }
+
+  function syntaxHL(json) {
+    return json
+      .replace(/(".*?")\s*:/g, '<span style="color:var(--accent)">$1</span>:')
+      .replace(/:\s*(".*?")/g, ': <span style="color:var(--green)">$1</span>')
+      .replace(/:\s*(\d+\.?\d*)/g, ': <span style="color:var(--purple)">$1</span>')
+      .replace(/:\s*(true|false|null)/g, ': <span style="color:var(--orange)">$1</span>');
+  }
+
+  // ── EDITOR ────────────────────────────────────────────
+  window.loadToEditor = async () => {
+    const path = document.getElementById('editorPath').value.trim();
+    if (!path) return;
+    await loadPathToEditor(path);
+  };
+
+  window.loadPathToEditor = async (path) => {
+    document.getElementById('editorPath').value = path;
+    if (!window._fb.connected) { log('editorLog','Bağlı değil','err'); return; }
+    const { db } = window._fb;
+    const parts = path.split('/');
+    let ref;
+    if (parts.length === 1) ref = doc(db, 'system', parts[0]);
+    else ref = doc(db, ...parts);
+
+    try {
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const json = JSON.stringify(snap.data(), null, 2);
+        document.getElementById('jsonEditor').value = json;
+        document.getElementById('editorPathDisplay').textContent = path;
+        buildSidebarTree(snap.data());
+        log('editorLog',`"${path}" yüklendi`,'ok');
+      } else {
+        document.getElementById('jsonEditor').value = '{}';
+        document.getElementById('editorPathDisplay').textContent = path + ' (yeni)';
+        log('editorLog',`"${path}" bulunamadı — yeni döküman oluşturulacak`,'warn');
+      }
+    } catch(e) { log('editorLog','Hata: '+e.message,'err'); }
+  };
+
+  window.saveDoc = async () => {
+    if (!requireConn('editorLog')) return;
+    const path = document.getElementById('editorPath').value.trim();
+    if (!path) { log('editorLog','Yol boş','err'); return; }
+
+    let data;
+    try { data = JSON.parse(document.getElementById('jsonEditor').value); }
+    catch(e) { log('editorLog','JSON parse hatası: '+e.message,'err'); return; }
+
+    const { db } = window._fb;
+    const parts = path.split('/');
+    const ref = parts.length === 1 ? doc(db, 'system', parts[0]) : doc(db, ...parts);
+
+    try {
+      await setDoc(ref, data);
+      log('editorLog',`"${path}" kaydedildi`,'ok');
+    } catch(e) { log('editorLog','Hata: '+e.message,'err'); }
+  };
+
+  window.mergeDoc = async () => {
+    if (!requireConn('editorLog')) return;
+    const path = document.getElementById('editorPath').value.trim();
+    let data;
+    try { data = JSON.parse(document.getElementById('jsonEditor').value); }
+    catch(e) { log('editorLog','JSON parse hatası: '+e.message,'err'); return; }
+
+    const { db } = window._fb;
+    const parts = path.split('/');
+    const ref = parts.length === 1 ? doc(db, 'system', parts[0]) : doc(db, ...parts);
+
+    try {
+      await setDoc(ref, data, { merge: true });
+      log('editorLog',`"${path}" merge edildi`,'ok');
+    } catch(e) { log('editorLog','Hata: '+e.message,'err'); }
+  };
+
+  window.deleteDoc = async () => {
+    const path = document.getElementById('editorPath').value.trim();
+    if (!path) return;
+
+    // 1. onay
+    window._pendingDelete = { step: 1, path };
+    document.getElementById('deleteModalMsg').textContent = `"${path}" dökümanını silmek istediğinden emin misin?`;
+    document.getElementById('deleteConfirmBtn').textContent = 'Evet, devam et';
+    document.getElementById('deleteModal').classList.add('open');
+  };
+
+  window.closeDeleteModal = () => {
+    document.getElementById('deleteModal').classList.remove('open');
+    window._pendingDelete = null;
+  };
+
+  document.getElementById('deleteConfirmBtn').addEventListener('click', async () => {
+    const pd = window._pendingDelete;
+    if (!pd) return;
+
+    if (pd.step === 1) {
+      // 2. onay
+      pd.step = 2;
+      document.getElementById('deleteModalMsg').innerHTML = `<span style="color:var(--red)">⚠️ SON UYARI!</span> "${pd.path}" kalıcı olarak silinecek. Geri alınamaz!`;
+      document.getElementById('deleteConfirmBtn').textContent = 'EVET, KESİNLİKLE SİL';
+      return;
+    }
+
+    // Gerçekten sil
+    if (!window._fb.connected) { log('editorLog','Bağlı değil','err'); closeDeleteModal(); return; }
+    const { db } = window._fb;
+    const parts = pd.path.split('/');
+    const ref = parts.length === 1 ? doc(db, 'system', parts[0]) : doc(db, ...parts);
+
+    try {
+      await deleteDoc(ref);
+      log('editorLog',`"${pd.path}" silindi`,'ok');
+      document.getElementById('jsonEditor').value = '';
+    } catch(e) { log('editorLog','Hata: '+e.message,'err'); }
+
+    closeDeleteModal();
+  });
+
+  window.formatJSON = () => {
+    try {
+      const val = document.getElementById('jsonEditor').value;
+      document.getElementById('jsonEditor').value = JSON.stringify(JSON.parse(val), null, 2);
+    } catch(e) { log('editorLog','JSON parse hatası','err'); }
+  };
+
+  function buildSidebarTree(data, container=null, depth=0) {
+    const el = container || document.getElementById('sidebarTree');
+    if (depth === 0) el.innerHTML = '';
+    if (depth > 2) { el.innerHTML += '<div style="color:var(--text3);padding-left:20px;">...</div>'; return; }
+
+    Object.entries(data).forEach(([key, val]) => {
+      const type = Array.isArray(val) ? 'array' : typeof val;
+      const wrap = document.createElement('div');
+      if (type === 'object' && val !== null && !Array.isArray(val)) {
+        wrap.innerHTML = `<div class="tree-item"><span class="tree-key">${key}</span> <span class="tree-type">{${Object.keys(val).length}}</span></div>`;
+        const sub = document.createElement('div');
+        sub.className = 'tree-node';
+        buildSidebarTree(val, sub, depth+1);
+        wrap.appendChild(sub);
+      } else {
+        const preview = String(val).slice(0,30) + (String(val).length > 30 ? '...' : '');
+        wrap.innerHTML = `<div class="tree-item"><span class="tree-key">${key}</span>: <span class="tree-val">${preview}</span></div>`;
+      }
+      el.appendChild(wrap);
+    });
+  }
+
+  // ── LOGA ENTRY ────────────────────────────────────────
+  window.updateLogAFields = () => {
+    // Dynamic label changes could go here
+  };
+  window.updateLogBFields = () => {
+    const tag = document.getElementById('logB-tag').value;
+    document.getElementById('logB-notField').style.display   = (tag === 'gunNotu') ? 'block' : 'none';
+    const hf = document.getElementById('logB-hedefField');
+    if (hf) hf.style.display = (tag === 'gunHedefleri') ? 'block' : 'none';
+  };
+
+  window.addLogAEntry = async () => {
+    if (!requireConn('editorLog')) return;
+    const { db } = window._fb;
+
+    const tarih   = document.getElementById('logA-date').value.trim();
+    const saat    = document.getElementById('logA-time').value.trim();
+    const tag     = document.getElementById('logA-tag').value;
+    const durum   = document.getElementById('logA-durum').value.trim();
+    const acik    = document.getElementById('logA-aciklama').value.trim();
+    const sure    = document.getElementById('logA-sure').value;
+
+    if (!tarih || !saat || !tag) {
+      log('editorLog','Tarih, saat ve tag zorunlu (diğerleri opsiyonel)','warn'); return;
+    }
+
+    const entry = { tag };
+    if (durum) entry.durumTag = durum;
+    if (acik)  entry.aciklama = acik;
+    if (sure)  entry.hedefSure = parseFloat(sure);
+    entry.timestamp = new Date().toISOString();
+
+    const ref = doc(db, 'gunler', tarih);
+    const snap = await getDoc(ref);
+    const existing = snap.exists() ? snap.data() : { tarih, logA: {}, logB: [] };
+    if (!existing.logA) existing.logA = {};
+    existing.logA[saat] = entry;
+
+    try {
+      await setDoc(ref, existing, { merge: true });
+      log('editorLog',`LogA → ${tarih} ${saat} [${tag}] eklendi`,'ok');
+    } catch(e) { log('editorLog','Hata: '+e.message,'err'); }
+  };
+
+  window.addLogBEntry = async () => {
+    if (!requireConn('editorLog')) return;
+    const { db } = window._fb;
+
+    const tarih = document.getElementById('logB-date').value.trim();
+    const tag   = document.getElementById('logB-tag').value;
+
+    if (!tarih || !tag) { log('editorLog','Tarih ve tag zorunlu','warn'); return; }
+
+    let icerik;
+    if (tag === 'gunNotu') {
+      icerik = document.getElementById('logB-not').value.trim();
+    } else {
+      try { icerik = JSON.parse(document.getElementById('logB-hedef').value); }
+      catch(e) { log('editorLog','Hedef JSON parse hatası','err'); return; }
+    }
+
+    const entry = { tag, icerik };
+    const ref   = doc(db, 'gunler', tarih);
+    const snap  = await getDoc(ref);
+    const existing = snap.exists() ? snap.data() : { tarih, logA: {}, logB: [] };
+    if (!Array.isArray(existing.logB)) existing.logB = [];
+    existing.logB = existing.logB.filter(e => e.tag !== tag); // replace existing same tag
+    existing.logB.push(entry);
+
+    try {
+      await setDoc(ref, existing, { merge: true });
+      log('editorLog',`LogB → ${tarih} [${tag}] eklendi`,'ok');
+    } catch(e) { log('editorLog','Hata: '+e.message,'err'); }
+  };
+
+  // ── DATE UTILS ────────────────────────────────────────
+  window.todayKey = () => {
+    const d = new Date();
+    return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+  };
+
+  window.weekKey = () => {
+    const d = new Date();
+    const jan1 = new Date(d.getFullYear(), 0, 1);
+    const wk   = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
+    return `${d.getFullYear()}-W${String(wk).padStart(2,'0')}`;
+  };
+
+  // Set default dates
+  (() => {
+    const today = todayKey();
+    ['logA-date','logB-date'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = today;
+    });
+    // Init logB fields visibility
+    window.updateLogBFields();
+  })();
+
+  // ── KONULAR DATA ──────────────────────────────────────
+  function getKonularData() {
+    return {
+      dersler: {
+        MAT: { ad:"Matematik", renkKodu:"#3B82F6", bolumler: {
+          "MAT-1":{ ad:"Temel", konular:{"MAT-1-1":"Temel Kavramlar & Sayı Basamakları","MAT-1-2":"Bölme, Bölünebilme, EBOB-EKOK","MAT-1-3":"Rasyonel Sayılar & Basit Eşitsizlikler","MAT-1-4":"Mutlak Değer","MAT-1-5":"Üslü Sayılar & Köklü Sayılar","MAT-1-6":"Çarpanlara Ayırma & Oran-Orantı"}},
+          "MAT-2":{ ad:"Denklem & Fonksiyon", konular:{"MAT-2-1":"Denklem Çözme","MAT-2-2":"Fonksiyonlar","MAT-2-3":"Polinomlar","MAT-2-4":"2.Dereceden Denklemler & Eşitsizlikler","MAT-2-5":"Parabol"}},
+          "MAT-3":{ ad:"Sayma & Olasılık", konular:{"MAT-3-1":"Permütasyon & Kombinasyon","MAT-3-2":"Olasılık & Binom","MAT-3-3":"Veri & İstatistik"}},
+          "MAT-4":{ ad:"Kümeler & Mantık", konular:{"MAT-4-1":"Kümeler & Kartezyen Çarpım","MAT-4-2":"Mantık"}},
+          "MAT-5":{ ad:"İleri (AYT)", konular:{"MAT-5-1":"Trigonometri","MAT-5-2":"Karmaşık Sayılar","MAT-5-3":"Logaritma","MAT-5-4":"Diziler","MAT-5-5":"Limit","MAT-5-6":"Türev","MAT-5-7":"İntegral"}}
+        }},
+        FIZ: { ad:"Fizik", renkKodu:"#8B5CF6", bolumler: {
+          "FIZ-1":{ ad:"Hareket & Kuvvet", konular:{"FIZ-1-1":"Vektörler & Bağıl Hareket","FIZ-1-2":"1 Boyutlu Sabit İvmeli Hareket","FIZ-1-3":"Atışlar","FIZ-1-4":"Newton'un Hareket Yasaları","FIZ-1-5":"Dinamik","FIZ-1-6":"Kütle Merkezi"}},
+          "FIZ-2":{ ad:"Enerji & Momentum", konular:{"FIZ-2-1":"İş, Güç ve Enerji","FIZ-2-2":"İtme ve Momentum","FIZ-2-3":"Basit Makineler"}},
+          "FIZ-3":{ ad:"Dönme & Çembersel", konular:{"FIZ-3-1":"Çembersel Hareket","FIZ-3-2":"Dönme, Yuvarlanma & Açısal Momentum","FIZ-3-3":"Kuvvet, Tork ve Denge","FIZ-3-4":"Kütle Çekim & Kepler Yasaları"}},
+          "FIZ-4":{ ad:"Elektrik", konular:{"FIZ-4-1":"Elektrostatik & Elektrik Alan","FIZ-4-2":"Paralel Levhalar & Kapasitörler","FIZ-4-3":"Akım, Direnç & Ohm Yasası","FIZ-4-4":"Elektrik Devre Analizi","FIZ-4-5":"Elektriksel Enerji ve Güç","FIZ-4-6":"İndüksiyon, AC & Transformatörler"}},
+          "FIZ-5":{ ad:"Manyetizma & Dalgalar", konular:{"FIZ-5-1":"Manyetik Alan & Kuvvet","FIZ-5-2":"Manyetizma","FIZ-5-3":"Dalgalar & Dalga Mekaniği","FIZ-5-4":"Elektromanyetik Dalgalar"}},
+          "FIZ-6":{ ad:"Optik", konular:{"FIZ-6-1":"Optik"}},
+          "FIZ-7":{ ad:"Modern Fizik", konular:{"FIZ-7-1":"Atom Modelleri","FIZ-7-2":"Radyoaktivite","FIZ-7-3":"Özel Görelilik","FIZ-7-4":"Kara Cisim Işıması","FIZ-7-5":"Fotoelektrik & Compton","FIZ-7-6":"Büyük Patlama & Parçacık","FIZ-7-7":"Modern Fiziğin Teknolojideki Uygulamaları"}},
+          "FIZ-8":{ ad:"Madde & Isı (TYT)", konular:{"FIZ-8-1":"Madde ve Özellikleri","FIZ-8-2":"Sıvıların Kaldırma Kuvveti","FIZ-8-3":"Basınç","FIZ-8-4":"Isı, Sıcaklık ve Genleşme"}},
+          "FIZ-9":{ ad:"Basit Harmonik Hareket", konular:{"FIZ-9-1":"Basit Harmonik Hareket"}}
+        }},
+        KIM: { ad:"Kimya", renkKodu:"#10B981", bolumler: {
+          "KIM-1":{ ad:"Temel Kimya", konular:{"KIM-1-1":"Kimya Bilimi","KIM-1-2":"Atom ve Yapısı & Modern Atom Teorisi","KIM-1-3":"Periyodik Sistem","KIM-1-4":"Kimyasal Türler Arası Etkileşim","KIM-1-5":"Kimyasal Hesaplamalar","KIM-1-6":"Kimyanın Temel Kanunları","KIM-1-7":"Maddenin Halleri"}},
+          "KIM-2":{ ad:"Çözeltiler & Denge", konular:{"KIM-2-1":"Gazlar","KIM-2-2":"Sıvı Çözeltiler & Karışımlar","KIM-2-3":"Tepkimelerde Enerji","KIM-2-4":"Tepkimelerde Hız","KIM-2-5":"Tepkimelerde Denge","KIM-2-6":"Asit-Baz Dengesi","KIM-2-7":"Çözünürlük Dengesi"}},
+          "KIM-3":{ ad:"Elektrokimya & Organik", konular:{"KIM-3-1":"Kimya ve Elektrik","KIM-3-2":"Organik Kimya","KIM-3-3":"Kimya Her Yerde","KIM-3-4":"Asit, Baz ve Tuz"}}
+        }},
+        BIY: { ad:"Biyoloji", renkKodu:"#EF4444", bolumler: {
+          "BIY-1":{ ad:"Hücre & Temel", konular:{"BIY-1-1":"Canlıların Ortak Özellikleri","BIY-1-2":"Canlıların Temel Bileşenleri","BIY-1-3":"Hücre ve Organelleri","BIY-1-4":"Madde Geçişleri"}},
+          "BIY-2":{ ad:"Genetik", konular:{"BIY-2-1":"Nükleik Asitler","BIY-2-2":"Genetik Şifre & Protein Sentezi","BIY-2-3":"Hücre Bölünmeleri & Üreme","BIY-2-4":"Kalıtım"}},
+          "BIY-3":{ ad:"Enerji & Metabolizma", konular:{"BIY-3-1":"Canlılık ve Enerji","BIY-3-2":"Fotosentez & Kemosentez","BIY-3-3":"Hücresel Solunum"}},
+          "BIY-4":{ ad:"Bitki & Çevre", konular:{"BIY-4-1":"Bitki Biyolojisi","BIY-4-2":"Canlılar ve Çevre","BIY-4-3":"Ekosistem Ekoloji"}},
+          "BIY-5":{ ad:"Sistemler (AYT)", konular:{"BIY-5-1":"Sinir Sistemi","BIY-5-2":"Endokrin Sistem","BIY-5-3":"Duyu Organları","BIY-5-4":"Destek ve Hareket Sistemi","BIY-5-5":"Sindirim Sistemi","BIY-5-6":"Dolaşım ve Bağışıklık Sistemi","BIY-5-7":"Solunum Sistemi","BIY-5-8":"Üriner Sistem","BIY-5-9":"Üreme Sistemi & Embriyonik Gelişim"}},
+          "BIY-6":{ ad:"Ekoloji & Sınıflandırma", konular:{"BIY-6-1":"Komünite ve Popülasyon Ekolojisi","BIY-6-2":"Canlıların Sınıflandırılması"}}
+        }},
+        GEO: { ad:"Geometri", renkKodu:"#F59E0B", bolumler: {
+          "GEO-1":{ ad:"Üçgen", konular:{"GEO-1-1":"Doğruda ve Üçgende Açı","GEO-1-2":"Özel Üçgenler","GEO-1-3":"Açıortay & Kenarortay","GEO-1-4":"Üçgende Alan & Benzerlik","GEO-1-5":"Açı Kenar Bağıntıları"}},
+          "GEO-2":{ ad:"Dörtgen & Çokgen", konular:{"GEO-2-1":"Çokgenler","GEO-2-2":"Yamuk","GEO-2-3":"Eşkenar Dörtgen","GEO-2-4":"Deltoid","GEO-2-5":"Kare","GEO-2-6":"Dikdörtgen","GEO-2-7":"Dönüşüm Geometrisi"}},
+          "GEO-3":{ ad:"Çember", konular:{"GEO-3-1":"Çember ve Daire"}},
+          "GEO-4":{ ad:"Analitik Geometri", konular:{"GEO-4-1":"Noktanın Analitiği","GEO-4-2":"Doğrunun Analitiği","GEO-4-3":"Çemberin Analitiği"}},
+          "GEO-5":{ ad:"Uzay Geometri", konular:{"GEO-5-1":"Katı Cisimler"}}
+        }},
+        TUR: { ad:"Türkçe", renkKodu:"#EC4899", bolumler: {
+          "TUR-1":{ ad:"Dil Bilgisi", konular:{"TUR-1-1":"Ses Bilgisi","TUR-1-2":"Dil Bilgisi","TUR-1-3":"Noktalama İşaretleri","TUR-1-4":"Yazım Kuralları","TUR-1-5":"Anlatım Bozukluğu"}},
+          "TUR-2":{ ad:"Anlam & Paragraf", konular:{"TUR-2-1":"Paragraf","TUR-2-2":"Cümlede Anlam","TUR-2-3":"Sözcükte Anlam"}}
+        }},
+        TAR: { ad:"Tarih", renkKodu:"#D97706", bolumler: {
+          "TAR-1":{ ad:"İlk & Orta Çağ", konular:{"TAR-1-1":"Tarih ve Zaman","TAR-1-2":"İlk ve Orta Çağlarda Türk Dünyası","TAR-1-3":"İslam Medeniyetinin Doğuşu","TAR-1-4":"Türklerin İslamiyet'i Kabulü"}},
+          "TAR-2":{ ad:"Osmanlı", konular:{"TAR-2-1":"Beylikten Devlete Osmanlı","TAR-2-2":"Dünya Gücü Osmanlı","TAR-2-3":"Değişim Çağında Avrupa ve Osmanlı","TAR-2-4":"Uluslararası İlişkilerde Denge Stratejisi","TAR-2-5":"XX. Yüzyıl Başlarında Osmanlı"}},
+          "TAR-3":{ ad:"Cumhuriyet", konular:{"TAR-3-1":"Milli Mücadele","TAR-3-2":"Atatürkçülük ve Türk İnkılabı"}}
+        }},
+        COG: { ad:"Coğrafya", renkKodu:"#059669", bolumler: {
+          "COG-1":{ ad:"Temel Coğrafya", konular:{"COG-1-1":"Doğa ve İnsan","COG-1-2":"Dünya'nın Şekli ve Hareketleri","COG-1-3":"Harita Bilgisi"}},
+          "COG-2":{ ad:"İklim & Yer Şekilleri", konular:{"COG-2-1":"Atmosfer, Sıcaklık & İklim","COG-2-2":"İç ve Dış Kuvvetler","COG-2-3":"Türkiye'nin Yer Şekilleri"}},
+          "COG-3":{ ad:"Beşeri & Ekonomik", konular:{"COG-3-1":"Nüfus ve Yerleşme","COG-3-2":"Ekonomik Faaliyetler & Bölgeler","COG-3-3":"Uluslararası Ulaşım Hatları","COG-3-4":"Doğal Afetler"}}
+        }},
+        FEL: { ad:"Felsefe", renkKodu:"#7C3AED", bolumler: {
+          "FEL-1":{ ad:"Felsefe & Bilgi", konular:{"FEL-1-1":"Felsefenin Alanı","FEL-1-2":"Bilgi Felsefesi","FEL-1-3":"Bilim Felsefesi"}},
+          "FEL-2":{ ad:"Varlık & Ahlak", konular:{"FEL-2-1":"Varlık Felsefesi","FEL-2-2":"Ahlak Felsefesi","FEL-2-3":"Siyaset Felsefesi"}},
+          "FEL-3":{ ad:"Din & Sanat", konular:{"FEL-3-1":"Din Felsefesi","FEL-3-2":"Sanat Felsefesi"}}
+        }}
+      }
+    };
+  }
+
+</script>
+</body>
+</html>
