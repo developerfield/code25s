@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Veri İşleme</title>
+    <style>
+        body { font-family: monospace; padding: 20px; max-width: 800px; }
+        textarea, input { width: 100%; margin: 5px 0; padding: 5px; font-family: monospace; }
+        button { margin: 5px 0; padding: 5px 15px; }
+        #sonuc { margin-top: 10px; white-space: pre-wrap; word-break: break-all; }
+        .hata { color: red; }
+    </style>
+</head>
+<body>
+    <b>Girdi (virgülle ayrılmış):</b>
+    <textarea id="girdi" rows="4" placeholder="1,2,3,4,5"></textarea>
+
+    <b>Formül (x kullanın):</b>
+    <input id="formul" type="text" placeholder="(x*2)**2  veya  Math.sqrt(x)  veya  x**3 + 2*x" value="(x*2)**2">
+
+    <button onclick="hesapla()">Hesapla</button>
+    <button onclick="temizle()">Temizle</button>
+
+    <div id="sonuc"></div>
+
+    <script>
+        function hesapla() {
+            const sonucDiv = document.getElementById('sonuc');
+            const girdiler = document.getElementById('girdi').value
+                .split(',')
+                .map(s => parseFloat(s.trim()))
+                .filter(n => !isNaN(n));
+
+            if (girdiler.length === 0) {
+                sonucDiv.innerHTML = '<span class="hata">Geçerli sayı bulunamadı.</span>';
+                return;
+            }
+
+            const formul = document.getElementById('formul').value.trim();
+            if (!formul) {
+                sonucDiv.innerHTML = '<span class="hata">Formül boş.</span>';
+                return;
+            }
+
+            try {
+                const fn = new Function('x', `return ${formul};`);
+                const ciktiler = girdiler.map(x => {
+                    const r = fn(x);
+                    return isNaN(r) || !isFinite(r) ? 'NaN' : +r.toFixed(6);
+                });
+
+                sonucDiv.innerHTML =
+                    `<b>Girdi  (${girdiler.length}):</b> ${girdiler.join(', ')}\n` +
+                    `<b>Formül:</b> f(x) = ${formul}\n` +
+                    `<b>Çıktı  (${ciktiler.length}):</b> ${ciktiler.join(', ')}`;
+            } catch (e) {
+                sonucDiv.innerHTML = `<span class="hata">Formül hatası: ${e.message}</span>`;
+            }
+        }
+
+        function temizle() {
+            document.getElementById('girdi').value = '';
+            document.getElementById('sonuc').innerHTML = '';
+        }
+
+        document.getElementById('formul').addEventListener('keydown', e => {
+            if (e.key === 'Enter') hesapla();
+        });
+    </script>
+</body>
+</html>
