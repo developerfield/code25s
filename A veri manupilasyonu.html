@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Veri Seti Analiz</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: monospace; font-size: 13px; background: #1e1e1e; color: #d4d4d4; padding: 10px; }
+  h2 { color: #9cdcfe; margin-bottom: 8px; }
+  .panel { background: #252526; border: 1px solid #3c3c3c; padding: 10px; margin-bottom: 8px; }
+  label { color: #9cdcfe; display: block; margin-bottom: 3px; }
+  textarea, input[type=text] { width: 100%; background: #1e1e1e; color: #d4d4d4; border: 1px solid #3c3c3c; padding: 5px; font-family: monospace; font-size: 13px; }
+  textarea { height: 60px; resize: vertical; }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  button { background: #2d2d2d; color: #d4d4d4; border: 1px solid #555; padding: 4px 9px; cursor: pointer; font-family: monospace; font-size: 12px; }
+  button:hover { background: #3a3a3a; border-color: #9cdcfe; color: #9cdcfe; }
+  button.cat { background: #1e1e1e; color: #569cd6; border-color: #264f78; font-weight: bold; cursor: default; }
+  button.act { background: #264f78; color: #9cdcfe; }
+  #output { background: #1e1e1e; border: 1px solid #3c3c3c; padding: 8px; white-space: pre-wrap; word-break: break-all; min-height: 40px; color: #4ec9b0; }
+  #stats { color: #ce9178; }
+  canvas { display: block; margin-top: 8px; background: #1e1e1e; border: 1px solid #3c3c3c; }
+  .err { color: #f44747; }
+  .copy-btn { float: right; margin-top: -2px; }
+  select { background: #1e1e1e; color: #d4d4d4; border: 1px solid #3c3c3c; font-family: monospace; font-size: 13px; padding: 3px; }
+</style>
+</head>
+<body>
+<h2>Veri Seti Analiz Aracı</h2>
+
+<div class="panel">
+  <label>Girdi Veri Seti (virgülle ayrılmış sayılar)</label>
+  <textarea id="girdi" placeholder="1,2,3,4,5,6"></textarea>
+  <div class="btn-row">
+    <button onclick="kopyala('girdi')">📋 Kopyala</button>
+    <button onclick="yapistir('girdi')">📥 Yapıştır</button>
+    <button onclick="temizle('girdi')">✕ Temizle</button>
+    <button onclick="ciktiyiGirdiyeAl()">⬆ Çıktıyı Girdi Yap</button>
+    <button onclick="ornekVeri()">🎲 Örnek Veri</button>
+  </div>
+</div>
+
+<div class="panel">
+  <label>Formül İşlemi — f(x) =</label>
+  <div style="display:flex;gap:4px">
+    <input type="text" id="formul" placeholder="x**2  veya  Math.sin(x)  veya  (x*2)**2" value="x**2" style="flex:1">
+    <button onclick="formulUygula()" class="act">▶ Uygula</button>
+  </div>
+  <div class="btn-row">
+    <button class="cat">Hızlı:</button>
+    <button onclick="setF('x**2')">x²</button>
+    <button onclick="setF('x**3')">x³</button>
+    <button onclick="setF('Math.sqrt(Math.abs(x))')">√|x|</button>
+    <button onclick="setF('Math.log(Math.abs(x))')">ln|x|</button>
+    <button onclick="setF('Math.log10(Math.abs(x))')">log₁₀</button>
+    <button onclick="setF('Math.exp(x)')">eˣ</button>
+    <button onclick="setF('Math.sin(x)')">sin</button>
+    <button onclick="setF('Math.cos(x)')">cos</button>
+    <button onclick="setF('Math.tan(x)')">tan</button>
+    <button onclick="setF('1/x')">1/x</button>
+    <button onclick="setF('Math.abs(x)')">|x|</button>
+    <button onclick="setF('Math.sign(x)')">sgn</button>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="btn-row">
+    <button class="cat">Kalkülüs:</button>
+    <button onclick="integral()" title="Kümülatif toplam (sayısal integral)">∫ İntegral</button>
+    <button onclick="turev()" title="Farklar dizisi (sayısal türev)">d/dx Türev</button>
+    <button onclick="turev2()" title="İkinci türev">d²/dx² 2. Türev</button>
+    <button onclick="yumusatma()" title="Hareketli ortalama">~ Yumuşatma</button>
+  </div>
+  <div class="btn-row">
+    <button class="cat">Normaliz.:</button>
+    <button onclick="normalize()" title="[0,1] aralığına ölçekle">Min-Max [0,1]</button>
+    <button onclick="zscore()" title="(x-ort)/std">Z-Skor</button>
+    <button onclick="softmax()" title="e^x / Σe^x">Softmax</button>
+    <button onclick="logtrans()" title="log(1+x)">log1p</button>
+  </div>
+  <div class="btn-row">
+    <button class="cat">İstatistik:</button>
+    <button onclick="istatistik()">📊 İstatistik</button>
+    <button onclick="sirala('asc')">↑ Sırala ↑</button>
+    <button onclick="sirala('desc')">↓ Sırala ↓</button>
+    <button onclick="terseCevir()">⇄ Ters</button>
+    <button onclick="tekSayilar()">Tek</button>
+    <button onclick="ciftSayilar()">Çift</button>
+    <button onclick="tekilDegerler()">Tekil</button>
+    <button onclick="frekans()">Frekans</button>
+  </div>
+  <div class="btn-row">
+    <button class="cat">Dönüşüm:</button>
+    <button onclick="kumulatif()">Σ Kümülatif</button>
+    <button onclick="fark()" title="Ardışık farklar">Δ Fark</button>
+    <button onclick="oran()" title="Ardışık oranlar">% Oran</button>
+    <button onclick="hareketliOrt()" title="Pencere boyutunu seç">MA Hareketli Ort.</button>
+    <button onclick="pencereVaryans()">Pencere Var.</button>
+    <button onclick="konvolüsyon()">⊛ Konvolüsyon</button>
+    <button onclick="dft()" title="Ayrık Fourier Dönüşümü genlik spektrumu">FFT Genlik</button>
+  </div>
+  <div class="btn-row">
+    <button class="cat">Küme:</button>
+    <button onclick="topla()">Σ Toplam</button>
+    <button onclick="carp()">∏ Çarpım</button>
+    <button onclick="min()">Min</button>
+    <button onclick="max()">Max</button>
+    <button onclick="ort()">Ort</button>
+    <button onclick="medyan()">Med</button>
+    <button onclick="varYaz()">Varyans</button>
+    <button onclick="stdYaz()">Std</button>
+  </div>
+</div>
+
+<div class="panel">
+  <label>Çıktı <button class="copy-btn" onclick="kopyala('output')">📋 Kopyala</button></label>
+  <div id="output">—</div>
+  <div id="stats" style="margin-top:4px"></div>
+</div>
+
+<div class="panel">
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <label style="margin:0">Grafik:</label>
+    <select id="grafik-tip">
+      <option value="line">Çizgi</option>
+      <option value="bar">Sütun</option>
+      <option value="scatter">Nokta</option>
+      <option value="both">Çizgi+Nokta</option>
+    </select>
+    <button onclick="grafik('girdi', '#4fc3f7')">Girdiyi Çiz</button>
+    <button onclick="grafik('output', '#4ec9b0')">Çıktıyı Çiz</button>
+    <button onclick="grafikIkisi()">İkisini Çiz</button>
+    <button onclick="document.getElementById('cvs').getContext('2d').clearRect(0,0,900,220)">✕ Temizle</button>
+  </div>
+  <canvas id="cvs" width="900" height="220"></canvas>
+</div>
+
+<script>
+function parseVeri(id) {
+  const raw = id === 'output'
+    ? document.getElementById('output').textContent
+    : document.getElementById(id).value;
+  return raw.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+}
+
+function yazCikti(arr, label) {
+  if (!arr || arr.length === 0) { document.getElementById('output').innerHTML = '<span class="err">Sonuç yok.</span>'; return; }
+  const fmt = arr.map(n => typeof n === 'number' ? (Number.isInteger(n) ? n : +n.toFixed(6)) : n);
+  document.getElementById('output').textContent = fmt.join(', ');
+  const sayilar = arr.filter(n => isFinite(n));
+  if (sayilar.length > 1) {
+    const ort = sayilar.reduce((a,b)=>a+b,0)/sayilar.length;
+    const mn = Math.min(...sayilar), mx = Math.max(...sayilar);
+    const std = Math.sqrt(sayilar.reduce((a,b)=>a+(b-ort)**2,0)/sayilar.length);
+    document.getElementById('stats').textContent =
+      `n=${sayilar.length}  min=${+mn.toFixed(4)}  max=${+mx.toFixed(4)}  ort=${+ort.toFixed(4)}  std=${+std.toFixed(4)}`;
+  } else { document.getElementById('stats').textContent = ''; }
+}
+
+function err(msg) { document.getElementById('output').innerHTML = `<span class="err">${msg}</span>`; document.getElementById('stats').textContent=''; }
+
+function getGirdi() {
+  const d = parseVeri('girdi');
+  if (d.length === 0) { err('Geçerli girdi verisi yok.'); return null; }
+  return d;
+}
+
+// ── Pano ──────────────────────────────────────────────────────────
+async function kopyala(id) {
+  const txt = id === 'output'
+    ? document.getElementById('output').textContent
+    : document.getElementById(id).value;
+  try { await navigator.clipboard.writeText(txt); } catch(e) { prompt('Kopyala:', txt); }
+}
+async function yapistir(id) {
+  try {
+    const txt = await navigator.clipboard.readText();
+    document.getElementById(id).value = txt;
+  } catch(e) { const v = prompt('Yapıştır:'); if(v) document.getElementById(id).value = v; }
+}
+function temizle(id) { document.getElementById(id).value ? document.getElementById(id).value='' : document.getElementById('output').textContent='—'; }
+function ciktiyiGirdiyeAl() { document.getElementById('girdi').value = document.getElementById('output').textContent; }
+function ornekVeri() { document.getElementById('girdi').value = '1,3,2,5,4,7,6,8,5,9,10,7,11,13,12'; }
+function setF(f) { document.getElementById('formul').value = f; }
+
+// ── Formül ────────────────────────────────────────────────────────
+function formulUygula() {
+  const d = getGirdi(); if (!d) return;
+  const f = document.getElementById('formul').value.trim();
+  try {
+    const fn = new Function('x', `return ${f};`);
+    yazCikti(d.map(x => fn(x)));
+  } catch(e) { err('Formül hatası: ' + e.message); }
+}
+
+// ── Kalkülüs ──────────────────────────────────────────────────────
+function integral() {
+  const d = getGirdi(); if (!d) return;
+  let s = 0;
+  yazCikti(d.map(x => (s += x)));
+}
+function turev() {
+  const d = getGirdi(); if (!d) return;
+  if (d.length < 2) { err('En az 2 eleman gerekli.'); return; }
+  yazCikti(d.map((x,i) => i===0 ? x : x - d[i-1]));
+}
+function turev2() {
+  const d = getGirdi(); if (!d) return;
+  if (d.length < 3) { err('En az 3 eleman gerekli.'); return; }
+  const t1 = d.map((x,i) => i===0 ? x : x - d[i-1]);
+  yazCikti(t1.map((x,i) => i===0 ? x : x - t1[i-1]));
+}
+function yumusatma() {
+  const d = getGirdi(); if (!d) return;
+  const w = parseInt(prompt('Pencere boyutu (örn: 3):', '3'));
+  if (!w || w < 2) { err('Geçersiz pencere.'); return; }
+  yazCikti(d.map((_, i) => {
+    const s = d.slice(Math.max(0, i-Math.floor(w/2)), Math.min(d.length, i+Math.ceil(w/2)));
+    return s.reduce((a,b)=>a+b,0)/s.length;
+  }));
+}
+
+// ── Normalizasyon ─────────────────────────────────────────────────
+function normalize() {
+  const d = getGirdi(); if (!d) return;
+  const mn=Math.min(...d), mx=Math.max(...d), r=mx-mn;
+  yazCikti(d.map(x => r===0 ? 0 : (x-mn)/r));
+}
+function zscore() {
+  const d = getGirdi(); if (!d) return;
+  const ort=d.reduce((a,b)=>a+b,0)/d.length;
+  const std=Math.sqrt(d.reduce((a,b)=>a+(b-ort)**2,0)/d.length);
+  yazCikti(d.map(x => std===0 ? 0 : (x-ort)/std));
+}
+function softmax() {
+  const d = getGirdi(); if (!d) return;
+  const mx=Math.max(...d), exps=d.map(x=>Math.exp(x-mx)), s=exps.reduce((a,b)=>a+b,0);
+  yazCikti(exps.map(e=>e/s));
+}
+function logtrans() {
+  const d = getGirdi(); if (!d) return;
+  yazCikti(d.map(x => Math.log1p(Math.abs(x))*Math.sign(x)));
+}
+
+// ── İstatistik ────────────────────────────────────────────────────
+function istatistik() {
+  const d = getGirdi(); if (!d) return;
+  const n=d.length, ort=d.reduce((a,b)=>a+b,0)/n;
+  const srt=[...d].sort((a,b)=>a-b);
+  const med = n%2===0 ? (srt[n/2-1]+srt[n/2])/2 : srt[Math.floor(n/2)];
+  const std=Math.sqrt(d.reduce((a,b)=>a+(b-ort)**2,0)/n);
+  const q1=srt[Math.floor(n*0.25)], q3=srt[Math.floor(n*0.75)];
+  document.getElementById('output').textContent =
+    `n=${n}\nMin=${Math.min(...d)}\nMax=${Math.max(...d)}\nToplam=${d.reduce((a,b)=>a+b,0)}\nOrtalama=${+ort.toFixed(6)}\nMedian=${med}\nStd=${+std.toFixed(6)}\nVaryans=${+( std**2).toFixed(6)}\nQ1=${q1}  Q3=${q3}  IQR=${q3-q1}`;
+  document.getElementById('stats').textContent='';
+}
+function sirala(y) {
+  const d = getGirdi(); if (!d) return;
+  yazCikti([...d].sort((a,b)=>y==='asc'?a-b:b-a));
+}
+function terseCevir() { const d=getGirdi(); if(!d) return; yazCikti([...d].reverse()); }
+function tekSayilar() { const d=getGirdi(); if(!d) return; yazCikti(d.filter((_,i)=>i%2===0)); }
+function ciftSayilar() { const d=getGirdi(); if(!d) return; yazCikti(d.filter((_,i)=>i%2!==0)); }
+function tekilDegerler() { const d=getGirdi(); if(!d) return; yazCikti([...new Set(d)]); }
+function frekans() {
+  const d=getGirdi(); if(!d) return;
+  const m={};
+  d.forEach(x=>m[x]=(m[x]||0)+1);
+  document.getElementById('output').textContent = Object.entries(m).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k}:${v}`).join('  ');
+  document.getElementById('stats').textContent='';
+}
+
+// ── Dönüşüm ───────────────────────────────────────────────────────
+function kumulatif() {
+  const d=getGirdi(); if(!d) return;
+  let s=0; yazCikti(d.map(x=>(s+=x)));
+}
+function fark() {
+  const d=getGirdi(); if(!d) return;
+  if(d.length<2){err('En az 2 eleman.');return;}
+  yazCikti(d.slice(1).map((x,i)=>x-d[i]));
+}
+function oran() {
+  const d=getGirdi(); if(!d) return;
+  yazCikti(d.slice(1).map((x,i)=>d[i]!==0 ? x/d[i] : NaN));
+}
+function hareketliOrt() {
+  const d=getGirdi(); if(!d) return;
+  const w=parseInt(prompt('Pencere (örn: 3):','3'));
+  if(!w||w<1){err('Geçersiz.');return;}
+  yazCikti(d.map((_,i)=>{
+    if(i<w-1) return NaN;
+    return d.slice(i-w+1,i+1).reduce((a,b)=>a+b,0)/w;
+  }).filter(n=>!isNaN(n)));
+}
+function pencereVaryans() {
+  const d=getGirdi(); if(!d) return;
+  const w=parseInt(prompt('Pencere (örn: 3):','3'));
+  if(!w||w<2){err('Geçersiz.');return;}
+  yazCikti(d.map((_,i)=>{
+    if(i<w-1) return NaN;
+    const s=d.slice(i-w+1,i+1), o=s.reduce((a,b)=>a+b,0)/w;
+    return s.reduce((a,b)=>a+(b-o)**2,0)/w;
+  }).filter(n=>!isNaN(n)));
+}
+function konvolüsyon() {
+  const d=getGirdi(); if(!d) return;
+  const raw=prompt('Kernel (virgülle, örn: 1,0,-1):','1,0,-1');
+  if(!raw) return;
+  const k=raw.split(',').map(Number);
+  const res=[];
+  for(let i=0;i<d.length;i++){
+    let s=0;
+    k.forEach((kv,j)=>{ const idx=i-(j-Math.floor(k.length/2)); if(idx>=0&&idx<d.length) s+=kv*d[idx]; });
+    res.push(s);
+  }
+  yazCikti(res);
+}
+function dft() {
+  const d=getGirdi(); if(!d) return;
+  const N=d.length, half=Math.floor(N/2);
+  const amp=[];
+  for(let k=0;k<=half;k++){
+    let re=0,im=0;
+    d.forEach((x,n)=>{ re+=x*Math.cos(2*Math.PI*k*n/N); im-=x*Math.sin(2*Math.PI*k*n/N); });
+    amp.push(Math.sqrt(re*re+im*im)/N);
+  }
+  yazCikti(amp);
+}
+
+// ── Tek Değer ─────────────────────────────────────────────────────
+function topla(){const d=getGirdi();if(!d)return;yazCikti([d.reduce((a,b)=>a+b,0)]);}
+function carp(){const d=getGirdi();if(!d)return;yazCikti([d.reduce((a,b)=>a*b,1)]);}
+function min(){const d=getGirdi();if(!d)return;yazCikti([Math.min(...d)]);}
+function max(){const d=getGirdi();if(!d)return;yazCikti([Math.max(...d)]);}
+function ort(){const d=getGirdi();if(!d)return;yazCikti([d.reduce((a,b)=>a+b,0)/d.length]);}
+function medyan(){const d=getGirdi();if(!d)return;const s=[...d].sort((a,b)=>a-b);const n=s.length;yazCikti([n%2===0?(s[n/2-1]+s[n/2])/2:s[Math.floor(n/2)]]);}
+function varYaz(){const d=getGirdi();if(!d)return;const o=d.reduce((a,b)=>a+b,0)/d.length;yazCikti([d.reduce((a,b)=>a+(b-o)**2,0)/d.length]);}
+function stdYaz(){const d=getGirdi();if(!d)return;const o=d.reduce((a,b)=>a+b,0)/d.length;yazCikti([Math.sqrt(d.reduce((a,b)=>a+(b-o)**2,0)/d.length)]);}
+
+// ── Grafik ────────────────────────────────────────────────────────
+function grafik(kaynak, renk) {
+  const d = parseVeri(kaynak);
+  if (d.length === 0) return;
+  _ciz([{ veri: d, renk }]);
+}
+function grafikIkisi() {
+  const g = parseVeri('girdi'), c = parseVeri('output');
+  _ciz([
+    ...(g.length ? [{ veri: g, renk: '#4fc3f7' }] : []),
+    ...(c.length ? [{ veri: c, renk: '#4ec9b0' }] : [])
+  ]);
+}
+function _ciz(seriler) {
+  const cvs = document.getElementById('cvs');
+  const ctx = cvs.getContext('2d');
+  const W = cvs.width, H = cvs.height;
+  const pad = { t: 15, b: 30, l: 55, r: 10 };
+  ctx.clearRect(0, 0, W, H);
+
+  const tümVeri = seriler.flatMap(s => s.veri);
+  const mn = Math.min(...tümVeri), mx = Math.max(...tümVeri);
+  const range = mx - mn || 1;
+  const maxN = Math.max(...seriler.map(s => s.veri.length));
+  const tip = document.getElementById('grafik-tip').value;
+
+  // ızgara
+  ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
+  const yTicks = 5;
+  ctx.font = '10px monospace'; ctx.fillStyle = '#888'; ctx.textAlign = 'right';
+  for (let i = 0; i <= yTicks; i++) {
+    const y = pad.t + (H - pad.t - pad.b) * i / yTicks;
+    const v = mx - range * i / yTicks;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y);
+    ctx.strokeStyle = '#2a2a2a'; ctx.stroke();
+    ctx.fillText(+v.toFixed(3), pad.l - 3, y + 3);
+  }
+  // x eksen etiketleri
+  ctx.textAlign = 'center'; ctx.fillStyle = '#666';
+  const step = Math.max(1, Math.floor(maxN / 15));
+  for (let i = 0; i < maxN; i += step) {
+    const x = pad.l + (W - pad.l - pad.r) * i / (maxN - 1 || 1);
+    ctx.fillText(i, x, H - 5);
+  }
+
+  seriler.forEach(({ veri, renk }) => {
+    const n = veri.length;
+    const px = i => pad.l + (W - pad.l - pad.r) * i / (maxN - 1 || 1);
+    const py = v => pad.t + (H - pad.t - pad.b) * (1 - (v - mn) / range);
+
+    ctx.strokeStyle = renk; ctx.fillStyle = renk; ctx.lineWidth = 1.5;
+
+    if (tip === 'bar') {
+      const bw = Math.max(1, (W - pad.l - pad.r) / maxN - 1);
+      veri.forEach((v, i) => {
+        const x = px(i) - bw / 2;
+        const y0 = py(Math.max(mn, 0));
+        const yv = py(v);
+        ctx.fillRect(x, Math.min(yv, y0), bw, Math.abs(y0 - yv));
+      });
+    } else if (tip === 'scatter') {
+      veri.forEach((v, i) => {
+        ctx.beginPath(); ctx.arc(px(i), py(v), 2.5, 0, 2 * Math.PI); ctx.fill();
+      });
+    } else {
+      ctx.beginPath();
+      veri.forEach((v, i) => i === 0 ? ctx.moveTo(px(i), py(v)) : ctx.lineTo(px(i), py(v)));
+      ctx.stroke();
+      if (tip === 'both') {
+        veri.forEach((v, i) => {
+          ctx.beginPath(); ctx.arc(px(i), py(v), 2, 0, 2 * Math.PI); ctx.fill();
+        });
+      }
+    }
+  });
+}
+
+document.getElementById('formul').addEventListener('keydown', e => { if (e.key === 'Enter') formulUygula(); });
+</script>
+</body>
+</html>
